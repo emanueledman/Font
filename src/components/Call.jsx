@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FaTicketAlt } from 'react-icons/fa';
-import api from '../api';
+import api from '../api/index.js';
 import { toast } from 'react-toastify';
 
 function Call() {
