@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+// src/App.jsx
+import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import io from 'socket.io-client';
 import { toast } from 'react-toastify';
@@ -6,99 +7,115 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import Call from './components/Call';
 import Sidebar from './components/Sidebar';
+import Queues from './components/Queues';
+import Reports from './components/Reports';
+import Settings from './components/Settings';
+import Profile from './components/Profile';
+import Users from './components/Users';
 import './App.css';
 
 function App() {
-    const [user, setUser] = useState(null);
-    const [socketConnected, setSocketConnected] = useState(false);
+  const [user, setUser] = useState(null);
 
-    useEffect(() => {
-        // Verificar se há token salvo
-        const token = localStorage.getItem('token');
-        if (token) {
-            setUser({
-                token,
-                user_id: localStorage.getItem('user_id'),
-                user_tipo: localStorage.getItem('user_tipo')
-            });
-        }
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      setUser({
+        token,
+        user_id: localStorage.getItem('user_id'),
+        user_tipo: localStorage.getItem('user_tipo'),
+      });
+    }
 
-        // Inicializar WebSocket
-        const socket = io('https://fila-facilita2-0.onrender.com', {
-            path: '/tickets',
-            reconnection: true,
-            reconnectionAttempts: 5,
-            reconnectionDelay: 1000,
-            timeout: 10000
-        });
+    const socket = io('https://fila-facilita2-0.onrender.com', {
+      path: '/tickets',
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
 
-        socket.on('connect', () => {
-            console.log('WebSocket conectado');
-            setSocketConnected(true);
-            toast.info('Conectado ao servidor de notificações');
-        });
+    socket.on('connect', () => {
+      console.log('WebSocket conectado');
+    });
 
-        socket.on('connect_error', (error) => {
-            console.error('Erro na conexão WebSocket:', error.message);
-            setSocketConnected(false);
-            toast.warn('Falha na conexão com notificações. O login ainda funciona.');
-        });
+    socket.on('connect_error', (error) => {
+      console.error('Erro no WebSocket:', error);
+      toast.warn('Falha na conexão com notificações');
+    });
 
-        socket.on('ticket_update', (data) => {
-            console.log('Atualização de ticket:', data);
-            toast.info(`Ticket ${data.ticket_id} atualizado: ${data.status}`);
-        });
+    socket.on('ticket_update', (data) => {
+      toast.info(`Ticket ${data.ticket_id} atualizado: ${data.status}`);
+    });
 
-        socket.on('queue_update', (data) => {
-            console.log('Atualização de fila:', data);
-            toast.info(data.message);
-        });
+    socket.on('queue_update', (data) => {
+      toast.info(data.message);
+    });
 
-        return () => {
-            socket.disconnect();
-            console.log('WebSocket desconectado');
-        };
-    }, []);
-
-    const handleLogin = (userData) => {
-        setUser({
-            token: userData.token,
-            user_id: userData.user_id,
-            user_tipo: userData.user_tipo
-        });
+    return () => {
+      socket.disconnect();
     };
+  }, []);
 
-    const handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user_id');
-        localStorage.removeItem('user_tipo');
-        setUser(null);
-        toast.info('Sessão encerrada');
-        return <Navigate to="/login" />;
-    };
+  const handleLogin = (userData) => {
+    setUser({
+      token: userData.token,
+      user_id: userData.user_id,
+      user_tipo: userData.user_tipo,
+    });
+  };
 
-    return (
-        <Router>
-            <div className="app">
-                {user && <Sidebar onLogout={handleLogout} />}
-                <Routes>
-                    <Route
-                        path="/login"
-                        element={user ? <Navigate to="/dashboard" /> : <Login onLogin={handleLogin} />}
-                    />
-                    <Route
-                        path="/dashboard"
-                        element={user ? <Dashboard /> : <Navigate to="/login" />}
-                    />
-                    <Route
-                        path="/call"
-                        element={user ? <Call /> : <Navigate to="/login" />}
-                    />
-                    <Route path="*" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
-                </Routes>
-            </div>
-        </Router>
-    );
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('user_tipo');
+    setUser(null);
+    toast.info('Sessão encerrada');
+  };
+
+  return (
+    <Router>
+      <div className="app d-flex">
+        {user && <Sidebar onLogout={handleLogout} />}
+        <div className="content flex-grow-1">
+          <Routes>
+            <Route
+              path="/login"
+              element={user ? <Navigate to="/dashboard" /> : <Login onLogin={handleLogin} />}
+            />
+            <Route
+              path="/dashboard"
+              element={user ? <Dashboard /> : <Navigate to="/login" />}
+            />
+            <Route
+              path="/call"
+              element={user ? <Call /> : <Navigate to="/login" />}
+            />
+            <Route
+              path="/queues"
+              element={user ? <Queues /> : <Navigate to="/login" />}
+            />
+            <Route
+              path="/reports"
+              element={user ? <Reports /> : <Navigate to="/login" />}
+            />
+            <Route
+              path="/settings"
+              element={user ? <Settings /> : <Navigate to="/login" />}
+            />
+            <Route
+              path="/profile"
+              element={user ? <Profile setUser={setUser} /> : <Navigate to="/login" />}
+            />
+            <Route
+              path="/users"
+              element={user ? <Users /> : <Navigate to="/login" />}
+            />
+            <Route path="*" element={<Navigate to={user ? '/dashboard' : '/login'} />} />
+          </Routes>
+        </div>
+      </div>
+    </Router>
+  );
 }
 
 export default App;

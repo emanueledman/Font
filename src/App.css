@@ -1,50 +1,58 @@
+/* src/App.css */
+.app {
+  min-height: 100vh;
+  background-color: #f8f9fa;
+}
+
+.content {
+  padding: 20px;
+}
+
+.sidebar {
+  width: 250px;
+  background-color: #343a40;
+  color: white;
+  padding: 20px;
+  height: 100vh;
+  position: fixed;
+}
+
+.sidebar .nav-link {
+  color: white;
+  padding: 10px;
+  display: block;
+}
+
+.sidebar .nav-link:hover {
+  background-color: #495057;
+  border-radius: 5px;
+}
+
 .login-container {
   max-width: 400px;
   margin: 50px auto;
   padding: 20px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  text-align: center;
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
 .login-logo {
   width: 100px;
+  margin: 0 auto 20px;
+  display: block;
+}
+
+.alert {
   margin-bottom: 20px;
 }
 
-.form-group {
-  margin-bottom: 15px;
+.table {
+  background-color: white;
 }
 
-.form-group label {
-  display: block;
-  margin-bottom: 5px;
-}
-
-.form-group input {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
-.error-message {
-  color: red;
-  margin-bottom: 10px;
-  font-size: 14px;
-}
-
-button {
-  width: 100%;
-  padding: 10px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-button:disabled {
-  background-color: #6c757d;
-  cursor: not-allowed;
+.card {
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
