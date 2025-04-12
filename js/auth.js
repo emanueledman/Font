@@ -14,12 +14,14 @@ export async function login(email, password) {
     localStorage.setItem('token', data.token);
     localStorage.setItem('email', data.email);
     localStorage.setItem('user_id', data.user_id);
+    localStorage.setItem('department', data.department);
+    localStorage.setItem('institution_id', data.institution_id);
     return data;
 }
 
 export function logout() {
     localStorage.clear();
-    window.location.href = 'index.html';
+    window.location.href = '/';
 }
 
 export function isAuthenticated() {

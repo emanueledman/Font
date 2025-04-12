@@ -5,18 +5,18 @@ import { isAuthenticated, logout } from './auth.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     if (!isAuthenticated()) {
-        window.location.href = 'index.html';
+        window.location.href = '/';
         return;
     }
 
     initWebSocket();
     initUI();
     loadQueues();
-    setInterval(loadQueues, 30000); // Polling a cada 30s
+    setInterval(loadQueues, 30000);
 });
 
 function initWebSocket() {
-    const socket = io('http://localhost:5000', {
+    const socket = io('https://fila-facilita2-0.onrender.com', {
         path: '/tickets',
         auth: { token: localStorage.getItem('token') }
     });
@@ -27,11 +27,11 @@ function initWebSocket() {
         showToast('Sem conexão com notificações', 'error');
     });
     socket.on('ticket_update', (data) => {
-        showToast(`Ticket ${data.ticket_number} (${data.status})`, 'info');
+        showToast(`Ticket ${data.ticket_number || data.id} (${data.status})`, 'info');
     });
     socket.on('queue_update', (data) => {
         showToast(data.message, 'info');
-        loadQueues(); // Atualiza tabela ao receber evento
+        loadQueues();
     });
 }
 
@@ -41,7 +41,7 @@ function initUI() {
     const refreshBtn = document.getElementById('refresh-btn');
     const userInfo = document.getElementById('user-info');
 
-    userInfo.textContent = localStorage.getItem('email')?.split('@')[0] || 'Gestor';
+    userInfo.textContent = localStorage.getItem('department') || localStorage.getItem('email')?.split('@')[0] || 'Gestor';
 
     logoutBtn.addEventListener('click', () => {
         logout();
@@ -77,7 +77,6 @@ async function loadQueues() {
             tbody.appendChild(tr);
         });
 
-        // Adicionar evento aos botões "Chamar Próxima"
         document.querySelectorAll('.call-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const queueId = btn.dataset.queueId;
