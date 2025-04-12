@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fila Facilita - Login</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <i class="fas fa-ticket-alt"></i>
+                <h1>Fila Facilita</h1>
+                <p>Painel Administrativo</p>
+            </div>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" id="email" placeholder="Seu email" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="password">Senha</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="password" placeholder="Sua senha" required>
+                    </div>
+                </div>
+                <div id="error-message" class="error-message"></div>
+                <button type="submit" class="btn primary-btn">Entrar</button>
+            </form>
+        </div>
+    </div>
+    
+    <script src="admin.js"></script>
+</body>
+</html>
