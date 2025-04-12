@@ -21,45 +21,45 @@ export async function apiRequest(endpoint, method = 'GET', body = null) {
         config.body = JSON.stringify(body);
     }
 
-    console.log(`Enviando requisição para: ${API_BASE_URL}${endpoint}`, { method, headers, body });
+    console.log(`[API] Requisição para: ${API_BASE_URL}${endpoint}`, { method, headers, body });
 
     try {
         const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-        console.log(`Resposta recebida: Status ${response.status}`);
+        console.log(`[API] Resposta: Status ${response.status}`);
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             const errorMessage = errorData.error || response.statusText || 'Erro desconhecido';
-            console.error(`Erro ${response.status}: ${errorMessage}`);
+            console.error(`[API] Erro ${response.status}: ${errorMessage}`);
             throw new Error(errorMessage);
         }
 
         const data = await response.json();
-        console.log('Dados recebidos:', data);
+        console.log('[API] Dados:', data);
         return data;
     } catch (error) {
-        console.error(`Erro na requisição ${endpoint}:`, error);
+        console.error(`[API] Erro em ${endpoint}:`, error);
         throw error;
     }
 }
 
 export async function handleAdminLogin(email, password) {
-    console.log('Iniciando login para:', email);
+    console.log('[Login] Iniciando para:', email);
     const errorMessage = document.getElementById('error-message');
 
     if (!email || !password) {
-        console.warn('Email ou senha vazios');
         errorMessage.textContent = 'Email e senha são obrigatórios';
+        console.warn('[Login] Email ou senha vazios');
         throw new Error('Email e senha são obrigatórios');
     }
 
     try {
         const data = await apiRequest('/api/admin/login', 'POST', { email, password });
-        console.log('Resposta do login:', data);
+        console.log('[Login] Resposta:', data);
 
         if (data.error) {
-            console.warn('Erro retornado pelo backend:', data.error);
             errorMessage.textContent = data.error;
+            console.warn('[Login] Erro do backend:', data.error);
             throw new Error(data.error);
         }
 
@@ -74,14 +74,15 @@ export async function handleAdminLogin(email, password) {
 
         localStorage.setItem('token', token);
         localStorage.setItem('userInfo', JSON.stringify(userInfo));
-        console.log('Login bem-sucedido, token e userInfo salvos');
+        console.log('[Login] Sucesso, token e userInfo salvos');
 
         return data;
     } catch (error) {
-        errorMessage.textContent = error.message.includes('Credenciais')
+        const message = error.message.includes('Credenciais')
             ? 'Credenciais inválidas'
             : `Erro ao fazer login: ${error.message}`;
-        console.error('Erro detalhado no login:', error);
+        errorMessage.textContent = message;
+        console.error('[Login] Erro:', error);
         throw error;
     }
 }

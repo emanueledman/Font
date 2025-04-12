@@ -1,7 +1,7 @@
 export function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
     if (!container) {
-        console.error('Toast container não encontrado');
+        console.error('[Toast] Container não encontrado');
         return;
     }
     const toast = document.createElement('div');
