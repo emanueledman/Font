@@ -1,69 +1,101 @@
-import { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { io } from 'socket.io-client';
+import io from 'socket.io-client';
+import { toast } from 'react-toastify';
 import Login from './components/Login';
-import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
-import Queues from './components/Queues';
 import Call from './components/Call';
-import Reports from './components/Reports';
-import Users from './components/Users';
-import Settings from './components/Settings';
-import Profile from './components/Profile';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import 'bootstrap/dist/css/bootstrap.min.css';
+import Sidebar from './components/Sidebar';
 import './App.css';
-
-const socket = io('https://fila-facilita2-0.onrender.com', { path: '/tickets' });
 
 function App() {
     const [user, setUser] = useState(null);
+    const [socketConnected, setSocketConnected] = useState(false);
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) setUser(JSON.parse(storedUser));
-        socket.on('ticket_update', (data) => {
-            toast.info(`Senha ${data.ticket_id}: ${data.status}`);
+        // Verificar se há token salvo
+        const token = localStorage.getItem('token');
+        if (token) {
+            setUser({
+                token,
+                user_id: localStorage.getItem('user_id'),
+                user_tipo: localStorage.getItem('user_tipo')
+            });
+        }
+
+        // Inicializar WebSocket
+        const socket = io('https://fila-facilita2-0.onrender.com', {
+            path: '/tickets',
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+            timeout: 10000
         });
-        return () => socket.off('ticket_update');
+
+        socket.on('connect', () => {
+            console.log('WebSocket conectado');
+            setSocketConnected(true);
+            toast.info('Conectado ao servidor de notificações');
+        });
+
+        socket.on('connect_error', (error) => {
+            console.error('Erro na conexão WebSocket:', error.message);
+            setSocketConnected(false);
+            toast.warn('Falha na conexão com notificações. O login ainda funciona.');
+        });
+
+        socket.on('ticket_update', (data) => {
+            console.log('Atualização de ticket:', data);
+            toast.info(`Ticket ${data.ticket_id} atualizado: ${data.status}`);
+        });
+
+        socket.on('queue_update', (data) => {
+            console.log('Atualização de fila:', data);
+            toast.info(data.message);
+        });
+
+        return () => {
+            socket.disconnect();
+            console.log('WebSocket desconectado');
+        };
     }, []);
 
     const handleLogin = (userData) => {
-        setUser(userData);
-        localStorage.setItem('user', JSON.stringify(userData));
+        setUser({
+            token: userData.token,
+            user_id: userData.user_id,
+            user_tipo: userData.user_tipo
+        });
     };
 
     const handleLogout = () => {
-        setUser(null);
-        localStorage.removeItem('user');
         localStorage.removeItem('token');
-        toast.success('Sessão encerrada');
+        localStorage.removeItem('user_id');
+        localStorage.removeItem('user_tipo');
+        setUser(null);
+        toast.info('Sessão encerrada');
+        return <Navigate to="/login" />;
     };
 
     return (
         <Router>
-            <ToastContainer position="top-right" autoClose={3000} />
             <div className="app">
-                {user ? (
-                    <div className="d-flex">
-                        <Sidebar onLogout={handleLogout} />
-                        <div className="content p-4">
-                            <Routes>
-                                <Route path="/dashboard" element={<Dashboard />} />
-                                <Route path="/queues" element={<Queues />} />
-                                <Route path="/call" element={<Call />} />
-                                <Route path="/reports" element={<Reports />} />
-                                <Route path="/users" element={<Users />} />
-                                <Route path="/settings" element={<Settings />} />
-                                <Route path="/profile" element={<Profile setUser={setUser} />} />
-                                <Route path="*" element={<Navigate to="/dashboard" />} />
-                            </Routes>
-                        </div>
-                    </div>
-                ) : (
-                    <Login onLogin={handleLogin} />
-                )}
+                {user && <Sidebar onLogout={handleLogout} />}
+                <Routes>
+                    <Route
+                        path="/login"
+                        element={user ? <Navigate to="/dashboard" /> : <Login onLogin={handleLogin} />}
+                    />
+                    <Route
+                        path="/dashboard"
+                        element={user ? <Dashboard /> : <Navigate to="/login" />}
+                    />
+                    <Route
+                        path="/call"
+                        element={user ? <Call /> : <Navigate to="/login" />}
+                    />
+                    <Route path="*" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
+                </Routes>
             </div>
         </Router>
     );
