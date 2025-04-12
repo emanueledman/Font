@@ -34,41 +34,61 @@ function Login({ onLogin }) {
   };
 
   return (
-    <div className="login-container">
-      <img src={logo} alt="Facilita Logo" className="login-logo" />
-      <h2>Login</h2>
-      <form onSubmit={handleSubmit}>
-        <div className="form-group mb-3">
-          <label htmlFor="email">Email</label>
-          <input
-            type="email"
-            id="email"
-            className="form-control"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
+    <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-900">
+      <div className="card w-full max-w-md animate-slide-up">
+        <img src={logo} alt="Facilita Logo" className="w-24 mx-auto mb-6" />
+        <h2 className="text-2xl font-semibold text-center mb-6">Bem-vindo ao Facilita 2.0</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label htmlFor="email" className="block text-sm font-medium mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              id="email"
+              className="w-full px-4 py-2 rounded-md bg-neutral-100 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={isLoading}
+              placeholder="Digite seu email"
+            />
+          </div>
+          <div className="mb-6">
+            <label htmlFor="password" className="block text-sm font-medium mb-1">
+              Senha
+            </label>
+            <input
+              type="password"
+              id="password"
+              className="w-full px-4 py-2 rounded-md bg-neutral-100 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={isLoading}
+              placeholder="Digite sua senha"
+            />
+          </div>
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 rounded-md">
+              {error}
+            </div>
+          )}
+          <button
+            type="submit"
+            className="btn btn-primary w-full"
             disabled={isLoading}
-            placeholder="Digite seu email"
-          />
-        </div>
-        <div className="form-group mb-3">
-          <label htmlFor="password">Senha</label>
-          <input
-            type="password"
-            id="password"
-            className="form-control"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            disabled={isLoading}
-            placeholder="Digite sua senha"
-          />
-        </div>
-        {error && <div className="alert alert-danger">{error}</div>}
-        <button type="submit" className="btn btn-primary w-100" disabled={isLoading}>
-          {isLoading ? 'Carregando...' : 'Entrar'}
-        </button>
-      </form>
+          >
+            {isLoading ? (
+              <svg className="animate-spin h-5 w-5 mr-2 inline" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+            ) : null}
+            {isLoading ? 'Entrando...' : 'Entrar'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

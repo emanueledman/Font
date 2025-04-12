@@ -12,10 +12,10 @@ import Reports from './components/Reports';
 import Settings from './components/Settings';
 import Profile from './components/Profile';
 import Users from './components/Users';
-import './App.css';
 
 function App() {
   const [user, setUser] = useState(null);
+  const [theme, setTheme] = useState('light');
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -38,8 +38,7 @@ function App() {
       console.log('WebSocket conectado');
     });
 
-    socket.on('connect_error', (error) => {
-      console.error('Erro no WebSocket:', error);
+    socket.on('connect_error', () => {
       toast.warn('Falha na conexão com notificações');
     });
 
@@ -55,6 +54,10 @@ function App() {
       socket.disconnect();
     };
   }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }, [theme]);
 
   const handleLogin = (userData) => {
     setUser({
@@ -72,11 +75,15 @@ function App() {
     toast.info('Sessão encerrada');
   };
 
+  const toggleTheme = () => {
+    setTheme(theme === 'light' ? 'dark' : 'light');
+  };
+
   return (
     <Router>
-      <div className="app d-flex">
-        {user && <Sidebar onLogout={handleLogout} />}
-        <div className="content flex-grow-1">
+      <div className="min-h-screen flex">
+        {user && <Sidebar onLogout={handleLogout} toggleTheme={toggleTheme} theme={theme} />}
+        <main className="flex-1">
           <Routes>
             <Route
               path="/login"
@@ -112,7 +119,7 @@ function App() {
             />
             <Route path="*" element={<Navigate to={user ? '/dashboard' : '/login'} />} />
           </Routes>
-        </div>
+        </main>
       </div>
     </Router>
   );

@@ -11,7 +11,6 @@ function Call() {
   const [loading, setLoading] = useState({ queues: false, tickets: false });
   const [error, setError] = useState(null);
 
-  // Configurar WebSocket
   useEffect(() => {
     const socket = io('https://fila-facilita2-0.onrender.com', {
       path: '/tickets',
@@ -21,7 +20,6 @@ function Call() {
     });
 
     socket.on('connect', () => {
-      console.log('WebSocket conectado');
       toast.info('Conectado ao servidor de notificações');
     });
 
@@ -43,7 +41,6 @@ function Call() {
     };
   }, [selectedQueue]);
 
-  // Carregar filas
   useEffect(() => {
     const fetchQueues = async () => {
       setLoading((prev) => ({ ...prev, queues: true }));
@@ -63,7 +60,6 @@ function Call() {
     fetchQueues();
   }, []);
 
-  // Carregar tickets quando a fila selecionada mudar
   useEffect(() => {
     if (selectedQueue) fetchTickets();
   }, [selectedQueue]);
@@ -96,17 +92,28 @@ function Call() {
   };
 
   return (
-    <div className="container mt-4">
-      <h2>Chamada de Senhas</h2>
-      {loading.queues && <div className="alert alert-info">Carregando filas...</div>}
-      {error && <div className="alert alert-danger">{error}</div>}
-      {!loading.queues && queues.length === 0 && !error && (
-        <div className="alert alert-warning">Nenhuma fila disponível</div>
+    <div className="container py-8">
+      <h1 className="text-3xl font-bold mb-6">Chamada de Senhas</h1>
+      {loading.queues && (
+        <div className="card p-4 mb-4 animate-pulse">
+          <div className="h-6 bg-neutral-200 dark:bg-neutral-700 rounded w-1/4 mb-4"></div>
+          <div className="h-10 bg-neutral-200 dark:bg-neutral-700 rounded w-full"></div>
+        </div>
       )}
-      <div className="mb-3">
-        <label className="form-label">Selecionar Fila</label>
+      {error && (
+        <div className="card p-4 mb-4 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200">
+          {error}
+        </div>
+      )}
+      {!loading.queues && queues.length === 0 && !error && (
+        <div className="card p-4 mb-4 text-yellow-700 dark:text-yellow-200 bg-yellow-100 dark:bg-yellow-900">
+          Nenhuma fila disponível
+        </div>
+      )}
+      <div className="mb-6">
+        <label className="block text-sm font-medium mb-2">Selecionar Fila</label>
         <select
-          className="form-select"
+          className="w-full px-4 py-2 rounded-md bg-neutral-100 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
           value={selectedQueue}
           onChange={(e) => setSelectedQueue(e.target.value)}
           disabled={loading.queues || !queues.length}
@@ -118,42 +125,59 @@ function Call() {
           ))}
         </select>
       </div>
-      <div className="card p-4 mb-4">
-        <h4>Senha Atual</h4>
-        {loading.tickets && <div className="alert alert-info">Carregando senhas...</div>}
-        <p className="display-4">{tickets.current.number || 'N/A'}</p>
-        <p>Guichê: {tickets.current.counter || 'N/A'}</p>
+      <div className="card mb-6">
+        <h2 className="text-xl font-semibold mb-4">Senha Atual</h2>
+        {loading.tickets && (
+          <div className="animate-pulse">
+            <div className="h-16 bg-neutral-200 dark:bg-neutral-700 rounded w-1/2 mb-4"></div>
+            <div className="h-6 bg-neutral-200 dark:bg-neutral-700 rounded w-1/4"></div>
+          </div>
+        )}
+        <p className="text-5xl font-bold text-primary-500">{tickets.current.number || 'N/A'}</p>
+        <p className="text-lg mt-2">Guichê: {tickets.current.counter || 'N/A'}</p>
         <button
-          className="btn btn-success btn-lg"
+          className="btn btn-secondary mt-4"
           onClick={callNext}
           disabled={loading.tickets || !selectedQueue}
         >
           Chamar Próxima
         </button>
       </div>
-      <h4>Senhas Pendentes</h4>
-      {loading.tickets && <div className="alert alert-info">Carregando senhas pendentes...</div>}
-      {tickets.pending.length === 0 && !loading.tickets && (
-        <div className="alert alert-info">Nenhuma senha pendente</div>
+      <h2 className="text-xl font-semibold mb-4">Senhas Pendentes</h2>
+      {loading.tickets && (
+        <div className="card animate-pulse">
+          <div className="h-6 bg-neutral-200 dark:bg-neutral-700 rounded w-1/4 mb-4"></div>
+          <div className="h-10 bg-neutral-200 dark:bg-neutral-700 rounded w-full mb-2"></div>
+          <div className="h-10 bg-neutral-200 dark:bg-neutral-700 rounded w-full"></div>
+        </div>
       )}
-      <table className="table table-hover">
-        <thead>
-          <tr>
-            <th>Número</th>
-            <th>Prioridade</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {tickets.pending.map((t) => (
-            <tr key={t.id}>
-              <td>{t.number}</td>
-              <td>{t.priority}</td>
-              <td>{t.status}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {tickets.pending.length === 0 && !loading.tickets && (
+        <div className="card p-4 text-neutral-500 dark:text-neutral-400">
+          Nenhuma senha pendente
+        </div>
+      )}
+      {tickets.pending.length > 0 && (
+        <div className="card">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Número</th>
+                <th>Prioridade</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tickets.pending.map((t) => (
+                <tr key={t.id} className="hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors">
+                  <td>{t.number}</td>
+                  <td>{t.priority}</td>
+                  <td>{t.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
