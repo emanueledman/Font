@@ -1,4 +1,4 @@
-import { login } from './auth.js';
+import { handleAdminLogin } from './auth.js';
 import { showToast } from './toast.js';
 
 console.log('index.js carregado');
@@ -6,13 +6,27 @@ console.log('index.js carregado');
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM carregado');
 
+    // Redirecionar se já autenticado
+    if (localStorage.getItem('token')) {
+        console.log('Token encontrado, redirecionando para dashboard');
+        window.location.href = '/dashboard.html';
+        return;
+    }
+
     const form = document.getElementById('login-form');
     const btn = document.getElementById('login-btn');
     const error = document.getElementById('error-message');
     const spinner = btn.querySelector('.spinner');
 
+    // Verificar elementos
     if (!form || !btn || !error || !spinner) {
-        console.error('Elementos do formulário não encontrados');
+        console.error('Elementos do formulário não encontrados:', {
+            form: !!form,
+            btn: !!btn,
+            error: !!error,
+            spinner: !!spinner,
+        });
+        showToast('Erro: Interface não carregada corretamente', 'error');
         return;
     }
 
@@ -20,23 +34,20 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         console.log('Formulário submetido');
 
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value.trim();
+
         btn.disabled = true;
         spinner.classList.remove('hidden');
         error.classList.add('hidden');
 
-        const email = form.email.value;
-        const password = form.password.value;
-
         try {
-            console.log('Tentando login com:', email);
-            await login(email, password);
-            console.log('Login bem-sucedido, redirecionando');
+            await handleAdminLogin(email, password);
             showToast('Login bem-sucedido!', 'success');
+            console.log('Redirecionando para dashboard');
             window.location.href = '/dashboard.html';
         } catch (err) {
             console.error('Erro no login:', err.message);
-            error.textContent = err.message;
-            error.classList.remove('hidden');
             showToast('Erro ao autenticar', 'error');
         } finally {
             btn.disabled = false;
