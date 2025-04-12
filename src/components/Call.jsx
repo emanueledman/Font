@@ -1,8 +1,8 @@
-// src/components/Call.jsx
 import { useState, useEffect } from 'react';
-import { fetchWithAuth } from '../api';
+import { motion } from 'framer-motion';
+import { FaTicketAlt } from 'react-icons/fa';
+import api from '../api';
 import { toast } from 'react-toastify';
-import io from 'socket.io-client';
 
 function Call() {
   const [queues, setQueues] = useState([]);
@@ -12,70 +12,48 @@ function Call() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const socket = io('https://fila-facilita2-0.onrender.com', {
-      path: '/tickets',
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-    });
-
-    socket.on('connect', () => {
-      toast.info('Conectado ao servidor de notificações');
-    });
-
-    socket.on('queue_update', (data) => {
+    fetchQueues();
+    const socket = api.subscribeToTickets('', (data) => {
       if (data.queue_id === selectedQueue) {
-        toast.info(data.message);
         fetchTickets();
       }
     });
-
-    socket.on('ticket_update', (data) => {
-      if (data.ticket_id) {
-        toast.info(`Ticket ${data.ticket_id} atualizado: ${data.status}`);
-      }
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [selectedQueue]);
-
-  useEffect(() => {
-    const fetchQueues = async () => {
-      setLoading((prev) => ({ ...prev, queues: true }));
-      setError(null);
-      try {
-        const data = await fetchWithAuth('/queues');
-        const allQueues = data.flatMap((inst) => inst.queues);
-        setQueues(allQueues);
-        if (allQueues.length) setSelectedQueue(allQueues[0].id);
-      } catch (error) {
-        setError(error.message);
-        toast.error(`Erro ao carregar filas: ${error.message}`);
-      } finally {
-        setLoading((prev) => ({ ...prev, queues: false }));
-      }
-    };
-    fetchQueues();
+    return () => api.unsubscribeFromTickets();
   }, []);
 
   useEffect(() => {
-    if (selectedQueue) fetchTickets();
+    if (selectedQueue) {
+      fetchTickets();
+      api.subscribeToTickets(selectedQueue, () => fetchTickets());
+    }
   }, [selectedQueue]);
 
-  const fetchTickets = async () => {
-    setLoading((prev) => ({ ...prev, tickets: true }));
-    setError(null);
+  const fetchQueues = async () => {
+    setLoading((prev) => ({ ...prev, queues: true }));
     try {
-      const data = await fetchWithAuth(`/tickets?queue_id=${selectedQueue}`);
+      const { data } = await api.get('/admin/queues');
+      setQueues(data);
+      if (data.length) setSelectedQueue(data[0].id);
+    } catch (error) {
+      setError('Erro ao carregar filas');
+      toast.error('Erro ao carregar filas');
+    } finally {
+      setLoading((prev) => ({ ...prev, queues: false }));
+    }
+  };
+
+  const fetchTickets = async () => {
+    if (!selectedQueue) return;
+    setLoading((prev) => ({ ...prev, tickets: true }));
+    try {
+      const { data } = await api.get(`/queue/${selectedQueue}/tickets`);
       setTickets({
         current: data.find((t) => t.status === 'Chamado') || {},
         pending: data.filter((t) => t.status === 'Pendente'),
       });
     } catch (error) {
-      setError(error.message);
-      toast.error(`Erro ao carregar senhas: ${error.message}`);
+      setError('Erro ao carregar senhas');
+      toast.error('Erro ao carregar senhas');
     } finally {
       setLoading((prev) => ({ ...prev, tickets: false }));
     }
@@ -83,102 +61,70 @@ function Call() {
 
   const callNext = async () => {
     try {
-      const data = await fetchWithAuth(`/queue/${selectedQueue}/call`, { method: 'POST' });
+      const { data } = await api.post(`/admin/queue/${selectedQueue}/call`);
       toast.success(data.message);
       fetchTickets();
     } catch (error) {
-      toast.error(`Erro ao chamar próxima senha: ${error.message}`);
+      toast.error(error.response?.data?.error || 'Erro ao chamar próxima senha');
     }
   };
 
   return (
-    <div className="container py-8">
-      <h1 className="text-3xl font-bold mb-6">Chamada de Senhas</h1>
-      {loading.queues && (
-        <div className="card p-4 mb-4 animate-pulse">
-          <div className="h-6 bg-neutral-200 dark:bg-neutral-700 rounded w-1/4 mb-4"></div>
-          <div className="h-10 bg-neutral-200 dark:bg-neutral-700 rounded w-full"></div>
-        </div>
-      )}
-      {error && (
-        <div className="card p-4 mb-4 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200">
-          {error}
-        </div>
-      )}
-      {!loading.queues && queues.length === 0 && !error && (
-        <div className="card p-4 mb-4 text-yellow-700 dark:text-yellow-200 bg-yellow-100 dark:bg-yellow-900">
-          Nenhuma fila disponível
-        </div>
-      )}
+    <motion.div className="container py-8" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
+      <h1 className="text-3xl font-bold mb-6 flex items-center">
+        <FaTicketAlt className="mr-2 text-primary-500" /> Chamada de Senhas
+      </h1>
+      {error && <div className="text-red-500 mb-4">{error}</div>}
       <div className="mb-6">
-        <label className="block text-sm font-medium mb-2">Selecionar Fila</label>
+        <label className="block text-sm font-medium">Selecionar Fila</label>
         <select
-          className="w-full px-4 py-2 rounded-md bg-neutral-100 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
           value={selectedQueue}
           onChange={(e) => setSelectedQueue(e.target.value)}
-          disabled={loading.queues || !queues.length}
+          className="mt-1 p-2 border rounded w-full"
+          disabled={loading.queues}
         >
-          {queues.map((q) => (
-            <option key={q.id} value={q.id}>
-              {q.service} ({q.institution})
-            </option>
+          {queues.map((queue) => (
+            <option key={queue.id} value={queue.id}>{queue.service}</option>
           ))}
         </select>
       </div>
-      <div className="card mb-6">
-        <h2 className="text-xl font-semibold mb-4">Senha Atual</h2>
-        {loading.tickets && (
-          <div className="animate-pulse">
-            <div className="h-16 bg-neutral-200 dark:bg-neutral-700 rounded w-1/2 mb-4"></div>
-            <div className="h-6 bg-neutral-200 dark:bg-neutral-700 rounded w-1/4"></div>
+      {loading.tickets ? (
+        <div>Carregando senhas...</div>
+      ) : (
+        <div>
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold">Senha Atual</h2>
+            {tickets.current.ticket_number ? (
+              <div>
+                <p>Senha: {tickets.current.ticket_number}</p>
+                <p>Balcão: {tickets.current.counter?.toString().padLeft(2, '0')}</p>
+              </div>
+            ) : (
+              <p>Nenhuma senha sendo atendida</p>
+            )}
           </div>
-        )}
-        <p className="text-5xl font-bold text-primary-500">{tickets.current.number || 'N/A'}</p>
-        <p className="text-lg mt-2">Guichê: {tickets.current.counter || 'N/A'}</p>
-        <button
-          className="btn btn-secondary mt-4"
-          onClick={callNext}
-          disabled={loading.tickets || !selectedQueue}
-        >
-          Chamar Próxima
-        </button>
-      </div>
-      <h2 className="text-xl font-semibold mb-4">Senhas Pendentes</h2>
-      {loading.tickets && (
-        <div className="card animate-pulse">
-          <div className="h-6 bg-neutral-200 dark:bg-neutral-700 rounded w-1/4 mb-4"></div>
-          <div className="h-10 bg-neutral-200 dark:bg-neutral-700 rounded w-full mb-2"></div>
-          <div className="h-10 bg-neutral-200 dark:bg-neutral-700 rounded w-full"></div>
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold">Senhas Pendentes</h2>
+            {tickets.pending.length > 0 ? (
+              <ul>
+                {tickets.pending.map((ticket) => (
+                  <li key={ticket.id}>{ticket.ticket_number}</li>
+                ))}
+              </ul>
+            ) : (
+              <p>Nenhuma senha pendente</p>
+            )}
+          </div>
+          <button
+            onClick={callNext}
+            className="bg-blue-500 text-white p-2 rounded"
+            disabled={loading.tickets || tickets.pending.length === 0}
+          >
+            Chamar Próxima Senha
+          </button>
         </div>
       )}
-      {tickets.pending.length === 0 && !loading.tickets && (
-        <div className="card p-4 text-neutral-500 dark:text-neutral-400">
-          Nenhuma senha pendente
-        </div>
-      )}
-      {tickets.pending.length > 0 && (
-        <div className="card">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Número</th>
-                <th>Prioridade</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tickets.pending.map((t) => (
-                <tr key={t.id} className="hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors">
-                  <td>{t.number}</td>
-                  <td>{t.priority}</td>
-                  <td>{t.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+    </motion.div>
   );
 }
 
