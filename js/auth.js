@@ -16,6 +16,7 @@ export async function login(email, password) {
     localStorage.setItem('user_id', data.user_id);
     localStorage.setItem('department', data.department);
     localStorage.setItem('institution_id', data.institution_id);
+    localStorage.setItem('user_tipo', data.user_tipo);
     return data;
 }
 
