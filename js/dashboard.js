@@ -9,16 +9,39 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    initSidebar();
+    initWebSocket();
+    initUI();
     loadQueues();
+    setInterval(loadQueues, 30000); // Polling a cada 30s
 });
 
-function initSidebar() {
+function initWebSocket() {
+    const socket = io('http://localhost:5000', {
+        path: '/tickets',
+        auth: { token: localStorage.getItem('token') }
+    });
+    socket.on('connect', () => {
+        showToast('Notificações ativas', 'success');
+    });
+    socket.on('connect_error', () => {
+        showToast('Sem conexão com notificações', 'error');
+    });
+    socket.on('ticket_update', (data) => {
+        showToast(`Ticket ${data.ticket_number} (${data.status})`, 'info');
+    });
+    socket.on('queue_update', (data) => {
+        showToast(data.message, 'info');
+        loadQueues(); // Atualiza tabela ao receber evento
+    });
+}
+
+function initUI() {
     const logoutBtn = document.getElementById('logout-btn');
     const themeToggle = document.getElementById('theme-toggle');
-    const userEmail = document.getElementById('user-email');
+    const refreshBtn = document.getElementById('refresh-btn');
+    const userInfo = document.getElementById('user-info');
 
-    userEmail.textContent = localStorage.getItem('email') || 'Usuário';
+    userInfo.textContent = localStorage.getItem('email')?.split('@')[0] || 'Gestor';
 
     logoutBtn.addEventListener('click', () => {
         logout();
@@ -26,38 +49,51 @@ function initSidebar() {
     });
 
     themeToggle.addEventListener('click', () => {
-        document.body.classList.toggle('dark');
-        const isDark = document.body.classList.contains('dark');
-        themeToggle.querySelector('i').className = isDark ? 'fas fa-sun' : 'fas fa-moon';
-        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        document.documentElement.classList.toggle('dark');
+        themeToggle.querySelector('i').className = document.documentElement.classList.contains('dark') ? 'fas fa-sun' : 'fas fa-moon';
     });
 
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-        document.body.classList.add('dark');
-        themeToggle.querySelector('i').className = 'fas fa-sun';
-    }
+    refreshBtn.addEventListener('click', loadQueues);
 }
 
-function loadQueues() {
-    fetchWithAuth('/admin/queues')
-        .then(queues => {
-            const tbody = document.getElementById('queues-table');
-            tbody.innerHTML = '';
-            queues.forEach(queue => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${queue.service}</td>
-                    <td>${queue.active_tickets}</td>
-                    <td>${queue.status}</td>
-                    <td>
-                        <button class="btn btn-icon" onclick="alert('Chamar próxima senha')">
-                            <i class="fas fa-bullhorn"></i>
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
+async function loadQueues() {
+    try {
+        const queues = await fetchWithAuth('/admin/queues');
+        const tbody = document.getElementById('queues-table');
+        tbody.innerHTML = '';
+        queues.forEach(q => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${q.service}</td>
+                <td>${q.active_tickets}</td>
+                <td>${q.current_ticket ? `${q.prefix || ''}${q.current_ticket.toString().padStart(3, '0')}` : 'N/A'}</td>
+                <td>${q.status}</td>
+                <td>
+                    <button class="btn btn-primary btn-small call-btn" data-queue-id="${q.id}">
+                        <i class="fas fa-phone"></i> Chamar Próxima
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Adicionar evento aos botões "Chamar Próxima"
+        document.querySelectorAll('.call-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const queueId = btn.dataset.queueId;
+                btn.disabled = true;
+                try {
+                    const data = await fetchWithAuth(`/admin/queue/${queueId}/call`, { method: 'POST' });
+                    showToast(data.message, 'success');
+                    loadQueues();
+                } catch (err) {
+                    showToast(`Erro: ${err.message}`, 'error');
+                } finally {
+                    btn.disabled = false;
+                }
             });
-        })
-        .catch(err => showToast(`Erro ao carregar filas: ${err.message}`, 'error'));
+        });
+    } catch (err) {
+        showToast(`Erro ao carregar filas: ${err.message}`, 'error');
+    }
 }

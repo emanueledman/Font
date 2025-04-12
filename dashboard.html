@@ -3,21 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Facilita - Dashboard</title>
+    <title>Facilita - Dashboard Administrativo</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div class="dashboard-container">
+    <div class="app-container">
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h2>Facilita</h2>
+                <h2>Facilita Admin</h2>
             </div>
             <nav class="sidebar-nav">
                 <ul>
                     <li class="active"><a href="dashboard.html"><i class="fas fa-home"></i> Dashboard</a></li>
-                    <li><a href="#"><i class="fas fa-users"></i> Filas</a></li>
-                    <li><a href="#"><i class="fas fa-file-alt"></i> Relatórios</a></li>
                 </ul>
             </nav>
             <div class="sidebar-footer">
@@ -27,26 +25,30 @@
         </aside>
         <main class="main-content">
             <header class="header">
-                <h1>Dashboard</h1>
-                <span id="user-email">Usuário</span>
+                <h1>Minhas Filas</h1>
+                <div class="header-actions">
+                    <span id="user-info">Gestor</span>
+                    <button id="refresh-btn" class="btn btn-primary"><i class="fas fa-sync"></i> Atualizar</button>
+                </div>
             </header>
-            <section class="card">
-                <h3>Suas Filas</h3>
+            <div class="card">
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Nome</th>
+                            <th>Serviço</th>
                             <th>Senhas Ativas</th>
+                            <th>Senha Atual</th>
                             <th>Status</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody id="queues-table"></tbody>
                 </table>
-            </section>
+            </div>
         </main>
     </div>
     <div id="toast-container"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/api.js"></script>
     <script src="js/toast.js"></script>
