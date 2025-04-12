@@ -1,31 +1,40 @@
-// js/index.js
 import { login } from './auth.js';
 import { showToast } from './toast.js';
 
+console.log('index.js carregado');
+
 document.addEventListener('DOMContentLoaded', () => {
-    if (localStorage.getItem('token')) {
-        window.location.href = 'dashboard.html';
-        return;
-    }
+    console.log('DOM carregado');
 
     const form = document.getElementById('login-form');
     const btn = document.getElementById('login-btn');
     const error = document.getElementById('error-message');
     const spinner = btn.querySelector('.spinner');
 
+    if (!form || !btn || !error || !spinner) {
+        console.error('Elementos do formulário não encontrados');
+        return;
+    }
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        console.log('Formulário submetido');
+
         btn.disabled = true;
         spinner.classList.remove('hidden');
         error.classList.add('hidden');
 
+        const email = form.email.value;
+        const password = form.password.value;
+
         try {
-            await login(form.email.value, form.password.value);
+            console.log('Tentando login com:', email);
+            await login(email, password);
+            console.log('Login bem-sucedido, redirecionando');
             showToast('Login bem-sucedido!', 'success');
-            setTimeout(() => {
-                window.location.href = 'dashboard.html';
-            }, 1000);
+            window.location.href = '/dashboard.html';
         } catch (err) {
+            console.error('Erro no login:', err.message);
             error.textContent = err.message;
             error.classList.remove('hidden');
             showToast('Erro ao autenticar', 'error');
