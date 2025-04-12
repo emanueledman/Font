@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facilita - Dashboard</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Facilita</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="active"><a href="dashboard.html"><i class="fas fa-home"></i> Dashboard</a></li>
+                    <li><a href="#"><i class="fas fa-users"></i> Filas</a></li>
+                    <li><a href="#"><i class="fas fa-file-alt"></i> Relatórios</a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="theme-toggle" class="btn btn-icon"><i class="fas fa-moon"></i></button>
+                <button id="logout-btn" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i> Sair</button>
+            </div>
+        </aside>
+        <main class="main-content">
+            <header class="header">
+                <h1>Dashboard</h1>
+                <span id="user-email">Usuário</span>
+            </header>
+            <section class="card">
+                <h3>Suas Filas</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Senhas Ativas</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="queues-table"></tbody>
+                </table>
+            </section>
+        </main>
+    </div>
+    <div id="toast-container"></div>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/toast.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>
