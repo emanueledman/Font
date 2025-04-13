@@ -111,6 +111,11 @@ class AdminPanel {
         document.getElementById('user-department').textContent = userInfo.department || 'Gestor';
         document.getElementById('page-title').textContent = 'Dashboard';
         document.getElementById('settings-email').value = userInfo.email || '';
+        // Adiciona notificação de departamento ativo
+        const departmentNotice = document.createElement('div');
+        departmentNotice.className = 'department-notice';
+        departmentNotice.textContent = `Mostrando dados do departamento: ${userInfo.department}`;
+        document.querySelector('.main-content header').appendChild(departmentNotice);
     }
 
     attachEventListeners() {
@@ -187,23 +192,36 @@ class AdminPanel {
 
     async loadDashboard() {
         try {
-            const queues = await ApiService.getQueues();
-            const tickets = await ApiService.getTickets();
+            const [queues, tickets] = await Promise.all([
+                ApiService.getQueues(),
+                ApiService.getTickets()
+            ]);
             const today = new Date().toISOString().split('T')[0];
 
-            // Filtra apenas as filas e tickets do departamento do usuário
-            const userQueues = queues.filter(q => q.department === userInfo.department);
-            const userTickets = tickets.filter(t => t.department === userInfo.department);
+            // Filtra dados pelo departamento e instituição do usuário
+            const userQueues = queues.filter(q => 
+                q.department === userInfo.department && 
+                q.institution_id === userInfo.institution_id
+            );
+            const userTickets = tickets.filter(t => 
+                t.department === userInfo.department && 
+                t.institution_id === userInfo.institution_id
+            );
 
             const activeQueues = userQueues.length;
             const pendingTickets = userTickets.filter(t => t.status === 'Pendente').length;
-            const attendedToday = userTickets.filter(t => t.status === 'attended' && t.issued_at.startsWith(today)).length;
+            const attendedToday = userTickets.filter(t => 
+                t.status === 'attended' && 
+                t.issued_at.startsWith(today)
+            ).length;
             
-            const waitTimes = userTickets.filter(t => t.wait_time && t.wait_time !== 'N/A')
+            const waitTimes = userTickets
+                .filter(t => t.wait_time && t.wait_time !== 'N/A')
                 .map(t => parseFloat(t.wait_time.split(' ')[0]) || 0);
             
-            const avgWaitTime = waitTimes.length ? 
-                (waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length).toFixed(1) : 0;
+            const avgWaitTime = waitTimes.length 
+                ? (waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length).toFixed(1) 
+                : 0;
 
             document.getElementById('active-queues').textContent = activeQueues;
             document.getElementById('pending-tickets').textContent = pendingTickets;
@@ -223,11 +241,14 @@ class AdminPanel {
             if (tableBody) tableBody.innerHTML = '';
             if (fullTableBody) fullTableBody.innerHTML = '';
 
-            // Filtra apenas as filas do departamento do usuário
-            const userQueues = queues.filter(q => q.department === userInfo.department);
+            // Filtra filas pelo departamento e instituição do usuário
+            const userQueues = queues.filter(q => 
+                q.department === userInfo.department && 
+                q.institution_id === userInfo.institution_id
+            );
 
             if (userQueues.length === 0) {
-                const emptyRow = `<tr><td colspan="5">Nenhuma fila encontrada para seu departamento</td></tr>`;
+                const emptyRow = `<tr><td colspan="5">Nenhuma fila encontrada para ${userInfo.department}</td></tr>`;
                 if (tableBody) tableBody.innerHTML = emptyRow;
                 if (fullTableBody) fullTableBody.innerHTML = emptyRow;
                 return;
@@ -250,8 +271,8 @@ class AdminPanel {
         } catch (error) {
             this.showError('Erro ao carregar filas', error);
             const errorRow = '<tr><td colspan="5">Erro ao carregar filas</td></tr>';
-            document.getElementById('queues-table').innerHTML = errorRow;
-            document.getElementById('queues-table-full').innerHTML = errorRow;
+            if (document.getElementById('queues-table')) document.getElementById('queues-table').innerHTML = errorRow;
+            if (document.getElementById('queues-table-full')) document.getElementById('queues-table-full').innerHTML = errorRow;
         }
     }
 
@@ -272,8 +293,11 @@ class AdminPanel {
             const tickets = await ApiService.getTickets();
             const filter = document.getElementById('ticket-status-filter')?.value;
             
-            // Filtra apenas os tickets do departamento do usuário
-            let filteredTickets = tickets.filter(t => t.department === userInfo.department);
+            // Filtra tickets pelo departamento e instituição do usuário
+            let filteredTickets = tickets.filter(t => 
+                t.department === userInfo.department && 
+                t.institution_id === userInfo.institution_id
+            );
             
             if (filter) {
                 filteredTickets = filteredTickets.filter(t => t.status === filter);
@@ -283,7 +307,7 @@ class AdminPanel {
             tableBody.innerHTML = '';
 
             if (filteredTickets.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="5">Nenhum ticket encontrado</td></tr>';
+                tableBody.innerHTML = `<tr><td colspan="5">Nenhum ticket encontrado para ${userInfo.department}</td></tr>`;
                 return;
             }
 
@@ -310,8 +334,11 @@ class AdminPanel {
             const reportType = document.getElementById('report-type').value;
             const tickets = await ApiService.getTickets();
             
-            // Filtra apenas os tickets do departamento do usuário
-            let filteredTickets = tickets.filter(t => t.department === userInfo.department);
+            // Filtra tickets pelo departamento e instituição do usuário
+            let filteredTickets = tickets.filter(t => 
+                t.department === userInfo.department && 
+                t.institution_id === userInfo.institution_id
+            );
             
             if (date) {
                 filteredTickets = filteredTickets.filter(t => t.issued_at.startsWith(date));
@@ -331,7 +358,7 @@ class AdminPanel {
                     data: {
                         labels: statuses,
                         datasets: [{
-                            label: 'Tickets por Status',
+                            label: `Tickets por Status (${userInfo.department})`,
                             data: counts,
                             backgroundColor: [
                                 '#007bff', '#ffc107', '#28a745', '#dc3545'
@@ -349,7 +376,7 @@ class AdminPanel {
                     const times = filteredTickets
                         .filter(t => t.service === service && t.wait_time && t.wait_time !== 'N/A')
                         .map(t => parseFloat(t.wait_time.split(' ')[0]) || 0);
-                    
+                    return times.length ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : 0;
                 });
 
                 chartInstance = new Chart(ctx, {
@@ -357,7 +384,7 @@ class AdminPanel {
                     data: {
                         labels: services,
                         datasets: [{
-                            label: 'Tempo Médio de Espera (min)',
+                            label: `Tempo Médio de Espera (min) - ${userInfo.department}`,
                             data: avgWaitTimes,
                             borderColor: '#007bff',
                             fill: false,
@@ -399,11 +426,11 @@ class AdminPanel {
 
     showError(message, error = null) {
         if (error) console.error(message, error);
-        alert(message);
+        alert(`Erro: ${message}`);
     }
 
     showSuccess(message) {
-        alert(message);
+        alert(`Sucesso: ${message}`);
     }
 }
 
