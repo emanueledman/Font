@@ -12,6 +12,7 @@ let token = localStorage.getItem('token');
 let userInfo = JSON.parse(localStorage.getItem('userInfo')) || {};
 let chartInstance = null;
 let dashboardChart = null;
+let statusChart = null;
 let socket = null;
 
 // Classe principal para gerenciamento de autenticação e requisições
@@ -83,6 +84,10 @@ class ApiService {
     static async getReport(date) {
         return await this.request(`/api/admin/report?date=${date}`);
     }
+
+    static async toggleQueueStatus(queueId, action) {
+        return await this.request(`/api/queue/${queueId}`, 'PUT', { status: action });
+    }
 }
 
 // Funções de manipulação da interface
@@ -153,11 +158,13 @@ async function loadDashboard() {
         const attendedTickets = tickets.filter(t => t.status === 'attended').length;
         const avgTimes = report.filter(r => r.avg_time).map(r => r.avg_time);
         const avgWaitTime = avgTimes.length ? Math.round(avgTimes.reduce((a, b) => a + b, 0) / avgTimes.length) : 0;
+        const attendanceRate = attendedTickets / (new Date().getHours() + 1) || 0;
 
         document.getElementById('active-queues').textContent = activeQueues;
         document.getElementById('pending-tickets').textContent = pendingTickets;
         document.getElementById('attended-tickets').textContent = attendedTickets;
         document.getElementById('avg-wait-time').textContent = `${avgWaitTime} min`;
+        document.getElementById('attendance-rate').textContent = attendanceRate.toFixed(1);
 
         if (dashboardChart) {
             dashboardChart.destroy();
@@ -191,6 +198,32 @@ async function loadDashboard() {
                 }
             }
         });
+
+        if (statusChart) {
+            statusChart.destroy();
+        }
+        const statusCtx = document.getElementById('status-chart').getContext('2d');
+        statusChart = new Chart(statusCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Pendentes', 'Chamados', 'Atendidos'],
+                datasets: [{
+                    data: [
+                        tickets.filter(t => t.status === 'Pendente').length,
+                        tickets.filter(t => t.status === 'Chamado').length,
+                        tickets.filter(t => t.status === 'attended').length
+                    ],
+                    backgroundColor: ['#ff6f47', '#ff4d4f', '#52c41a'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: { position: 'top' },
+                    title: { display: true, text: 'Distribuição de Tickets por Status' }
+                }
+            }
+        });
     } catch (error) {
         console.error('Erro ao carregar dashboard:', error);
         showError('Erro ao carregar dashboard: ' + (error.message || 'Falha ao carregar dados'));
@@ -204,7 +237,7 @@ async function loadQueues() {
         queueContent.innerHTML = '';
 
         if (queues.length === 0) {
-            queueContent.innerHTML = '<tr><td colspan="5">Nenhuma fila encontrada.</td></tr>';
+            queueContent.innerHTML = '<tr><td colspan="7">Nenhuma fila encontrada.</td></tr>';
             return;
         }
 
@@ -217,9 +250,14 @@ async function loadQueues() {
                     <td>${queue.service}</td>
                     <td>${queue.department}</td>
                     <td>${queue.active_tickets}/${queue.daily_limit}</td>
+                    <td>${queue.current_ticket || 'N/A'}</td>
+                    <td>${queue.avg_wait_time || 'N/A'}</td>
                     <td><span class="badge ${queue.status === 'Aberto' ? 'open' : 'full'}">${queue.status}</span></td>
                     <td>
                         <button onclick="callNextTicket('${queue.id}')">Chamar</button>
+                        <button onclick="toggleQueueStatus('${queue.id}', '${queue.status === 'Aberto' ? 'pause' : 'resume'}')">
+                            ${queue.status === 'Aberto' ? 'Pausar' : 'Retomar'}
+                        </button>
                     </td>
                 `;
                 queueContent.appendChild(row);
@@ -255,6 +293,8 @@ async function loadTickets() {
                 const statusClass = ticket.status === 'Pendente' ? 'card-orange' :
                                    ticket.status === 'Chamado' ? 'card-red' :
                                    ticket.status === 'attended' ? 'card-green' : '';
+                const waitTime = ticket.wait_time || 'N/A';
+                const issuedAt = new Date(ticket.issued_at).toLocaleString('pt-BR');
                 const card = document.createElement('div');
                 card.className = `ticket-card ${statusClass}`;
                 card.innerHTML = `
@@ -268,11 +308,55 @@ async function loadTickets() {
                     <div class="ticket-info">
                         <span>Guichê:</span> ${ticket.counter || 'N/A'}
                     </div>
+                    <div class="ticket-info">
+                        <span>Emitido em:</span> ${issuedAt}
+                    </div>
+                    <div class="ticket-info">
+                        <span>Tempo de Espera:</span> ${waitTime} min
+                    </div>
+                    <div class="ticket-actions">
+                        ${ticket.status === 'Pendente' ? `<button onclick="callNextTicket('${ticket.queue_id}')">Chamar</button>` : ''}
+                    </div>
                 `;
                 ticketContent.appendChild(card);
             });
     } catch (error) {
         showError('Erro ao carregar tickets: ' + (error.message || 'Falha ao carregar tickets'));
+    }
+}
+
+async function loadStartService() {
+    try {
+        const queues = await ApiService.getQueues();
+        const startServiceContent = document.getElementById('start-service-content');
+        startServiceContent.innerHTML = '';
+
+        if (queues.length === 0) {
+            startServiceContent.innerHTML = '<div class="no-queues">Nenhuma fila disponível para iniciar atendimento.</div>';
+            return;
+        }
+
+        queues.forEach(queue => {
+            const statusClass = queue.status === 'Aberto' ? 'card-green' : 'card-orange';
+            const card = document.createElement('div');
+            card.className = `start-service-card ${statusClass}`;
+            card.innerHTML = `
+                <h3>${queue.service}</h3>
+                <div class="start-service-info">
+                    <span>Departamento:</span> ${queue.department}
+                </div>
+                <div class="start-service-info">
+                    <span>Tickets Ativos:</span> ${queue.active_tickets}/${queue.daily_limit}
+                </div>
+                <div class="start-service-info">
+                    <span>Status:</span> <span class="badge ${queue.status === 'Aberto' ? 'open' : 'full'}">${queue.status}</span>
+                </div>
+                <button onclick="callNextTicket('${queue.id}')">${queue.status === 'Aberto' ? 'Chamar Próximo' : 'Iniciar Atendimento'}</button>
+            `;
+            startServiceContent.appendChild(card);
+        });
+    } catch (error) {
+        showError('Erro ao carregar filas para iniciar atendimento: ' + (error.message || 'Falha ao carregar dados'));
     }
 }
 
@@ -283,8 +367,21 @@ async function callNextTicket(queueId) {
         toastr.success(response.message);
         loadTickets();
         loadDashboard();
+        loadStartService();
+        loadQueues();
     } catch (error) {
         showError('Erro ao chamar próximo ticket: ' + (error.message || 'Falha ao chamar ticket'));
+    }
+}
+
+async function toggleQueueStatus(queueId, action) {
+    try {
+        await ApiService.toggleQueueStatus(queueId, action);
+        toastr.success(`Fila ${action === 'pause' ? 'pausada' : 'retomada'} com sucesso!`);
+        loadQueues();
+        loadStartService();
+    } catch (error) {
+        showError(`Erro ao ${action === 'pause' ? 'pausar' : 'retomar'} fila: ` + (error.message || 'Falha ao executar ação'));
     }
 }
 
@@ -325,6 +422,21 @@ async function loadReport() {
                 }
             }
         });
+
+        const reportContent = document.getElementById('report-content');
+        reportContent.innerHTML = '';
+        report.forEach(r => {
+            const cancelled = r.issued - r.attended;
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${r.service}</td>
+                <td>${r.issued}</td>
+                <td>${r.attended}</td>
+                <td>${cancelled}</td>
+                <td>${r.avg_time ? Math.round(r.avg_time) : 'N/A'}</td>
+            `;
+            reportContent.appendChild(row);
+        });
     } catch (error) {
         showError('Erro ao carregar relatório: ' + (error.message || 'Falha ao carregar relatório'));
     }
@@ -334,8 +446,14 @@ function exportReport() {
     const date = document.getElementById('report-date').value || new Date().toISOString().split('T')[0];
 
     ApiService.getReport(date).then(report => {
-        const headers = ['Serviço', 'Tickets Emitidos', 'Tickets Atendidos', 'Tempo Médio (min)'];
-        const rows = report.map(r => [r.service, r.issued, r.attended, r.avg_time ? Math.round(r.avg_time) : 'N/A']);
+        const headers = ['Serviço', 'Tickets Emitidos', 'Tickets Atendidos', 'Tickets Cancelados', 'Tempo Médio (min)'];
+        const rows = report.map(r => [
+            r.service,
+            r.issued,
+            r.attended,
+            r.issued - r.attended,
+            r.avg_time ? Math.round(r.avg_time) : 'N/A'
+        ]);
         const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
@@ -366,6 +484,7 @@ function initWebSocket() {
         loadQueues();
         loadTickets();
         loadDashboard();
+        loadStartService();
     });
 
     socket.on('disconnect', () => {
@@ -431,6 +550,7 @@ function showSection(sectionId) {
         dashboard: 'Dashboard',
         queues: 'Filas',
         tickets: 'Tickets',
+        'start-service': 'Iniciar Atendimento',
         reports: 'Relatórios'
     };
     document.getElementById('section-title').textContent = titles[sectionId];
@@ -439,6 +559,8 @@ function showSection(sectionId) {
         loadQueues();
     } else if (sectionId === 'tickets') {
         loadTickets();
+    } else if (sectionId === 'start-service') {
+        loadStartService();
     } else if (sectionId === 'reports') {
         loadReport();
     } else if (sectionId === 'dashboard') {

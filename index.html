@@ -20,6 +20,7 @@
             <li><a href="#" data-section="dashboard" class="active">Dashboard</a></li>
             <li><a href="#" data-section="queues">Filas</a></li>
             <li><a href="#" data-section="tickets">Tickets</a></li>
+            <li><a href="#" data-section="start-service">Iniciar Atendimento</a></li>
             <li><a href="#" data-section="reports">Relatórios</a></li>
         </ul>
     </div>
@@ -70,9 +71,18 @@
                     <h3>Tempo Médio de Espera</h3>
                     <p id="avg-wait-time">0 min</p>
                 </div>
+                <div class="dashboard-card card-blue">
+                    <h3>Taxa de Atendimento/Hora</h3>
+                    <p id="attendance-rate">0</p>
+                </div>
             </div>
-            <div class="chart-container">
-                <canvas id="dashboard-chart"></canvas>
+            <div class="charts-container">
+                <div class="chart-container">
+                    <canvas id="dashboard-chart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <canvas id="status-chart"></canvas>
+                </div>
             </div>
         </div>
 
@@ -91,6 +101,8 @@
                         <th>Serviço</th>
                         <th>Departamento</th>
                         <th>Tickets Ativos</th>
+                        <th>Último Ticket Chamado</th>
+                        <th>Tempo Médio (min)</th>
                         <th>Status</th>
                         <th>Ações</th>
                     </tr>
@@ -113,6 +125,19 @@
             </div>
         </div>
 
+        <!-- Start Service Section -->
+        <div class="content-section" id="start-service-section">
+            <div class="section-header">
+                <h2>Iniciar Atendimento</h2>
+                <div class="controls">
+                    <button onclick="loadStartService()">Atualizar</button>
+                </div>
+            </div>
+            <div class="start-service-grid" id="start-service-content">
+                <!-- Cards de filas para iniciar atendimento serão inseridos aqui -->
+            </div>
+        </div>
+
         <!-- Reports Section -->
         <div class="content-section" id="reports-section">
             <div class="section-header">
@@ -125,6 +150,21 @@
             </div>
             <div class="chart-container">
                 <canvas id="report-chart"></canvas>
+            </div>
+            <div class="report-details">
+                <h3>Detalhes do Relatório</h3>
+                <table class="table" id="report-table">
+                    <thead>
+                        <tr>
+                            <th>Serviço</th>
+                            <th>Tickets Emitidos</th>
+                            <th>Tickets Atendidos</th>
+                            <th>Tickets Cancelados</th>
+                            <th>Tempo Médio (min)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="report-content"></tbody>
+                </table>
             </div>
         </div>
 
