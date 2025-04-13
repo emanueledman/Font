@@ -6,6 +6,11 @@ let socket;
 
 // Função para inicializar WebSocket
 function initWebSocket() {
+    if (!window.io) {
+        console.error('[WebSocket] Socket.IO não carregado');
+        showNotification('Erro: Socket.IO não carregado', 'error');
+        return;
+    }
     if (socket) socket.disconnect();
     socket = io(API_BASE_URL, {
         auth: { token },
@@ -14,8 +19,10 @@ function initWebSocket() {
 
     socket.on('connect', () => {
         console.log('[WebSocket] Conectado');
-        socket.emit('join', userInfo.id); // Entrar na sala do usuário
-        socket.emit('join', `department_${userInfo.department_id}`); // Entrar na sala do departamento
+        socket.emit('join', userInfo.id);
+        if (userInfo.department_id) {
+            socket.emit('join', `department_${userInfo.department_id}`);
+        }
     });
 
     socket.on('ticket_update', (data) => {
@@ -35,15 +42,19 @@ function initWebSocket() {
     });
 
     socket.on('notification', (data) => {
-        if (!data.user_id || data.user_id === userInfo.id) {
+        if (!data.user_id || data.user_id === userInfo.id || data.department_id === userInfo.department_id) {
             showNotification(data.message, 'success');
         }
     });
 
     socket.on('disconnect', () => {
         console.log('[WebSocket] Desconectado');
-        // Iniciar polling como fallback
         startPolling();
+    });
+
+    socket.on('connect_error', (error) => {
+        console.error('[WebSocket] Erro de conexão:', error);
+        showNotification('Erro na conexão WebSocket', 'error');
     });
 }
 
@@ -55,7 +66,7 @@ function startPolling() {
         updateDashboard();
         updateQueuesPage();
         updateTicketsPage();
-    }, 30000); // Atualizar a cada 30 segundos
+    }, 30000);
 }
 
 function stopPolling() {
@@ -65,7 +76,7 @@ function stopPolling() {
     }
 }
 
-// Classe principal para gerenciamento de autenticação e requisições
+// Classe para requisições à API
 class ApiService {
     static async request(endpoint, method = 'GET', body = null) {
         const headers = {
@@ -89,19 +100,25 @@ class ApiService {
         }
 
         try {
+            console.log(`[ApiService] Requisição para ${endpoint}`, { method, body });
             const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
 
             if (response.status === 401) {
+                console.warn('[ApiService] Sessão expirada');
                 logout();
                 throw new Error('Sessão expirada');
             }
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || response.statusText);
+                const errorData = await response.json().catch(() => ({}));
+                const errorMsg = errorData.error || response.statusText;
+                console.error(`[ApiService] Erro ${response.status}: ${errorMsg}`);
+                throw new Error(errorMsg);
             }
 
-            return await response.json();
+            const data = await response.json();
+            console.log(`[ApiService] Resposta de ${endpoint}:`, data);
+            return data;
         } catch (error) {
             console.error(`[ApiService] Erro em ${endpoint}:`, error);
             throw error;
@@ -109,19 +126,7 @@ class ApiService {
     }
 
     static async login(email, password) {
-        const result = await this.request('/api/admin/login', 'POST', { email, password });
-        token = result.token;
-        userInfo = {
-            id: result.user_id,
-            email: result.email,
-            role: result.user_role,
-            institutionId: result.institution_id,
-            department: result.department,
-            department_id: result.department_id, // Adicionado para WebSocket
-        };
-        localStorage.setItem('token', token);
-        localStorage.setItem('userInfo', JSON.stringify(userInfo));
-        return result;
+        return await this.request('/api/admin/login', 'POST', { email, password });
     }
 
     static async getAdminQueues() {
@@ -137,7 +142,7 @@ class ApiService {
     }
 }
 
-// Função para exibir notificações temporárias
+// Função para notificações
 function showNotification(message, type = 'success') {
     const notification = document.createElement('div');
     notification.className = `notification ${type === 'success' ? 'alert-success' : 'alert-danger'}`;
@@ -183,13 +188,11 @@ async function updateDashboard() {
         const queues = await ApiService.getAdminQueues();
         const tickets = await ApiService.getAdminTickets();
 
-        // Atualizar estatísticas
         document.getElementById('total-queues').textContent = queues.length;
         document.getElementById('pending-tickets').textContent = tickets.filter(t => t.status === 'Pendente').length;
         document.getElementById('attended-tickets').textContent = tickets.filter(t => t.status === 'attended').length;
         document.getElementById('cancelled-tickets').textContent = tickets.filter(t => t.status === 'Cancelado').length;
 
-        // Atualizar tabela de resumo de filas
         const queuesBody = document.getElementById('queues-summary-body');
         queuesBody.innerHTML = queues.map(queue => `
             <tr>
@@ -206,8 +209,7 @@ async function updateDashboard() {
             </tr>
         `).join('');
 
-        // Atualizar tabela de últimas senhas
-        const recentTickets = tickets.slice(0, 5); // Últimas 5
+        const recentTickets = tickets.slice(0, 5);
         const recentTicketsBody = document.getElementById('recent-tickets-body');
         recentTicketsBody.innerHTML = recentTickets.map(ticket => `
             <tr>
@@ -272,6 +274,7 @@ async function updateTicketsPage() {
 
 // Função para abrir modal de chamar próxima senha
 function openCallNextModal(queueId, service) {
+    console.log('[Modal] Abrindo modal para:', { queueId, service });
     const modal = document.getElementById('call-next-modal');
     const serviceText = document.getElementById('call-next-service');
     const callInfo = document.getElementById('call-next-info');
@@ -284,6 +287,12 @@ function openCallNextModal(queueId, service) {
     const buttonText = document.getElementById('call-button-text');
     const spinner = document.getElementById('call-spinner');
 
+    if (!modal || !serviceText || !confirmBtn) {
+        console.error('[Modal] Elementos do modal não encontrados');
+        showNotification('Erro: Interface não carregada corretamente', 'error');
+        return;
+    }
+
     // Resetar modal
     modal.classList.remove('hidden');
     callInfo.classList.remove('hidden');
@@ -295,16 +304,18 @@ function openCallNextModal(queueId, service) {
     finishBtn.classList.add('hidden');
     buttonText.classList.remove('hidden');
     spinner.classList.add('hidden');
-    serviceText.textContent = service;
+    serviceText.textContent = service || 'Serviço não especificado';
 
     // Configurar evento de confirmação
     confirmBtn.onclick = async () => {
+        console.log('[Modal] Confirmando chamada para queueId:', queueId);
         buttonText.classList.add('hidden');
         spinner.classList.remove('hidden');
         confirmBtn.disabled = true;
 
         try {
             const result = await ApiService.callNextTicket(queueId);
+            console.log('[Modal] Chamada bem-sucedida:', result);
             callInfo.classList.add('hidden');
             callResult.classList.remove('hidden');
             callSuccess.classList.remove('hidden');
@@ -312,29 +323,37 @@ function openCallNextModal(queueId, service) {
             cancelBtn.classList.add('hidden');
             finishBtn.classList.remove('hidden');
 
-            document.getElementById('result-ticket-number').textContent = result.ticket_number;
+            document.getElementById('result-ticket-number').textContent = result.ticket_number || 'N/A';
             document.getElementById('result-counter').textContent = result.counter || '-';
-            document.getElementById('result-remaining').textContent = result.remaining;
+            document.getElementById('result-remaining').textContent = result.remaining || '0';
         } catch (error) {
+            console.error('[Modal] Erro ao chamar senha:', error);
             callInfo.classList.add('hidden');
             callResult.classList.remove('hidden');
             callError.classList.remove('hidden');
-            document.getElementById('call-error-message').textContent = error.message;
+            document.getElementById('call-error-message').textContent = error.message || 'Erro desconhecido';
             confirmBtn.classList.add('hidden');
             cancelBtn.classList.add('hidden');
             finishBtn.classList.remove('hidden');
+        } finally {
+            buttonText.classList.remove('hidden');
+            spinner.classList.add('hidden');
+            confirmBtn.disabled = false;
         }
     };
 }
 
 // Função para fechar modal
 function closeCallNextModal() {
-    document.getElementById('call-next-modal').classList.add('hidden');
+    console.log('[Modal] Fechando modal');
+    const modal = document.getElementById('call-next-modal');
+    if (modal) modal.classList.add('hidden');
 }
 
 // Função para login
 async function handleLogin(event) {
     event.preventDefault();
+    console.log('[Login] Iniciando login');
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     const errorDiv = document.getElementById('login-error');
@@ -348,9 +367,22 @@ async function handleLogin(event) {
     loginBtn.disabled = true;
 
     try {
-        await ApiService.login(email, password);
+        const result = await ApiService.login(email, password);
+        token = result.token;
+        userInfo = {
+            id: result.user_id,
+            email: result.email,
+            role: result.user_role,
+            institutionId: result.institution_id,
+            department: result.department,
+            department_id: result.department_id,
+        };
+        localStorage.setItem('token', token);
+        localStorage.setItem('userInfo', JSON.stringify(userInfo));
+        console.log('[Login] Login bem-sucedido:', userInfo);
         initApp();
     } catch (error) {
+        console.error('[Login] Erro:', error);
         errorDiv.textContent = 'Erro ao fazer login: ' + error.message;
         errorDiv.classList.remove('hidden');
     } finally {
@@ -362,6 +394,7 @@ async function handleLogin(event) {
 
 // Função para logout
 function logout() {
+    console.log('[Logout] Realizando logout');
     token = null;
     userInfo = {};
     localStorage.removeItem('token');
@@ -373,12 +406,14 @@ function logout() {
 
 // Função para alternar sidebar
 function toggleSidebar() {
+    console.log('[Sidebar] Alternando sidebar');
     const sidebar = document.getElementById('sidebar');
     sidebar.classList.toggle('sidebar-collapse');
 }
 
 // Função para mostrar/esconder páginas
 function showPage(pageId) {
+    console.log('[Navegação] Mostrando página:', pageId);
     document.querySelectorAll('.page').forEach(page => page.classList.add('hidden'));
     document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
     document.querySelector(`#page-${pageId}`).classList.remove('hidden');
@@ -392,6 +427,7 @@ function showPage(pageId) {
 
 // Função para inicializar a aplicação
 function initApp() {
+    console.log('[App] Inicializando aplicação', { token, userInfo });
     const loginScreen = document.getElementById('login-screen');
     const appScreen = document.getElementById('app-screen');
     const userAvatar = document.getElementById('user-avatar');
@@ -411,26 +447,39 @@ function initApp() {
     } else {
         loginScreen.classList.remove('hidden');
         appScreen.classList.add('hidden');
-        startPolling();
     }
 }
 
 // Configurar eventos
-document.getElementById('login-form').addEventListener('submit', handleLogin);
-document.getElementById('logout-button').addEventListener('click', logout);
-document.getElementById('toggle-sidebar').addEventListener('click', toggleSidebar);
-document.getElementById('close-call-modal').addEventListener('click', closeCallNextModal);
-document.getElementById('cancel-call-next').addEventListener('click', closeCallNextModal);
-document.getElementById('finish-call-next').addEventListener('click', closeCallNextModal);
-document.querySelectorAll('.menu-item[data-page]').forEach(item => {
-    item.addEventListener('click', () => {
-        const pageId = item.dataset.page;
-        showPage(pageId);
-        if (pageId === 'dashboard') updateDashboard();
-        else if (pageId === 'queues') updateQueuesPage();
-        else if (pageId === 'tickets') updateTicketsPage();
-    });
-});
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('[App] DOM carregado, configurando eventos');
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) loginForm.addEventListener('submit', handleLogin);
 
-// Inicializar aplicação
-initApp();
+    const logoutButton = document.getElementById('logout-button');
+    if (logoutButton) logoutButton.addEventListener('click', logout);
+
+    const toggleSidebarButton = document.getElementById('toggle-sidebar');
+    if (toggleSidebarButton) toggleSidebarButton.addEventListener('click', toggleSidebar);
+
+    const closeModalButton = document.getElementById('close-call-modal');
+    if (closeModalButton) closeModalButton.addEventListener('click', closeCallNextModal);
+
+    const cancelModalButton = document.getElementById('cancel-call-next');
+    if (cancelModalButton) cancelModalButton.addEventListener('click', closeCallNextModal);
+
+    const finishModalButton = document.getElementById('finish-call-next');
+    if (finishModalButton) finishModalButton.addEventListener('click', closeCallNextModal);
+
+    document.querySelectorAll('.menu-item[data-page]').forEach(item => {
+        item.addEventListener('click', () => {
+            const pageId = item.dataset.page;
+            showPage(pageId);
+            if (pageId === 'dashboard') updateDashboard();
+            else if (pageId === 'queues') updateQueuesPage();
+            else if (pageId === 'tickets') updateTicketsPage();
+        });
+    });
+
+    initApp();
+});
