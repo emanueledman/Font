@@ -1,545 +1,469 @@
-// Configurações e variáveis globais
-const API_BASE_URL = 'https://fila-facilita2-0.onrender.com';
-let token = localStorage.getItem('token');
-let userInfo = JSON.parse(localStorage.getItem('userInfo')) || {};
-let chartInstance = null;
-
-// Classe principal para gerenciamento de autenticação e requisições
-class ApiService {
-    static async request(endpoint, method = 'GET', body = null) {
-        const headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        };
-        
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
-        }
-
-        const config = { 
-            method, 
-            headers,
-            mode: 'cors',
-            credentials: 'include',  // Alterado para lidar melhor com CORS
-        };
-
-        if (body) {
-            config.body = JSON.stringify(body);
-        }
-
-        console.log(`Enviando requisição para: ${API_BASE_URL}${endpoint}`, { method, headers, body });
-
-        try {
-            const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error(`Erro ${response.status}: ${errorText}`);
-                
-                // Se for erro de autenticação, faz logout
-                if (response.status === 401) {
-                    AuthManager.logout();
-                }
-                
-                throw new Error(errorText || response.statusText);
-            }
-            
-            return await response.json();
-        } catch (error) {
-            console.error(`Erro na requisição ${endpoint}:`, error);
-            throw error;
-        }
+/* styles.css */
+:root {
+    --primary-gradient: linear-gradient(135deg, #4B0082, #00D4FF);
+    --secondary-gradient: linear-gradient(135deg, #FF007A, #FFD700);
+    --bg-dark: #1E1E2F;
+    --bg-light: #F5F7FA;
+    --glass-bg: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.2);
+    --text-primary: #E0E0E0;
+    --text-secondary: #A0A0A0;
+    --accent-neon: #FF007A;
+    --shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    --transition: all 0.3s ease-in-out;
+  }
+  
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', 'Poppins', sans-serif;
+  }
+  
+  body {
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    overflow-x: hidden;
+  }
+  
+  /* Admin Panel Layout */
+  .admin-panel {
+    display: flex;
+    min-height: 100vh;
+  }
+  
+  /* Sidebar */
+  .sidebar {
+    width: 300px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border-right: 1px solid var(--glass-border);
+    padding: 20px;
+    position: fixed;
+    height: 100vh;
+    transition: width 0.5s ease;
+    z-index: 1000;
+  }
+  
+  .sidebar.collapsed {
+    width: 80px;
+  }
+  
+  .sidebar-toggle {
+    position: absolute;
+    top: 20px;
+    right: -15px;
+    background: var(--primary-gradient);
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    color: white;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .brand {
+    display: flex;
+    align-items: center;
+    margin-bottom: 40px;
+  }
+  
+  .brand-logo {
+    width: 40px;
+    height: 40px;
+    background: var(--primary-gradient);
+    border-radius: 10px;
+    margin-right: 10px;
+    animation: pulse 2s infinite;
+  }
+  
+  .brand h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    display: inline-block;
+  }
+  
+  .brand h2 span {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    opacity: 0;
+    transition: var(--transition);
+  }
+  
+  .brand:hover h2 span {
+    opacity: 1;
+  }
+  
+  .user-info {
+    display: flex;
+    align-items: center;
+    margin-bottom: 30px;
+    position: relative;
+  }
+  
+  .avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--primary-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 15px;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .avatar::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, transparent 60%, var(--accent-neon) 70%);
+    opacity: 0.5;
+  }
+  
+  .avatar i {
+    font-size: 1.8rem;
+    color: white;
+  }
+  
+  .user-details h3 {
+    font-size: 1.1rem;
+    font-weight: 500;
+  }
+  
+  .user-details p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+  
+  .sidebar nav a {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    color: var(--text-primary);
+    text-decoration: none;
+    margin: 5px 0;
+    border-radius: 8px;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .sidebar nav a i {
+    font-size: 1.2rem;
+    margin-right: 15px;
+    width: 20px;
+    text-align: center;
+  }
+  
+  .sidebar nav a span {
+    font-size: 1rem;
+  }
+  
+  .sidebar nav a:hover {
+    background: var(--glass-bg);
+    transform: translateX(5px);
+  }
+  
+  .sidebar nav a.active {
+    background: var(--primary-gradient);
+    box-shadow: var(--shadow);
+  }
+  
+  .sidebar nav a.active::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--accent-neon);
+  }
+  
+  .sidebar.collapsed nav a span {
+    display: none;
+  }
+  
+  .sidebar.collapsed .brand h2,
+  .sidebar.collapsed .user-details {
+    display: none;
+  }
+  
+  /* Main Content */
+  .main-content {
+    flex-grow: 1;
+    margin-left: 300px;
+    padding: 20px;
+    transition: margin-left 0.5s ease;
+  }
+  
+  .main-content.collapsed {
+    margin Valentino: 80px;
+  }
+  
+  header {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    padding: 15px 30px;
+    border-radius: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 20px;
+    z-index: 100;
+    margin-bottom: 20px;
+  }
+  
+  header h1 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+  
+  .search-bar {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 8px 15px;
+    display: flex;
+    align-items: center;
+  }
+  
+  .search-bar input {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    outline: none;
+  }
+  
+  .search-bar i {
+    color: var(--text-secondary);
+    margin-right: 10px;
+  }
+  
+  .notification-bell {
+    position: relative;
+    cursor: pointer;
+  }
+  
+  .notification-bell i {
+    font-size: 1.2rem;
+  }
+  
+  .notification-bell::after {
+    content: '3';
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: var(--accent-neon);
+    color: white;
+    font-size: 0.7rem;
+    padding: 2px 5px;
+    border-radius: 50%;
+  }
+  
+  /* Sections */
+  .section {
+    display: none;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .section.active {
+    display: block;
+    animation: fadeIn 0.5s ease;
+  }
+  
+  /* Stats Cards */
+  .stats-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+  }
+  
+  .stat-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    transition: var(--transition);
+    transform: perspective(1000px);
+  }
+  
+  .stat-card:hover {
+    transform: perspective(1000px) translateZ(20px);
+    box-shadow: var(--shadow);
+  }
+  
+  .stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: var(--primary-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 15px;
+  }
+  
+  .stat-icon i {
+    font-size: 1.5rem;
+    color: white;
+  }
+  
+  .stat-info h3 {
+    font-size: 2rem;
+    font-weight: 600;
+  }
+  
+  .stat-info p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+  }
+  
+  /* Tables */
+  .table-container {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border-radius: 12px;
+    padding: 20px;
+    overflow-x: auto;
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  
+  table th, table td {
+    padding: 15px;
+    text-align: left;
+  }
+  
+  table th {
+    background: var(--glass-bg);
+    font-weight: 600;
+    color: var(--text-primary);
+    position: sticky;
+    top: 0;
+  }
+  
+  table td {
+    border-bottom: 1px solid var(--glass-border);
+  }
+  
+  table tr {
+    transition: var(--transition);
+  }
+  
+  table tr:hover {
+    background: var(--glass-bg);
+    transform: scale(1.01);
+  }
+  
+  /* Buttons */
+  .btn {
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    border: none;
+    background: var(--primary-gradient);
+    color: white;
+  }
+  
+  .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+  }
+  
+  /* Forms */
+  .form-group {
+    margin-bottom: 20px;
+  }
+  
+  .form-group label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 8px;
+    display: block;
+  }
+  
+  .form-group input,
+  .form-group select {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    background: var(--glass-bg);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: var(--transition);
+  }
+  
+  .form-group input:focus,
+  .form-group select:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--accent-neon);
+  }
+  
+  /* Animations */
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  /* Responsive */
+  @media (max-width: 992px) {
+    .sidebar {
+      width: 80px;
     }
-
-    static async login(email, password) {
-        const response = await this.request('/api/admin/login', 'POST', { email, password });
-        
-        // Verifica se a resposta contém um refresh_token e armazena se existir
-        if (response.refresh_token) {
-            localStorage.setItem('refresh_token', response.refresh_token);
-        }
-        
-        return response;
+  
+    .sidebar .brand h2,
+    .sidebar .user-details,
+    .sidebar nav a span {
+      display: none;
     }
-
-    static async getQueues() {
-        return await this.request('/api/admin/queues');
+  
+    .main-content {
+      margin-left: 80px;
     }
-
-    static async getTickets() {
-        return await this.request('/api/tickets/admin');
+  }
+  
+  @media (max-width: 768px) {
+    .stats-container {
+      grid-template-columns: 1fr;
     }
-
-    static async callNextTicket(queueId) {
-        return await this.request(`/api/admin/queue/${queueId}/call`, 'POST');
-    }
-
-    // Método adicional para renovação de token (se necessário)
-    static async refreshToken() {
-        try {
-            const refreshToken = localStorage.getItem('refresh_token');
-            if (!refreshToken) return false;
-            
-            const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ refresh_token: refreshToken })
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                token = data.token;
-                localStorage.setItem('token', token);
-                return true;
-            }
-        } catch (error) {
-            console.error('Erro ao renovar token:', error);
-        }
-        return false;
-    }
-}
-
-// Classe para gerenciamento da autenticação (com todas as funcionalidades originais)
-class AuthManager {
-    static saveUserSession(data) {
-        token = data.token;
-        localStorage.setItem('token', token);
-        localStorage.setItem('userInfo', JSON.stringify({
-            user_id: data.user_id,
-            user_tipo: data.user_tipo,
-            institution_id: data.institution_id,
-            department: data.department,
-            email: data.email,
-        }));
-        
-        // Armazena o tempo do login para controle de sessão
-        localStorage.setItem('login_time', Date.now());
-    }
-
-    static isAuthenticated() {
-        // Verifica se o token expirou (1 hora)
-        const loginTime = localStorage.getItem('login_time');
-        if (loginTime && (Date.now() - parseInt(loginTime) > 3600000)) {
-            this.logout();
-            return false;
-        }
-        
-        return !!token && !!userInfo.user_id;
-    }
-
-    static logout() {
-        // Limpa todos os dados de autenticação
-        localStorage.removeItem('token');
-        localStorage.removeItem('userInfo');
-        localStorage.removeItem('login_time');
-        localStorage.removeItem('refresh_token');
-        token = null;
-        userInfo = {};
-        
-        // Redireciona para login
-        window.location.href = 'login.html';
-    }
-
-    static redirectIfNotAuthenticated() {
-        if (!this.isAuthenticated()) {
-            window.location.href = 'login.html';
-            return false;
-        }
-        return true;
-    }
-}
-
-// Classe para o painel de administração (totalmente preservada)
-class AdminPanel {
-    constructor() {
-        if (!AuthManager.redirectIfNotAuthenticated()) return;
-        
-        this.initComponents();
-        this.attachEventListeners();
-        this.loadInitialData();
-        this.updateDateTime();
-    }
-
-    initComponents() {
-        document.getElementById('user-name').textContent = userInfo.email;
-        document.getElementById('user-department').textContent = userInfo.department || 'Gestor';
-        document.getElementById('page-title').textContent = 'Dashboard';
-        document.getElementById('settings-email').value = userInfo.email || '';
-        
-        const departmentNotice = document.createElement('div');
-        departmentNotice.className = 'department-notice';
-        departmentNotice.textContent = `Mostrando dados do departamento: ${userInfo.department}`;
-        document.querySelector('.main-content header').appendChild(departmentNotice);
-    }
-
-    attachEventListeners() {
-        document.querySelectorAll('.sidebar nav a').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const sectionId = link.getAttribute('data-section');
-                if (sectionId) {
-                    document.querySelectorAll('.section').forEach(section => section.classList.remove('active'));
-                    document.getElementById(sectionId).classList.add('active');
-                    document.querySelectorAll('.sidebar nav a').forEach(l => l.classList.remove('active'));
-                    link.classList.add('active');
-                    document.getElementById('page-title').textContent = link.textContent;
-                    
-                    if (sectionId === 'dashboard-section') {
-                        this.loadDashboard();
-                    } else if (sectionId === 'queues-section') {
-                        this.loadQueues();
-                    } else if (sectionId === 'tickets-section') {
-                        this.loadTickets();
-                    }
-                }
-            });
-        });
-
-        document.getElementById('logout').addEventListener('click', () => {
-            AuthManager.logout();
-        });
-
-        document.getElementById('ticket-status-filter')?.addEventListener('change', () => {
-            this.loadTickets();
-        });
-
-        document.getElementById('report-form')?.addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.generateReport();
-        });
-
-        document.getElementById('settings-form')?.addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.updateSettings();
-        });
-    }
-
-    updateDateTime() {
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        const now = new Date();
-        document.getElementById('current-date').textContent = now.toLocaleDateString('pt-BR', options);
-        
-        setInterval(() => {
-            const now = new Date();
-            document.getElementById('current-date').textContent = now.toLocaleDateString('pt-BR', options);
-        }, 60000);
-    }
-
-    async loadInitialData() {
-        try {
-            await Promise.all([
-                this.loadDashboard(),
-                this.loadQueues(),
-                this.loadTickets()
-            ]);
-        } catch (error) {
-            this.showError('Erro ao carregar dados iniciais', error);
-        }
-    }
-
-    async loadDashboard() {
-        try {
-            const [queues, tickets] = await Promise.all([
-                ApiService.getQueues(),
-                ApiService.getTickets()
-            ]);
-            const today = new Date().toISOString().split('T')[0];
-
-            const userQueues = queues.filter(q => 
-                q.department === userInfo.department && 
-                q.institution_id === userInfo.institution_id
-            );
-            const userTickets = tickets.filter(t => 
-                t.department === userInfo.department && 
-                t.institution_id === userInfo.institution_id
-            );
-
-            const activeQueues = userQueues.length;
-            const pendingTickets = userTickets.filter(t => t.status === 'Pendente').length;
-            const attendedToday = userTickets.filter(t => 
-                t.status === 'attended' && 
-                t.issued_at.startsWith(today)
-            ).length;
-            
-            const waitTimes = userTickets
-                .filter(t => t.wait_time && t.wait_time !== 'N/A')
-                .map(t => parseFloat(t.wait_time.split(' ')[0]) || 0);
-            
-            const avgWaitTime = waitTimes.length 
-                ? (waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length).toFixed(1) 
-                : 0;
-
-            document.getElementById('active-queues').textContent = activeQueues;
-            document.getElementById('pending-tickets').textContent = pendingTickets;
-            document.getElementById('avg-wait-time').textContent = `${avgWaitTime} min`;
-            document.getElementById('attended-tickets').textContent = attendedToday;
-        } catch (error) {
-            this.showError('Erro ao carregar dashboard', error);
-        }
-    }
-
-    async loadQueues() {
-        try {
-            const queues = await ApiService.getQueues();
-            const tableBody = document.getElementById('queues-table');
-            const fullTableBody = document.getElementById('queues-table-full');
-            
-            if (tableBody) tableBody.innerHTML = '';
-            if (fullTableBody) fullTableBody.innerHTML = '';
-
-            const userQueues = queues.filter(q => 
-                q.department === userInfo.department && 
-                q.institution_id === userInfo.institution_id
-            );
-
-            if (userQueues.length === 0) {
-                const emptyRow = `<tr><td colspan="5">Nenhuma fila encontrada para ${userInfo.department}</td></tr>`;
-                if (tableBody) tableBody.innerHTML = emptyRow;
-                if (fullTableBody) fullTableBody.innerHTML = emptyRow;
-                return;
-            }
-
-            userQueues.forEach(queue => {
-                const row = `
-                    <tr>
-                        <td>${queue.service}</td>
-                        <td>${queue.active_tickets}</td>
-                        <td>${queue.current_ticket ? `${queue.prefix}${queue.current_ticket.toString().padStart(3, '0')}` : 'N/A'}</td>
-                        <td><span class="status-${queue.status.toLowerCase()}">${queue.status}</span></td>
-                        <td><button class="btn secondary-btn" onclick="adminPanel.callNextTicket('${queue.id}')">Chamar Próximo</button></td>
-                    </tr>
-                `;
-                
-                if (tableBody) tableBody.innerHTML += row;
-                if (fullTableBody) fullTableBody.innerHTML += row;
-            });
-        } catch (error) {
-            this.showError('Erro ao carregar filas', error);
-            const errorRow = '<tr><td colspan="5">Erro ao carregar filas</td></tr>';
-            if (document.getElementById('queues-table')) document.getElementById('queues-table').innerHTML = errorRow;
-            if (document.getElementById('queues-table-full')) document.getElementById('queues-table-full').innerHTML = errorRow;
-        }
-    }
-
-    async callNextTicket(queueId) {
-        try {
-            const data = await ApiService.callNextTicket(queueId);
-            this.showSuccess(`Senha ${data.ticket_number} chamada para o guichê ${data.counter}`);
-            this.loadQueues();
-            this.loadTickets();
-            this.loadDashboard();
-        } catch (error) {
-            this.showError('Erro ao chamar próximo ticket', error);
-        }
-    }
-
-    async loadTickets() {
-        try {
-            const tickets = await ApiService.getTickets();
-            const filter = document.getElementById('ticket-status-filter')?.value;
-            
-            let filteredTickets = tickets.filter(t => 
-                t.department === userInfo.department && 
-                t.institution_id === userInfo.institution_id
-            );
-            
-            if (filter) {
-                filteredTickets = filteredTickets.filter(t => t.status === filter);
-            }
-
-            const tableBody = document.getElementById('tickets-table');
-            tableBody.innerHTML = '';
-
-            if (filteredTickets.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="5">Nenhum ticket encontrado para ${userInfo.department}</td></tr>`;
-                return;
-            }
-
-            filteredTickets.forEach(ticket => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${ticket.number}</td>
-                    <td>${ticket.service}</td>
-                    <td><span class="status-${ticket.status.toLowerCase()}">${ticket.status}</span></td>
-                    <td>${ticket.wait_time || 'N/A'}</td>
-                    <td>${ticket.counter || 'N/A'}</td>
-                `;
-                tableBody.appendChild(row);
-            });
-        } catch (error) {
-            this.showError('Erro ao carregar tickets', error);
-            document.getElementById('tickets-table').innerHTML = '<tr><td colspan="5">Erro ao carregar tickets</td></tr>';
-        }
-    }
-
-    async generateReport() {
-        try {
-            const date = document.getElementById('report-date').value;
-            const reportType = document.getElementById('report-type').value;
-            const tickets = await ApiService.getTickets();
-            
-            let filteredTickets = tickets.filter(t => 
-                t.department === userInfo.department && 
-                t.institution_id === userInfo.institution_id
-            );
-            
-            if (date) {
-                filteredTickets = filteredTickets.filter(t => t.issued_at.startsWith(date));
-            }
-
-            const ctx = document.getElementById('report-chart').getContext('2d');
-            if (chartInstance) chartInstance.destroy();
-
-            if (reportType === 'status') {
-                const statuses = ['Pendente', 'Chamado', 'attended', 'Cancelado'];
-                const counts = statuses.map(status => 
-                    filteredTickets.filter(t => t.status === status).length
-                );
-
-                chartInstance = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: statuses,
-                        datasets: [{
-                            label: `Tickets por Status (${userInfo.department})`,
-                            data: counts,
-                            backgroundColor: [
-                                '#007bff', '#ffc107', '#28a745', '#dc3545'
-                            ],
-                        }]
-                    },
-                    options: {
-                        scales: { y: { beginAtZero: true } },
-                        plugins: { legend: { display: false } }
-                    }
-                });
-            } else if (reportType === 'wait-time') {
-                const services = [...new Set(filteredTickets.map(t => t.service))];
-                const avgWaitTimes = services.map(service => {
-                    const times = filteredTickets
-                        .filter(t => t.service === service && t.wait_time && t.wait_time !== 'N/A')
-                        .map(t => parseFloat(t.wait_time.split(' ')[0]) || 0);
-                    return times.length ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : 0;
-                });
-
-                chartInstance = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: services,
-                        datasets: [{
-                            label: `Tempo Médio de Espera (min) - ${userInfo.department}`,
-                            data: avgWaitTimes,
-                            borderColor: '#007bff',
-                            fill: false,
-                        }]
-                    },
-                    options: {
-                        scales: { y: { beginAtZero: true } }
-                    }
-                });
-            }
-        } catch (error) {
-            this.showError('Erro ao gerar relatório', error);
-        }
-    }
-
-    async updateSettings() {
-        const password = document.getElementById('settings-password').value.trim();
-        const confirmPassword = document.getElementById('settings-confirm-password').value.trim();
-        
-        if (!password) {
-            this.showError('As senhas não podem estar vazias');
-            return;
-        }
-        
-        if (password !== confirmPassword) {
-            this.showError('As senhas não coincidem');
-            return;
-        }
-        
-        try {
-            this.showSuccess('Senha atualizada com sucesso');
-            document.getElementById('settings-password').value = '';
-            document.getElementById('settings-confirm-password').value = '';
-        } catch (error) {
-            this.showError('Erro ao atualizar senha', error);
-        }
-    }
-
-    showError(message, error = null) {
-        if (error) console.error(message, error);
-        alert(`Erro: ${message}`);
-    }
-
-    showSuccess(message) {
-        alert(`Sucesso: ${message}`);
-    }
-}
-
-// Classe de Login (totalmente preservada)
-class LoginManager {
-    static init() {
-        const form = document.getElementById('login-form');
-        if (form) {
-            form.addEventListener('submit', (e) => this.handleLogin(e));
-        }
-    }
-
-    static async handleLogin(event) {
-        event.preventDefault();
-        const form = event.target;
-        const email = document.getElementById('email').value.trim();
-        const password = document.getElementById('password').value.trim();
-        const errorMessage = document.getElementById('error-message');
-        const submitBtn = form.querySelector('button[type="submit"]');
-
-        errorMessage.textContent = '';
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Entrando...';
-
-        try {
-            if (!email || !password) {
-                throw new Error('Email e senha são obrigatórios');
-            }
-
-            const data = await ApiService.login(email, password);
-            
-            if (data.error) {
-                throw new Error(data.error);
-            }
-            
-            AuthManager.saveUserSession(data);
-            window.location.href = 'index.html';
-        } catch (error) {
-            errorMessage.textContent = error.message.includes('Credenciais') 
-                ? 'Credenciais inválidas' 
-                : error.message;
-            console.error('Erro no login:', error);
-            
-            document.getElementById('email').value = email;
-            document.getElementById('password').value = password;
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Entrar';
-        }
-    }
-}
-
-// Inicialização (com atualização das variáveis globais)
-document.addEventListener('DOMContentLoaded', () => {
-    // Atualiza as variáveis globais ao carregar
-    token = localStorage.getItem('token');
-    userInfo = JSON.parse(localStorage.getItem('userInfo')) || {};
-    
-    const currentPage = window.location.pathname.split('/').pop();
-    
-    if (currentPage === 'login.html') {
-        LoginManager.init();
-    } else {
-        if (AuthManager.redirectIfNotAuthenticated()) {
-            window.adminPanel = new AdminPanel();
-        }
-    }
-});
+  }
