@@ -4,39 +4,514 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FilaFacilita - Painel do Gestor</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/styles.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --secondary: #64748b;
+            --danger: #dc2626;
+            --success: #16a34a;
+            --warning: #ca8a04;
+            --bg-light: #f8fafc;
+            --text-dark: #1e293b;
+            --text-light: #f8fafc;
+            --border: #e2e8f0;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+        }
+        
+        .login-container {
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+            background-color: #f3f4f6;
+        }
+        
+        .login-card {
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .sidebar {
+            width: 250px;
+            background-color: #1e293b;
+            color: white;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar-collapse {
+            width: 70px;
+        }
+        
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 1rem;
+        }
+        
+        .sidebar-collapse .sidebar-header span,
+        .sidebar-collapse .menu-item span {
+            display: none;
+        }
+        
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border-radius: 0.25rem;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .menu-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .menu-item.active {
+            background-color: var(--primary);
+        }
+        
+        .menu-item i {
+            margin-right: 0.75rem;
+            width: 20px;
+            text-align: center;
+        }
+        
+        .sidebar-collapse .menu-item i {
+            margin-right: 0;
+        }
+        
+        .content {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 0.75rem;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 1.25rem;
+        }
+        
+        .stat-title {
+            color: var(--secondary);
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .stat-footer {
+            display: flex;
+            align-items: center;
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+        
+        .btn-success {
+            background-color: var(--success);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background-color: #15803d;
+        }
+        
+        .btn-danger {
+            background-color: var(--danger);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #b91c1c;
+        }
+        
+        .btn i {
+            margin-right: 0.5rem;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        th {
+            font-weight: 600;
+            color: var(--secondary);
+            background-color: #f8fafc;
+        }
+        
+        tbody tr:hover {
+            background-color: #f1f5f9;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .badge-success {
+            background-color: #dcfce7;
+            color: var(--success);
+        }
+        
+        .badge-warning {
+            background-color: #fef9c3;
+            color: var(--warning);
+        }
+        
+        .badge-danger {
+            background-color: #fee2e2;
+            color: var(--danger);
+        }
+        
+        .badge-info {
+            background-color: #dbeafe;
+            color: var(--primary);
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 0.25rem;
+            font-size: 1rem;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        
+        .alert {
+            padding: 0.75rem 1rem;
+            border-radius: 0.25rem;
+            margin-bottom: 1rem;
+        }
+        
+        .alert-danger {
+            background-color: #fee2e2;
+            color: var(--danger);
+            border: 1px solid #fecaca;
+        }
+        
+        .alert-success {
+            background-color: #dcfce7;
+            color: var(--success);
+            border: 1px solid #bbf7d0;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .ticket-card {
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .ticket-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        
+        .ticket-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+        
+        .ticket-status {
+            font-weight: 500;
+        }
+        
+        .ticket-actions {
+            margin-top: 1rem;
+        }
+        
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                max-height: 60px;
+                overflow: hidden;
+            }
+            
+            .sidebar.expanded {
+                max-height: none;
+            }
+            
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* Estilos para modal */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--secondary);
+        }
+        
+        .modal-body {
+            padding: 1.5rem;
+        }
+        
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.5rem;
+        }
+        
+        /* Animações */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+        
+        /* Notificações */
+        .notification {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 1rem;
+            border-radius: 0.25rem;
+            background-color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1001;
+            animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s forwards;
+            max-width: 300px;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        
+        /* Loading Spinner */
+        .loading-spinner {
+            display: inline-block;
+            width: 1.5rem;
+            height: 1.5rem;
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
     <!-- Tela de Login -->
     <div id="login-screen" class="login-container">
         <div class="login-card">
-            <h1 style="text-align: center; margin-bottom: 1rem; color: var(--primary-dark);">FilaFacilita</h1>
-            <h2 style="text-align: center; margin-bottom: 2rem; color: var(--secondary);">Painel do Gestor</h2>
+            <h1 style="text-align: center; margin-bottom: 1.5rem;">FilaFacilita</h1>
+            <h2 style="text-align: center; margin-bottom: 2rem;">Painel do Gestor</h2>
             
-            <div id="login-error" class="alert alert-danger hidden">
-                <i class="fas fa-exclamation-circle"></i>
-                <span></span>
-            </div>
-            
-            <div id="login-message" class="alert alert-success hidden">
-                <i class="fas fa-info-circle"></i>
-                <span></span>
-            </div>
+            <div id="login-error" class="alert alert-danger hidden"></div>
             
             <form id="login-form">
                 <div class="form-group">
                     <label for="email" class="form-label">Email</label>
-                    <input type="email" id="email" name="email" class="form-control" placeholder="Seu email institucional" required>
+                    <input type="email" id="email" name="email" class="form-control" required>
                 </div>
                 
                 <div class="form-group">
                     <label for="password" class="form-label">Senha</label>
-                    <input type="password" id="password" name="password" class="form-control" placeholder="Sua senha" required>
+                    <input type="password" id="password" name="password" class="form-control" required>
                 </div>
                 
-                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem;">
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
                     <span id="login-button-text">Entrar</span>
                     <span id="login-spinner" class="loading-spinner hidden"></span>
                 </button>
@@ -49,30 +524,28 @@
         <!-- Sidebar -->
         <div id="sidebar" class="sidebar">
             <div class="sidebar-header">
-                <h1>FilaFacilita</h1>
+                <span>FilaFacilita</span>
                 <i id="toggle-sidebar" class="fas fa-bars" style="cursor: pointer;"></i>
             </div>
             
-            <div class="menu-items">
-                <div class="menu-item active" data-page="dashboard">
-                    <i class="fas fa-tachometer-alt"></i>
-                    <span>Dashboard</span>
-                </div>
-                
-                <div class="menu-item" data-page="queues">
-                    <i class="fas fa-list-ul"></i>
-                    <span>Filas</span>
-                </div>
-                
-                <div class="menu-item" data-page="tickets">
-                    <i class="fas fa-ticket-alt"></i>
-                    <span>Senhas</span>
-                </div>
-                
-                <div class="menu-item" id="logout-button" style="margin-top: auto;">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Sair</span>
-                </div>
+            <div class="menu-item active" data-page="dashboard">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </div>
+            
+            <div class="menu-item" data-page="queues">
+                <i class="fas fa-list"></i>
+                <span>Filas</span>
+            </div>
+            
+            <div class="menu-item" data-page="tickets">
+                <i class="fas fa-ticket-alt"></i>
+                <span>Senhas</span>
+            </div>
+            
+            <div class="menu-item" id="logout-button" style="margin-top: auto;">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Sair</span>
             </div>
         </div>
         
@@ -94,69 +567,65 @@
             <div id="page-dashboard" class="page">
                 <div class="stats-container">
                     <div class="stat-card">
-                        <div class="stat-title"><i class="fas fa-list-ul"></i> Total de Filas</div>
+                        <div class="stat-title">Total de Filas</div>
                         <div class="stat-value" id="total-queues">0</div>
                     </div>
                     
                     <div class="stat-card">
-                        <div class="stat-title"><i class="fas fa-clock"></i> Senhas Pendentes</div>
+                        <div class="stat-title">Senhas Pendentes</div>
                         <div class="stat-value" id="pending-tickets">0</div>
                     </div>
                     
                     <div class="stat-card">
-                        <div class="stat-title"><i class="fas fa-check-circle"></i> Senhas Atendidas</div>
+                        <div class="stat-title">Senhas Atendidas</div>
                         <div class="stat-value" id="attended-tickets">0</div>
                     </div>
                     
                     <div class="stat-card">
-                        <div class="stat-title"><i class="fas fa-times-circle"></i> Senhas Canceladas</div>
+                        <div class="stat-title">Senhas Canceladas</div>
                         <div class="stat-value" id="cancelled-tickets">0</div>
                     </div>
                 </div>
                 
                 <div class="card">
                     <div class="card-header">
-                        <h2 class="card-title"><i class="fas fa-list-ul"></i> Resumo de Filas</h2>
+                        <h2 class="card-title">Resumo de Filas</h2>
                     </div>
-                    <div class="table-responsive">
-                        <table id="queues-summary-table">
-                            <thead>
-                                <tr>
-                                    <th>Serviço</th>
-                                    <th>Prefixo</th>
-                                    <th>Senhas Ativas</th>
-                                    <th>Limite Diário</th>
-                                    <th>Status</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="queues-summary-body">
-                                <!-- Dados serão inseridos via JavaScript -->
-                            </tbody>
-                        </table>
-                    </div>
+                    <table id="queues-summary-table">
+                        <thead>
+                            <tr>
+                                <th>Serviço</th>
+                                <th>Prefixo</th>
+                                <th>Senhas Ativas</th>
+                                <th>Limite Diário</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="queues-summary-body">
+                            <!-- Dados serão inseridos via JavaScript -->
+                        </tbody>
+                    </table>
                 </div>
                 
                 <div class="card">
                     <div class="card-header">
-                        <h2 class="card-title"><i class="fas fa-ticket-alt"></i> Últimas Senhas</h2>
+                        <h2 class="card-title">Últimas Senhas</h2>
                     </div>
-                    <div class="table-responsive">
-                        <table id="recent-tickets-table">
-                            <thead>
-                                <tr>
-                                    <th>Senha</th>
-                                    <th>Serviço</th>
-                                    <th>Status</th>
-                                    <th>Emitida em</th>
-                                    <th>Atendida em</th>
-                                </tr>
-                            </thead>
-                            <tbody id="recent-tickets-body">
-                                <!-- Dados serão inseridos via JavaScript -->
-                            </tbody>
-                        </table>
-                    </div>
+                    <table id="recent-tickets-table">
+                        <thead>
+                            <tr>
+                                <th>Senha</th>
+                                <th>Serviço</th>
+                                <th>Status</th>
+                                <th>Emitida em</th>
+                                <th>Atendida em</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-tickets-body">
+                            <!-- Dados serão inseridos via JavaScript -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
             
@@ -164,27 +633,25 @@
             <div id="page-queues" class="page hidden">
                 <div class="card">
                     <div class="card-header">
-                        <h2 class="card-title"><i class="fas fa-list-ul"></i> Filas do Departamento</h2>
+                        <h2 class="card-title">Filas do Departamento</h2>
                     </div>
-                    <div class="table-responsive">
-                        <table id="queues-table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Serviço</th>
-                                    <th>Prefixo</th>
-                                    <th>Senhas Ativas</th>
-                                    <th>Limite Diário</th>
-                                    <th>Senha Atual</th>
-                                    <th>Status</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="queues-table-body">
-                                <!-- Dados serão inseridos via JavaScript -->
-                            </tbody>
-                        </table>
-                    </div>
+                    <table id="queues-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Serviço</th>
+                                <th>Prefixo</th>
+                                <th>Senhas Ativas</th>
+                                <th>Limite Diário</th>
+                                <th>Senha Atual</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="queues-table-body">
+                            <!-- Dados serão inseridos via JavaScript -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
             
@@ -192,97 +659,30 @@
             <div id="page-tickets" class="page hidden">
                 <div class="card">
                     <div class="card-header">
-                        <h2 class="card-title"><i class="fas fa-ticket-alt"></i> Senhas do Departamento</h2>
+                        <h2 class="card-title">Senhas do Departamento</h2>
                     </div>
-                    <div class="table-responsive">
-                        <table id="tickets-table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Número</th>
-                                    <th>Serviço</th>
-                                    <th>Status</th>
-                                    <th>Emitida em</th>
-                                    <th>Atendida em</th>
-                                    <th>Guichê</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tickets-table-body">
-                                <!-- Dados serão inseridos via JavaScript -->
-                            </tbody>
-                        </table>
-                    </div>
+                    <table id="tickets-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Número</th>
+                                <th>Serviço</th>
+                                <th>Status</th>
+                                <th>Emitida em</th>
+                                <th>Atendida em</th>
+                                <th>Guichê</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tickets-table-body">
+                            <!-- Dados serão inseridos via JavaScript -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- Modal para chamar próxima senha -->
-    <div id="call-next-modal" class="modal-backdrop hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">Chamar Próxima Senha</h3>
-                <button id="close-call-modal" class="modal-close">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div class="modal-body">
-                <!-- Informações da chamada -->
-                <div id="call-next-info">
-                    <p style="text-align: center; margin-bottom: 1.5rem;">
-                        Você está prestes a chamar a próxima senha para:
-                    </p>
-                    <h3 id="call-next-service" style="text-align: center; margin-bottom: 2rem; color: var(--primary-dark);">
-                        Serviço
-                    </h3>
-                    <p style="text-align: center; color: var(--secondary);">
-                        Confirma a chamada da próxima senha na fila?
-                    </p>
-                </div>
-                
-                <!-- Resultado da chamada -->
-                <div id="call-next-result" class="hidden">
-                    <!-- Sucesso -->
-                    <div id="call-success" class="ticket-info hidden">
-                        <div class="icon-circle">
-                            <i class="fas fa-check-circle"></i>
-                        </div>
-                        <h4>Senha chamada com sucesso!</h4>
-                        <div class="ticket-number" id="result-ticket-number">A123</div>
-                        <div class="counter-info">
-                            Guichê: <strong id="result-counter">1</strong>
-                        </div>
-                        <p>
-                            Senhas restantes na fila: <strong id="result-remaining">5</strong>
-                        </p>
-                    </div>
-                    
-                    <!-- Erro -->
-                    <div id="call-error" class="ticket-info hidden">
-                        <div class="icon-circle error">
-                            <i class="fas fa-exclamation-circle"></i>
-                        </div>
-                        <h4>Erro ao chamar senha</h4>
-                        <p id="call-error-message">Ocorreu um erro ao chamar a próxima senha.</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="modal-footer">
-                <button id="cancel-call-next" class="btn btn-danger hidden">
-                    <i class="fas fa-times"></i> Cancelar
-                </button>
-                <button id="confirm-call-next" class="btn btn-primary">
-                    <span id="call-button-text">Confirmar</span>
-                    <span id="call-spinner" class="loading-spinner hidden"></span>
-                </button>
-                <button id="finish-call-next" class="btn btn-success hidden">
-                    <i class="fas fa-check"></i> Concluir
-                </button>
-            </div>
-        </div>
-    </div>
+
     
     <script src="/js/admin.js"></script>
 </body>

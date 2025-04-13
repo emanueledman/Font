@@ -1,4 +1,3 @@
-// Configurações e variáveis globais
 const API_BASE_URL = 'https://fila-facilita2-0.onrender.com';
 let token = localStorage.getItem('token');
 let userInfo = JSON.parse(localStorage.getItem('userInfo')) || {};
@@ -78,15 +77,15 @@ function stopPolling() {
 
 // Classe para requisições à API
 class ApiService {
-    static async request(endpoint, method = 'GET', body = null, requireAuth = true) {
+    static async request(endpoint, method = 'GET', body = null) {
         const headers = {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
         };
 
-        if (requireAuth && token) {
+        if (token) {
             headers['Authorization'] = `Bearer ${token}`;
-        } else if (requireAuth && !token) {
+        } else {
             throw new Error('Nenhum token de autenticação encontrado');
         }
 
@@ -128,8 +127,7 @@ class ApiService {
     }
 
     static async login(email, password) {
-        console.log('[ApiService] Tentando login com:', { email });
-        return await this.request('/api/admin/login', 'POST', { email, password }, false);
+        return await this.request('/api/admin/login', 'POST', { email, password });
     }
 
     static async getAdminQueues() {
@@ -159,7 +157,7 @@ class ApiService {
 function showNotification(message, type = 'success') {
     const notification = document.createElement('div');
     notification.className = `notification ${type === 'success' ? 'alert-success' : 'alert-danger'}`;
-    notification.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${message}`;
+    notification.textContent = message;
     document.body.appendChild(notification);
     setTimeout(() => notification.remove(), 3000);
 }
@@ -316,7 +314,7 @@ function openCallNextModal(queueId, service) {
     const buttonText = document.getElementById('call-button-text');
     const spinner = document.getElementById('call-spinner');
 
-    if (!modal || !serviceText || !confirmBtn || !cancelBtn || !finishBtn) {
+    if (!modal || !serviceText || !confirmBtn) {
         console.error('[Modal] Elementos do modal não encontrados');
         showNotification('Erro: Interface não carregada corretamente', 'error');
         return;
@@ -341,7 +339,6 @@ function openCallNextModal(queueId, service) {
         buttonText.classList.add('hidden');
         spinner.classList.remove('hidden');
         confirmBtn.disabled = true;
-        cancelBtn.disabled = true;
 
         try {
             const result = await ApiService.callNextTicket(queueId);
@@ -369,7 +366,6 @@ function openCallNextModal(queueId, service) {
             buttonText.classList.remove('hidden');
             spinner.classList.add('hidden');
             confirmBtn.disabled = false;
-            cancelBtn.disabled = false;
         }
     };
 }
@@ -400,14 +396,7 @@ async function handleLogin(event) {
     loginBtn.disabled = true;
 
     try {
-        console.log('[Login] Enviando requisição para API:', { email });
         const result = await ApiService.login(email, password);
-        console.log('[Login] Resposta da API:', result);
-
-        if (!result.token) {
-            throw new Error('Token não retornado pela API');
-        }
-
         token = result.token;
         userInfo = {
             id: result.user_id,
@@ -423,7 +412,7 @@ async function handleLogin(event) {
         initApp();
     } catch (error) {
         console.error('[Login] Erro:', error);
-        errorDiv.querySelector('span').textContent = 'Erro ao fazer login: ' + (error.message || 'Tente novamente');
+        errorDiv.textContent = 'Erro ao fazer login: ' + error.message;
         errorDiv.classList.remove('hidden');
     } finally {
         buttonText.classList.remove('hidden');
@@ -452,9 +441,7 @@ function toggleSidebar() {
     }
     console.log('[Sidebar] Alternando sidebar');
     const sidebar = document.getElementById('sidebar');
-    const content = document.querySelector('.content');
     sidebar.classList.toggle('sidebar-collapse');
-    content.classList.toggle('content-expand');
 }
 
 // Função para mostrar/esconder páginas
@@ -486,7 +473,7 @@ async function initApp(message = null) {
     const messageDiv = document.getElementById('login-message');
 
     if (message && messageDiv) {
-        messageDiv.querySelector('span').textContent = message;
+        messageDiv.textContent = message;
         messageDiv.classList.remove('hidden');
     }
 
@@ -498,7 +485,6 @@ async function initApp(message = null) {
     }
 
     // Validar token no servidor
-    console.log('[App] Validando token');
     const isValidToken = await ApiService.validateToken();
     if (!isValidToken) {
         console.log('[App] Token inválido, redirecionando para login');
@@ -537,12 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cancelModalButton) cancelModalButton.addEventListener('click', closeCallNextModal);
 
     const finishModalButton = document.getElementById('finish-call-next');
-    if (finishModalButton) finishModalButton.addEventListener('click', () => {
-        closeCallNextModal();
-        updateDashboard();
-        updateQueuesPage();
-        updateTicketsPage();
-    });
+    if (finishModalButton) finishModalButton.addEventListener('click', closeCallNextModal);
 
     document.querySelectorAll('.menu-item[data-page]').forEach(item => {
         item.addEventListener('click', () => {
