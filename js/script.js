@@ -244,7 +244,7 @@ async function loadTickets() {
         ticketContent.innerHTML = '';
 
         if (tickets.length === 0) {
-            ticketContent.innerHTML = '<tr><td colspan="4">Nenhum ticket ativo encontrado.</td></tr>';
+            ticketContent.innerHTML = '<div class="no-tickets">Nenhum ticket ativo encontrado.</div>';
             return;
         }
 
@@ -252,23 +252,25 @@ async function loadTickets() {
         tickets
             .filter(ticket => ticket.number.toLowerCase().includes(filter))
             .forEach(ticket => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${ticket.number}</td>
-                    <td>${ticket.service}</td>
-                    <td>${ticket.status}</td>
-                    <td>${ticket.counter || 'N/A'}</td>
+                const statusClass = ticket.status === 'Pendente' ? 'card-orange' :
+                                   ticket.status === 'Chamado' ? 'card-red' :
+                                   ticket.status === 'attended' ? 'card-green' : '';
+                const card = document.createElement('div');
+                card.className = `ticket-card ${statusClass}`;
+                card.innerHTML = `
+                    <div class="ticket-number">${ticket.number}</div>
+                    <div class="ticket-info">
+                        <span>Serviço:</span> ${ticket.service}
+                    </div>
+                    <div class="ticket-info">
+                        <span>Status:</span> <span class="badge ${ticket.status === 'Pendente' ? 'pending' : ticket.status === 'Chamado' ? 'called' : 'attended'}">${ticket.status}</span>
+                    </div>
+                    <div class="ticket-info">
+                        <span>Guichê:</span> ${ticket.counter || 'N/A'}
+                    </div>
                 `;
-                ticketContent.appendChild(row);
+                ticketContent.appendChild(card);
             });
-
-        if ($.fn.DataTable.isDataTable('#tickets-table')) {
-            $('#tickets-table').DataTable().destroy();
-        }
-        $('#tickets-table').DataTable({
-            pageLength: 10,
-            language: { url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/pt-BR.json' }
-        });
     } catch (error) {
         showError('Erro ao carregar tickets: ' + (error.message || 'Falha ao carregar tickets'));
     }
