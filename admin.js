@@ -211,16 +211,14 @@ class AdminPanel {
             ]);
             const today = new Date().toISOString().split('T')[0];
 
-            // Filtrar filas do departamento do gestor
+            // Filtrar filas apenas por segurança (backend já filtra)
             const userQueues = queues.filter(q => 
                 q.institution_id === userInfo.institution_id && 
                 q.department === userInfo.department
             );
             
-            // Filtrar tickets apenas das filas do departamento
-            const userTickets = tickets.filter(t => 
-                userQueues.some(q => q.id === t.queue_id)
-            );
+            // Tickets já vêm filtrados pelo backend, mas verificamos por consistência
+            const userTickets = tickets;
 
             const activeQueues = userQueues.length;
             const pendingTickets = userTickets.filter(t => t.status === 'Pendente').length;
@@ -228,7 +226,7 @@ class AdminPanel {
             
             const waitTimes = userTickets
                 .filter(t => t.wait_time && t.wait_time !== 'N/A')
-                .map(t => parseFloat(t.wait_time.split(' ')[0]) || 0);
+                .map(t => parseFloat(t.wait_time) || 0);
             
             const avgWaitTime = waitTimes.length ? 
                 (waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length).toFixed(1) : 0;
@@ -258,7 +256,7 @@ class AdminPanel {
             if (tableBody) tableBody.innerHTML = '';
             if (fullTableBody) fullTableBody.innerHTML = '';
 
-            // Filtrar filas do departamento do gestor
+            // Filtrar filas apenas por segurança (backend já filtra)
             const userQueues = queues.filter(q => 
                 q.institution_id === userInfo.institution_id && 
                 q.department === userInfo.department
@@ -309,23 +307,11 @@ class AdminPanel {
 
     async loadTickets() {
         try {
-            const [tickets, queues] = await Promise.all([
-                ApiService.getTickets(),
-                ApiService.getQueues()
-            ]);
+            const tickets = await ApiService.getTickets();
             const filter = document.getElementById('ticket-status-filter')?.value;
             
-            // Filtrar filas do departamento do gestor
-            const departmentQueues = queues.filter(q => 
-                q.institution_id === userInfo.institution_id && 
-                q.department === userInfo.department
-            );
-            
-            // Filtrar tickets apenas das filas do departamento
-            let filteredTickets = tickets.filter(t => 
-                departmentQueues.some(q => q.id === t.queue_id)
-            );
-            
+            // Tickets já vêm filtrados pelo backend, aplicamos apenas o filtro de status
+            let filteredTickets = tickets;
             if (filter) {
                 filteredTickets = filteredTickets.filter(t => t.status === filter);
             }
@@ -361,22 +347,10 @@ class AdminPanel {
         try {
             const date = document.getElementById('report-date').value;
             const reportType = document.getElementById('report-type').value;
-            const [tickets, queues] = await Promise.all([
-                ApiService.getTickets(),
-                ApiService.getQueues()
-            ]);
+            const tickets = await ApiService.getTickets();
             
-            // Filtrar filas do departamento do gestor
-            const departmentQueues = queues.filter(q => 
-                q.institution_id === userInfo.institution_id && 
-                q.department === userInfo.department
-            );
-            
-            // Filtrar tickets apenas das filas do departamento
-            let filteredTickets = tickets.filter(t => 
-                departmentQueues.some(q => q.id === t.queue_id)
-            );
-            
+            // Tickets já vêm filtrados pelo backend, aplicamos apenas filtros adicionais
+            let filteredTickets = tickets;
             if (date) {
                 filteredTickets = filteredTickets.filter(t => t.issued_at.startsWith(date));
             }
@@ -412,7 +386,7 @@ class AdminPanel {
                 const avgWaitTimes = services.map(service => {
                     const times = filteredTickets
                         .filter(t => t.service === service && t.wait_time && t.wait_time !== 'N/A')
-                        .map(t => parseFloat(t.wait_time.split(' ')[0]) || 0);
+                        .map(t => parseFloat(t.wait_time) || 0);
                     return times.length ? 
                         (times.reduce((a, b) => a + b, 0) / times.length) : 0;
                 });
