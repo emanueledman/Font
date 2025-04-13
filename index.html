@@ -3,735 +3,307 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FilaFacilita - Painel do Gestor</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <title>Gestão de Filas - Facilita 2.0</title>
+    <link rel="stylesheet" href="/css/styles.css">
     <style>
-        :root {
-            --primary: #2563eb;
-            --primary-dark: #1e40af;
-            --secondary: #64748b;
-            --danger: #dc2626;
-            --success: #16a34a;
-            --warning: #ca8a04;
-            --bg-light: #f8fafc;
-            --text-dark: #1e293b;
-            --text-light: #f8fafc;
-            --border: #e2e8f0;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
         body {
-            background-color: var(--bg-light);
-            color: var(--text-dark);
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
         }
-        
-        .login-container {
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 1rem;
-            background-color: #f3f4f6;
-        }
-        
-        .login-card {
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
             background: white;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            padding: 2rem;
-            width: 100%;
-            max-width: 400px;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
-        
-        .app-container {
+        h1, h2 {
+            color: #333;
+        }
+        .queue-list, .ticket-list {
+            margin-top: 20px;
+        }
+        .queue-item, .ticket-item {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
             display: flex;
-            min-height: 100vh;
+            justify-content: space-between;
+            align-items: center;
         }
-        
-        .sidebar {
-            width: 250px;
-            background-color: #1e293b;
+        .queue-item button, .ticket-item button {
+            padding: 8px 12px;
+            background-color: #007bff;
             color: white;
-            padding: 1rem;
-            display: flex;
-            flex-direction: column;
-            transition: all 0.3s ease;
-        }
-        
-        .sidebar-collapse {
-            width: 70px;
-        }
-        
-        .sidebar-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            margin-bottom: 1rem;
-        }
-        
-        .sidebar-collapse .sidebar-header span,
-        .sidebar-collapse .menu-item span {
-            display: none;
-        }
-        
-        .menu-item {
-            display: flex;
-            align-items: center;
-            padding: 0.75rem 1rem;
-            border-radius: 0.25rem;
-            margin-bottom: 0.5rem;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        
-        .menu-item:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-        }
-        
-        .menu-item.active {
-            background-color: var(--primary);
-        }
-        
-        .menu-item i {
-            margin-right: 0.75rem;
-            width: 20px;
-            text-align: center;
-        }
-        
-        .sidebar-collapse .menu-item i {
-            margin-right: 0;
-        }
-        
-        .content {
-            flex: 1;
-            padding: 1.5rem;
-            overflow-y: auto;
-        }
-        
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-        }
-        
-        .user-info {
-            display: flex;
-            align-items: center;
-        }
-        
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background-color: var(--primary);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            margin-right: 0.75rem;
-        }
-        
-        .card {
-            background: white;
-            border-radius: 0.5rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid var(--border);
-        }
-        
-        .card-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-        }
-        
-        .stats-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .stat-card {
-            background: white;
-            border-radius: 0.5rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            padding: 1.25rem;
-        }
-        
-        .stat-title {
-            color: var(--secondary);
-            font-size: 0.875rem;
-            margin-bottom: 0.5rem;
-        }
-        
-        .stat-value {
-            font-size: 1.5rem;
-            font-weight: 600;
-        }
-        
-        .stat-footer {
-            display: flex;
-            align-items: center;
-            margin-top: 0.5rem;
-            font-size: 0.875rem;
-        }
-        
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0.5rem 1rem;
-            border-radius: 0.25rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
             border: none;
-        }
-        
-        .btn-primary {
-            background-color: var(--primary);
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background-color: var(--primary-dark);
-        }
-        
-        .btn-success {
-            background-color: var(--success);
-            color: white;
-        }
-        
-        .btn-success:hover {
-            background-color: #15803d;
-        }
-        
-        .btn-danger {
-            background-color: var(--danger);
-            color: white;
-        }
-        
-        .btn-danger:hover {
-            background-color: #b91c1c;
-        }
-        
-        .btn i {
-            margin-right: 0.5rem;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
-        th, td {
-            padding: 0.75rem 1rem;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-        }
-        
-        th {
-            font-weight: 600;
-            color: var(--secondary);
-            background-color: #f8fafc;
-        }
-        
-        tbody tr:hover {
-            background-color: #f1f5f9;
-        }
-        
-        .badge {
-            display: inline-block;
-            padding: 0.25rem 0.5rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 500;
-        }
-        
-        .badge-success {
-            background-color: #dcfce7;
-            color: var(--success);
-        }
-        
-        .badge-warning {
-            background-color: #fef9c3;
-            color: var(--warning);
-        }
-        
-        .badge-danger {
-            background-color: #fee2e2;
-            color: var(--danger);
-        }
-        
-        .badge-info {
-            background-color: #dbeafe;
-            color: var(--primary);
-        }
-        
-        .form-group {
-            margin-bottom: 1rem;
-        }
-        
-        .form-label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-        }
-        
-        .form-control {
-            width: 100%;
-            padding: 0.5rem 0.75rem;
-            border: 1px solid var(--border);
-            border-radius: 0.25rem;
-            font-size: 1rem;
-        }
-        
-        .form-control:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-        
-        .alert {
-            padding: 0.75rem 1rem;
-            border-radius: 0.25rem;
-            margin-bottom: 1rem;
-        }
-        
-        .alert-danger {
-            background-color: #fee2e2;
-            color: var(--danger);
-            border: 1px solid #fecaca;
-        }
-        
-        .alert-success {
-            background-color: #dcfce7;
-            color: var(--success);
-            border: 1px solid #bbf7d0;
-        }
-        
-        .hidden {
-            display: none;
-        }
-        
-        .ticket-card {
-            background: white;
-            border-radius: 0.5rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-            border-left: 4px solid var(--primary);
-        }
-        
-        .ticket-number {
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
-        }
-        
-        .ticket-info {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 0.5rem;
-        }
-        
-        .ticket-status {
-            font-weight: 500;
-        }
-        
-        .ticket-actions {
-            margin-top: 1rem;
-        }
-        
-        /* Responsividade */
-        @media (max-width: 768px) {
-            .app-container {
-                flex-direction: column;
-            }
-            
-            .sidebar {
-                width: 100%;
-                max-height: 60px;
-                overflow: hidden;
-            }
-            
-            .sidebar.expanded {
-                max-height: none;
-            }
-            
-            .stats-container {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        /* Estilos para modal */
-        .modal-backdrop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        
-        .modal-content {
-            background: white;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            width: 90%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        
-        .modal-header {
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .modal-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-        }
-        
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
+            border-radius: 4px;
             cursor: pointer;
-            color: var(--secondary);
         }
-        
-        .modal-body {
-            padding: 1.5rem;
+        .queue-item button:hover, .ticket-item button:hover {
+            background-color: #0056b3;
         }
-        
-        .modal-footer {
-            padding: 1rem 1.5rem;
-            border-top: 1px solid var(--border);
-            display: flex;
-            justify-content: flex-end;
-            gap: 0.5rem;
+        .error {
+            color: red;
+            margin-top: 10px;
         }
-        
-        /* Animações */
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+        .login-form {
+            display: none;
+            margin-top: 20px;
         }
-        
-        .fade-in {
-            animation: fadeIn 0.3s ease;
+        .login-form input {
+            padding: 8px;
+            margin: 5px 0;
+            width: 100%;
+            box-sizing: border-box;
         }
-        
-        /* Notificações */
-        .notification {
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            padding: 1rem;
-            border-radius: 0.25rem;
-            background-color: white;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            z-index: 1001;
-            animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s forwards;
-            max-width: 300px;
+        .login-form button {
+            padding: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
         }
-        
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        
-        @keyframes fadeOut {
-            from { opacity: 1; }
-            to { opacity: 0; }
-        }
-        
-        /* Loading Spinner */
-        .loading-spinner {
-            display: inline-block;
-            width: 1.5rem;
-            height: 1.5rem;
-            border: 3px solid rgba(0, 0, 0, 0.1);
-            border-radius: 50%;
-            border-top-color: var(--primary);
-            animation: spin 1s ease-in-out infinite;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        .login-form button:hover {
+            background-color: #218838;
         }
     </style>
 </head>
 <body>
-    <!-- Tela de Login -->
-    <div id="login-screen" class="login-container">
-        <div class="login-card">
-            <h1 style="text-align: center; margin-bottom: 1.5rem;">FilaFacilita</h1>
-            <h2 style="text-align: center; margin-bottom: 2rem;">Painel do Gestor</h2>
-            
-            <div id="login-error" class="alert alert-danger hidden"></div>
-            
-            <form id="login-form">
-                <div class="form-group">
-                    <label for="email" class="form-label">Email</label>
-                    <input type="email" id="email" name="email" class="form-control" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="password" class="form-label">Senha</label>
-                    <input type="password" id="password" name="password" class="form-control" required>
-                </div>
-                
-                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
-                    <span id="login-button-text">Entrar</span>
-                    <span id="login-spinner" class="loading-spinner hidden"></span>
-                </button>
-            </form>
-        </div>
-    </div>
-    
-    <!-- Aplicação Principal -->
-    <div id="app-screen" class="app-container hidden">
-        <!-- Sidebar -->
-        <div id="sidebar" class="sidebar">
-            <div class="sidebar-header">
-                <span>FilaFacilita</span>
-                <i id="toggle-sidebar" class="fas fa-bars" style="cursor: pointer;"></i>
-            </div>
-            
-            <div class="menu-item active" data-page="dashboard">
-                <i class="fas fa-tachometer-alt"></i>
-                <span>Dashboard</span>
-            </div>
-            
-            <div class="menu-item" data-page="queues">
-                <i class="fas fa-list"></i>
-                <span>Filas</span>
-            </div>
-            
-            <div class="menu-item" data-page="tickets">
-                <i class="fas fa-ticket-alt"></i>
-                <span>Senhas</span>
-            </div>
-            
-            <div class="menu-item" id="logout-button" style="margin-top: auto;">
-                <i class="fas fa-sign-out-alt"></i>
-                <span>Sair</span>
-            </div>
-        </div>
+    <div class="container">
+        <h1>Gestão de Filas - Facilita 2.0</h1>
+        <div id="user-info"></div>
+        <button id="logout-btn" style="display: none;">Sair</button>
         
-        <!-- Conteúdo principal -->
-        <div class="content">
-            <div class="header">
-                <h1 id="page-title">Dashboard</h1>
-                
-                <div class="user-info">
-                    <div class="user-avatar" id="user-avatar">G</div>
-                    <div>
-                        <div id="user-name">Gestor</div>
-                        <div id="user-department" style="font-size: 0.875rem; color: var(--secondary);"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Página Dashboard -->
-            <div id="page-dashboard" class="page">
-                <div class="stats-container">
-                    <div class="stat-card">
-                        <div class="stat-title">Total de Filas</div>
-                        <div class="stat-value" id="total-queues">0</div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-title">Senhas Pendentes</div>
-                        <div class="stat-value" id="pending-tickets">0</div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-title">Senhas Atendidas</div>
-                        <div class="stat-value" id="attended-tickets">0</div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-title">Senhas Canceladas</div>
-                        <div class="stat-value" id="cancelled-tickets">0</div>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <div class="card-header">
-                        <h2 class="card-title">Resumo de Filas</h2>
-                    </div>
-                    <table id="queues-summary-table">
-                        <thead>
-                            <tr>
-                                <th>Serviço</th>
-                                <th>Prefixo</th>
-                                <th>Senhas Ativas</th>
-                                <th>Limite Diário</th>
-                                <th>Status</th>
-                                <th>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="queues-summary-body">
-                            <!-- Dados serão inseridos via JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-                
-                <div class="card">
-                    <div class="card-header">
-                        <h2 class="card-title">Últimas Senhas</h2>
-                    </div>
-                    <table id="recent-tickets-table">
-                        <thead>
-                            <tr>
-                                <th>Senha</th>
-                                <th>Serviço</th>
-                                <th>Status</th>
-                                <th>Emitida em</th>
-                                <th>Atendida em</th>
-                            </tr>
-                        </thead>
-                        <tbody id="recent-tickets-body">
-                            <!-- Dados serão inseridos via JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            
-            <!-- Página Filas -->
-            <div id="page-queues" class="page hidden">
-                <div class="card">
-                    <div class="card-header">
-                        <h2 class="card-title">Filas do Departamento</h2>
-                    </div>
-                    <table id="queues-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Serviço</th>
-                                <th>Prefixo</th>
-                                <th>Senhas Ativas</th>
-                                <th>Limite Diário</th>
-                                <th>Senha Atual</th>
-                                <th>Status</th>
-                                <th>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="queues-table-body">
-                            <!-- Dados serão inseridos via JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            
-            <!-- Página Senhas -->
-            <div id="page-tickets" class="page hidden">
-                <div class="card">
-                    <div class="card-header">
-                        <h2 class="card-title">Senhas do Departamento</h2>
-                    </div>
-                    <table id="tickets-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Número</th>
-                                <th>Serviço</th>
-                                <th>Status</th>
-                                <th>Emitida em</th>
-                                <th>Atendida em</th>
-                                <th>Guichê</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tickets-table-body">
-                            <!-- Dados serão inseridos via JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+        <div class="login-form" id="login-form">
+            <h2>Login</h2>
+            <input type="email" id="email" placeholder="Email" required>
+            <input type="password" id="password" placeholder="Senha" required>
+            <button onclick="handleLogin()">Entrar</button>
         </div>
-    </div>
-    
-    <!-- Modal para chamar próxima senha -->
-    <div id="call-next-modal" class="modal-backdrop hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">Chamar Próxima Senha</h3>
-                <button class="modal-close" id="close-call-modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div id="call-next-info">
-                    <p>Você está prestes a chamar a próxima senha para o serviço:</p>
-                    <h4 id="call-next-service" style="margin: 1rem 0;"></h4>
-                    <p>Deseja continuar?</p>
-                </div>
-                <div id="call-next-result" class="hidden">
-                    <div id="call-success" class="hidden">
-                        <div style="text-align: center; margin-bottom: 1rem;">
-                            <i class="fas fa-check-circle" style="font-size: 3rem; color: var(--success);"></i>
-                        </div>
-                        <h3 style="text-align: center; margin-bottom: 1rem;">Senha Chamada com Sucesso!</h3>
-                        <div class="ticket-card">
-                            <div class="ticket-number" id="result-ticket-number"></div>
-                            <div class="ticket-info">
-                                <span>Guichê:</span>
-                                <span id="result-counter"></span>
-                            </div>
-                            <div class="ticket-info">
-                                <span>Senhas restantes:</span>
-                                <span id="result-remaining"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="call-error" class="hidden">
-                        <div style="text-align: center; margin-bottom: 1rem;">
-                            <i class="fas fa-exclamation-circle" style="font-size: 3rem; color: var(--danger);"></i>
-                        </div>
-                        <h3 style="text-align: center; margin-bottom: 1rem;">Erro ao Chamar Senha</h3>
-                        <p id="call-error-message" style="text-align: center;"></p>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-danger" id="cancel-call-next">Cancelar</button>
-                <button class="btn btn-primary" id="confirm-call-next">
-                    <span id="call-button-text">Chamar Próxima</span>
-                    <span id="call-spinner" class="loading-spinner hidden"></span>
-                </button>
-                <button class="btn btn-success hidden" id="finish-call-next">OK</button>
-            </div>
+
+        <div class="queue-list" id="queue-list">
+            <h2>Filas do Seu Departamento</h2>
+            <!-- Filas serão inseridas aqui -->
         </div>
+
+        <div class="ticket-list" id="ticket-list">
+            <h2>Tickets Ativos</h2>
+            <!-- Tickets serão inseridos aqui -->
+        </div>
+
+        <div class="error" id="error-message"></div>
     </div>
 
-    <script src="admin.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Configurações e variáveis globais
+        const API_BASE_URL = 'https://fila-facilita2-0.onrender.com';
+        let token = localStorage.getItem('token');
+        let userInfo = JSON.parse(localStorage.getItem('userInfo')) || {};
+
+        // Classe principal para gerenciamento de autenticação e requisições
+        class ApiService {
+            static async request(endpoint, method = 'GET', body = null) {
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                };
+                
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
+                const config = { 
+                    method, 
+                    headers,
+                    mode: 'cors',
+                    credentials: 'omit',
+                };
+
+                if (body) {
+                    config.body = JSON.stringify(body);
+                }
+
+                console.log(`[ApiService] Enviando requisição para: ${API_BASE_URL}${endpoint}`, {
+                    method,
+                    headers: { ...headers, Authorization: token ? '[PROTECTED]' : undefined },
+                    body
+                });
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+                    
+                    if (response.status === 401) {
+                        console.warn(`[ApiService] Erro 401 na requisição ${endpoint}. Token pode estar inválido.`);
+                        handleLogout();
+                        throw new Error(`Sessão expirada na requisição ${endpoint}`);
+                    }
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error(`[ApiService] Erro ${response.status} na requisição ${endpoint}: ${errorText}`);
+                        throw new Error(errorText || response.statusText);
+                    }
+                    
+                    const data = await response.json();
+                    console.log(`[ApiService] Resposta recebida de ${endpoint}:`, data);
+                    return data;
+                } catch (error) {
+                    console.error(`[ApiService] Erro na requisição ${endpoint}:`, error);
+                    throw error;
+                }
+            }
+
+            static async login(email, password) {
+                console.log('[ApiService] Tentando login com:', { email });
+                return await this.request('/api/admin/login', 'POST', { email, password });
+            }
+
+            static async getQueues() {
+                console.log('[ApiService] Buscando filas');
+                return await this.request('/api/admin/queues');
+            }
+
+            static async getTickets() {
+                console.log('[ApiService] Buscando tickets');
+                return await this.request('/api/tickets/admin');
+            }
+
+            static async callNextTicket(queueId) {
+                console.log(`[ApiService] Chamando próximo ticket para queueId: ${queueId}`);
+                return await this.request(`/api/admin/queue/${queueId}/call`, 'POST');
+            }
+        }
+
+        // Funções de manipulação da interface
+        function showError(message) {
+            document.getElementById('error-message').textContent = message;
+        }
+
+        function clearError() {
+            document.getElementById('error-message').textContent = '';
+        }
+
+        async function handleLogin() {
+            clearError();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await ApiService.login(email, password);
+                token = response.token;
+                userInfo = {
+                    user_id: response.user_id,
+                    user_role: response.user_role,
+                    department: response.department,
+                    email: response.email
+                };
+                localStorage.setItem('token', token);
+                localStorage.setItem('userInfo', JSON.stringify(userInfo));
+                initApp();
+            } catch (error) {
+                showError('Erro ao fazer login: ' + error.message);
+            }
+        }
+
+        function handleLogout() {
+            token = null;
+            userInfo = {};
+            localStorage.removeItem('token');
+            localStorage.removeItem('userInfo');
+            initApp();
+        }
+
+        async function loadQueues() {
+            try {
+                const queues = await ApiService.getQueues();
+                const queueList = document.getElementById('queue-list');
+                queueList.innerHTML = '<h2>Filas do Seu Departamento</h2>';
+                
+                if (queues.length === 0) {
+                    queueList.innerHTML += '<p>Nenhuma fila encontrada para o seu departamento.</p>';
+                    return;
+                }
+
+                queues.forEach(queue => {
+                    const queueItem = document.createElement('div');
+                    queueItem.className = 'queue-item';
+                    queueItem.innerHTML = `
+                        <span>${queue.service} (${queue.department}) - ${queue.active_tickets}/${queue.daily_limit} tickets ativos</span>
+                        <button onclick="callNextTicket('${queue.id}')">Chamar Próximo</button>
+                    `;
+                    queueList.appendChild(queueItem);
+                });
+            } catch (error) {
+                showError('Erro ao carregar filas: ' + error.message);
+            }
+        }
+
+        async function loadTickets() {
+            try {
+                const tickets = await ApiService.getTickets();
+                const ticketList = document.getElementById('ticket-list');
+                ticketList.innerHTML = '<h2>Tickets Ativos</h2>';
+                
+                if (tickets.length === 0) {
+                    ticketList.innerHTML += '<p>Nenhum ticket ativo encontrado.</p>';
+                    return;
+                }
+
+                tickets.forEach(ticket => {
+                    const ticketItem = document.createElement('div');
+                    ticketItem.className = 'ticket-item';
+                    ticketItem.innerHTML = `
+                        <span>Senha: ${ticket.number} | Serviço: ${ticket.service} | Status: ${ticket.status}</span>
+                    `;
+                    ticketList.appendChild(ticketItem);
+                });
+            } catch (error) {
+                showError('Erro ao carregar tickets: ' + error.message);
+            }
+        }
+
+        async function callNextTicket(queueId) {
+            clearError();
+            try {
+                const response = await ApiService.callNextTicket(queueId);
+                alert(response.message);
+                loadTickets(); // Atualiza a lista de tickets após chamar
+            } catch (error) {
+                showError('Erro ao chamar próximo ticket: ' + error.message);
+            }
+        }
+
+        function initApp() {
+            const loginForm = document.getElementById('login-form');
+            const queueList = document.getElementById('queue-list');
+            const ticketList = document.getElementById('ticket-list');
+            const logoutBtn = document.getElementById('logout-btn');
+            const userInfoDiv = document.getElementById('user-info');
+
+            if (token && userInfo.email) {
+                loginForm.style.display = 'none';
+                queueList.style.display = 'block';
+                ticketList.style.display = 'block';
+                logoutBtn.style.display = 'block';
+                userInfoDiv.innerHTML = `Bem-vindo, ${userInfo.email} | Departamento: ${userInfo.department || 'N/A'}`;
+                loadQueues();
+                loadTickets();
+            } else {
+                loginForm.style.display = 'block';
+                queueList.style.display = 'none';
+                ticketList.style.display = 'none';
+                logoutBtn.style.display = 'none';
+                userInfoDiv.innerHTML = '';
+            }
+        }
+
+        // Inicializa a aplicação
+        document.getElementById('logout-btn').addEventListener('click', handleLogout);
+        initApp();
+    </script>
 </body>
 </html>
