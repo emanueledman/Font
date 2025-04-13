@@ -34,7 +34,7 @@ class ApiService {
         });
 
         try {
-            const response = await fetch(${API_BASE_URL}${endpoint}, config);
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
             
             if (response.status === 401) {
                 console.warn(`[ApiService] Erro 401 na requisição ${endpoint}. Token pode estar inválido.`);
@@ -174,7 +174,7 @@ class AdminPanel {
             console.log('[AdminPanel] Carregando nome do departamento para department_id:', userInfo.department_id);
             const queuesData = await ApiService.getQueues();
             const department = queuesData
-                .flatMap(inst => inst.queues)
+                .flatMap(inst => inst.queues || [])
                 .find(q => q.department_id === userInfo.department_id);
             const departmentName = department?.department || 'Sem Departamento';
             document.getElementById('user-department').textContent = departmentName;
@@ -272,31 +272,42 @@ class AdminPanel {
 
         try {
             console.log('[AdminPanel] Carregando dados iniciais');
-            const [queues, tickets] = await Promise.all([
-                ApiService.getQueues(),
-                ApiService.getTickets()
-            ]);
+            let queues = [];
+            let tickets = [];
 
-            console.log('[AdminPanel] Filas recebidas:', queues);
-            console.log('[AdminPanel] Tickets recebidos:', tickets);
+            try {
+                queues = await ApiService.getQueues();
+                console.log('[AdminPanel] Filas recebidas:', queues);
+            } catch (error) {
+                console.error('[AdminPanel] Erro ao carregar filas:', error);
+                this.showError('Erro ao carregar filas', error);
+            }
 
-            // Remover filtragem por department_id temporariamente para depuração
-            const filteredQueues = queues.flatMap(inst => inst.queues);
+            try {
+                tickets = await ApiService.getTickets();
+                console.log('[AdminPanel] Tickets recebidos:', tickets);
+            } catch (error) {
+                console.error('[AdminPanel] Erro ao carregar tickets:', error);
+                this.showError('Erro ao carregar tickets', error);
+            }
+
+            const queuesData = Array.isArray(queues) ? queues.flatMap(inst => inst.queues || []) : [];
+            console.log('[AdminPanel] Filas processadas:', queuesData);
 
             await Promise.all([
-                this.loadDashboard(filteredQueues, tickets),
-                this.loadQueues(filteredQueues),
+                this.loadDashboard(queuesData, tickets),
+                this.loadQueues(queuesData),
                 this.loadTickets(tickets)
             ]);
 
-            console.log('[AdminPanel] Dados iniciais carregados com sucesso:', { filteredQueues, tickets });
+            console.log('[AdminPanel] Dados iniciais carregados com sucesso');
         } catch (error) {
-            console.error('[AdminPanel] Erro ao carregar dados iniciais:', error);
+            console.error('[AdminPanel] Erro geral ao carregar dados iniciais:', error);
             this.showError('Erro ao carregar dados iniciais. Tente novamente.', error);
             if (error.message.includes('Sessão expirada')) {
                 setTimeout(() => {
                     AuthManager.logout('session_expired');
-                }, 3000); // Atraso para exibir mensagem
+                }, 3000);
             }
         } finally {
             this.isLoading = false;
@@ -304,7 +315,7 @@ class AdminPanel {
         }
     }
 
-    async loadDashboard(queues = null, tickets = null) {
+    async loadDashboard(queues = [], tickets = []) {
         if (this.isLoading) {
             console.log('[AdminPanel] Dashboard já está sendo carregado');
             return;
@@ -317,28 +328,32 @@ class AdminPanel {
             let queuesData = queues;
             let ticketsData = tickets;
 
-            if (!queuesData || !ticketsData) {
-                const [queuesResponse, ticketsResponse] = await Promise.all([
-                    ApiService.getQueues(),
-                    ApiService.getTickets()
-                ]);
-                console.log('[AdminPanel] Filas recebidas no dashboard:', queuesResponse);
-                console.log('[AdminPanel] Tickets recebidos no dashboard:', ticketsResponse);
-                queuesData = queuesResponse.flatMap(inst => inst.queues);
-                ticketsData = ticketsResponse;
+            if (!queuesData.length || !ticketsData.length) {
+                try {
+                    const [queuesResponse, ticketsResponse] = await Promise.all([
+                        ApiService.getQueues().catch(() => []),
+                        ApiService.getTickets().catch(() => [])
+                    ]);
+                    queuesData = Array.isArray(queuesResponse) ? queuesResponse.flatMap(inst => inst.queues || []) : [];
+                    ticketsData = Array.isArray(ticketsResponse) ? ticketsResponse : [];
+                    console.log('[AdminPanel] Filas recebidas no dashboard:', queuesData);
+                    console.log('[AdminPanel] Tickets recebidos no dashboard:', ticketsData);
+                } catch (error) {
+                    console.error('[AdminPanel] Erro ao buscar dados para dashboard:', error);
+                    queuesData = [];
+                    ticketsData = [];
+                }
             }
             
             const today = new Date().toISOString().split('T')[0];
     
-            const activeQueues = queuesData ? queuesData.length : 0;
-            const pendingTickets = ticketsData ? ticketsData.filter(t => t.status === 'Pendente').length : 0;
-            const attendedToday = ticketsData ? ticketsData.filter(t => t.status === 'attended' && t.issued_at?.startsWith(today)).length : 0;
+            const activeQueues = queuesData.length;
+            const pendingTickets = ticketsData.filter(t => t.status === 'Pendente').length;
+            const attendedToday = ticketsData.filter(t => t.status === 'attended' && (t.issued_at || '').startsWith(today)).length;
             
             const waitTimes = ticketsData
-                ? ticketsData
-                    .filter(t => t.wait_time && t.wait_time !== 'N/A' && !isNaN(parseFloat(t.wait_time)))
-                    .map(t => parseFloat(t.wait_time))
-                : [];
+                .filter(t => t.wait_time && t.wait_time !== 'N/A' && !isNaN(parseFloat(t.wait_time)))
+                .map(t => parseFloat(t.wait_time));
             
             const avgWaitTime = waitTimes.length ? 
                 (waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length).toFixed(1) : '0.0';
@@ -356,7 +371,7 @@ class AdminPanel {
             });
         } catch (error) {
             console.error('[AdminPanel] Erro ao carregar dashboard:', error);
-            this.showError('Erro ao carregar dashboard. Verifique sua conexão ou tente novamente.', error);
+            this.showError('Erro ao carregar dashboard. Verifique sua conexão.', error);
             if (error.message.includes('Sessão expirada')) {
                 setTimeout(() => {
                     AuthManager.logout('session_expired');
@@ -368,19 +383,22 @@ class AdminPanel {
         }
     }
 
-    async loadQueues(queues = null) {
+    async loadQueues(queues = []) {
         const tableBody = document.getElementById('queues-table');
         const fullTableBody = document.getElementById('queues-table-full');
         
-        if (!tableBody && !fullTableBody) return;
+        if (!tableBody && !fullTableBody) {
+            console.warn('[AdminPanel] Tabelas de filas não encontradas');
+            return;
+        }
 
         try {
             console.log('[AdminPanel] Carregando filas');
             let queuesData = queues;
-            if (!queuesData) {
-                const queuesResponse = await ApiService.getQueues();
-                console.log('[AdminPanel] Filas recebidas:', queuesResponse);
-                queuesData = queuesResponse.flatMap(inst => inst.queues);
+            if (!queuesData.length) {
+                const queuesResponse = await ApiService.getQueues().catch(() => []);
+                queuesData = Array.isArray(queuesResponse) ? queuesResponse.flatMap(inst => inst.queues || []) : [];
+                console.log('[AdminPanel] Filas recebidas:', queuesData);
             }
             
             tableBody.innerHTML = '';
@@ -393,6 +411,7 @@ class AdminPanel {
                 tableBody.innerHTML = emptyRow;
                 fullTableBody.innerHTML = emptyRow;
                 console.warn('[AdminPanel] Nenhuma fila encontrada após processamento');
+                this.showError('Nenhuma fila disponível no momento.');
                 return;
             }
 
@@ -403,7 +422,7 @@ class AdminPanel {
                         <td>${queue.active_tickets || 0}</td>
                         <td>${queue.current_ticket ? `${queue.prefix || ''}${queue.current_ticket.toString().padStart(3, '0')}` : 'N/A'}</td>
                         <td><span class="status-${queue.status ? queue.status.toLowerCase() : 'ativo'}">${queue.status || 'Ativo'}</span></td>
-                        <td><button class="btn secondary-btn" onclick="adminPanel.callNextTicket('${queue.service}')" aria-label="Chamar próximo ticket para ${queue.service}">Chamar Próximo</button></td>
+                        <td><button class="btn secondary-btn" onclick="adminPanel.callNextTicket('${queue.service || ''}')" aria-label="Chamar próximo ticket">Chamar Próximo</button></td>
                     </tr>
                 `;
                 
@@ -413,21 +432,26 @@ class AdminPanel {
         } catch (error) {
             console.error('[AdminPanel] Erro ao carregar filas:', error);
             this.showError('Erro ao carregar filas', error);
+            tableBody.innerHTML = '<tr><td colspan="5">Erro ao carregar filas</td></tr>';
+            fullTableBody.innerHTML = '<tr><td colspan="5">Erro ao carregar filas</td></tr>';
             if (error.message.includes('Sessão expirada')) {
                 setTimeout(() => {
                     AuthManager.logout('session_expired');
                 }, 3000);
             }
-            tableBody.innerHTML = '<tr><td colspan="5">Erro ao carregar filas</td></tr>';
-            fullTableBody.innerHTML = '<tr><td colspan="5">Erro ao carregar filas</td></tr>';
         }
     }
 
     async callNextTicket(service) {
+        if (!service) {
+            console.warn('[AdminPanel] Serviço não especificado para chamar próximo ticket');
+            this.showError('Serviço inválido');
+            return;
+        }
         try {
             console.log('[AdminPanel] Chamando próximo ticket para', service);
             const data = await ApiService.callNextTicket(service);
-            this.showSuccess(`Senha ${data.ticket_number} chamada para o guichê ${data.counter}`);
+            this.showSuccess(`Senha ${data.ticket_number || 'N/A'} chamada para o guichê ${data.counter || 'N/A'}`);
             await this.loadInitialData();
         } catch (error) {
             console.error('[AdminPanel] Erro ao chamar próximo ticket:', error);
@@ -440,13 +464,16 @@ class AdminPanel {
         }
     }
 
-    async loadTickets(tickets = null) {
+    async loadTickets(tickets = []) {
         const tableBody = document.getElementById('tickets-table');
-        if (!tableBody) return;
+        if (!tableBody) {
+            console.warn('[AdminPanel] Tabela de tickets não encontrada');
+            return;
+        }
 
         try {
             console.log('[AdminPanel] Carregando tickets');
-            const ticketsData = tickets || await ApiService.getTickets();
+            const ticketsData = tickets.length ? tickets : await ApiService.getTickets();
             const filter = document.getElementById('ticket-status-filter')?.value;
             const validStatuses = ['Pendente', 'Chamado', 'attended', 'Cancelado'];
             
@@ -478,12 +505,12 @@ class AdminPanel {
         } catch (error) {
             console.error('[AdminPanel] Erro ao carregar tickets:', error);
             this.showError('Erro ao carregar tickets', error);
+            tableBody.innerHTML = '<tr><td colspan="5">Erro ao carregar tickets</td></tr>';
             if (error.message.includes('Sessão expirada')) {
                 setTimeout(() => {
                     AuthManager.logout('session_expired');
                 }, 3000);
             }
-            tableBody.innerHTML = '<tr><td colspan="5">Erro ao carregar tickets</td></tr>';
         }
     }
 
@@ -503,7 +530,7 @@ class AdminPanel {
             
             let filteredTickets = tickets;
             if (date) {
-                filteredTickets = tickets.filter(t => t.issued_at?.startsWith(date));
+                filteredTickets = tickets.filter(t => (t.issued_at || '').startsWith(date));
             }
 
             const ctx = document.getElementById('report-chart').getContext('2d');
@@ -533,7 +560,7 @@ class AdminPanel {
                     }
                 });
             } else if (reportType === 'wait-time') {
-                const services = [...new Set(filteredTickets.map(t => t.service))];
+                const services = [...new Set(filteredTickets.map(t => t.service || 'Desconhecido'))];
                 const avgWaitTimes = services.map(service => {
                     const times = filteredTickets
                         .filter(t => t.service === service && t.wait_time && t.wait_time !== 'N/A' && !isNaN(parseFloat(t.wait_time)))
@@ -709,7 +736,7 @@ class LoginManager {
                 window.location.href = 'index.html';
             } else {
                 console.error('[LoginManager] Falha ao salvar sessão:', data);
-                throw new Error('Erro ao salvar a sessão. Verifique os dados retornados pelo servidor.');
+                throw new Error('Erro ao salvar a sessão. Verifique os dados retornados.');
             }
         } catch (error) {
             console.error('[LoginManager] Erro no login:', error);
