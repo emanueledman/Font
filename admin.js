@@ -216,13 +216,12 @@ class AdminPanel {
             ]);
             const today = new Date().toISOString().split('T')[0];
 
-            // Usar tickets diretamente do backend
-            const userTickets = tickets;
+            // Confiar nos dados filtrados do backend
             const activeQueues = queues.length;
-            const pendingTickets = userTickets.filter(t => t.status === 'Pendente').length;
-            const attendedToday = userTickets.filter(t => t.status === 'attended' && t.issued_at.startsWith(today)).length;
+            const pendingTickets = tickets.filter(t => t.status === 'Pendente').length;
+            const attendedToday = tickets.filter(t => t.status === 'attended' && t.issued_at.startsWith(today)).length;
             
-            const waitTimes = userTickets
+            const waitTimes = tickets
                 .filter(t => t.wait_time && t.wait_time !== 'N/A')
                 .map(t => parseFloat(t.wait_time) || 0);
             
@@ -304,7 +303,7 @@ class AdminPanel {
             const tickets = await ApiService.getTickets();
             const filter = document.getElementById('ticket-status-filter')?.value;
             
-            // Usar tickets diretamente do backend
+            // Confiar nos dados filtrados do backend
             let filteredTickets = tickets;
             if (filter) {
                 filteredTickets = filteredTickets.filter(t => t.status === filter);
@@ -344,7 +343,7 @@ class AdminPanel {
             const reportType = document.getElementById('report-type').value;
             const tickets = await ApiService.getTickets();
             
-            // Usar tickets diretamente do backend
+            // Confiar nos dados filtrados do backend
             let filteredTickets = tickets;
             if (date) {
                 filteredTickets = filteredTickets.filter(t => t.issued_at.startsWith(date));
