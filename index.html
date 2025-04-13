@@ -3,71 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão de Filas - Vacinação</title>
+    <title>Fila Vacinação</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             margin: 0;
             padding: 20px;
-            background-color: #f4f4f4;
+            background: #f0f2f5;
         }
         .container {
-            max-width: 800px;
+            max-width: 600px;
             margin: 0 auto;
             background: #fff;
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
-        h1, h2, h3 {
+        h1, h2 {
+            color: #1a73e8;
+            margin-bottom: 15px;
+        }
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        p {
+            margin: 5px 0;
             color: #333;
         }
-        .user-info {
-            margin-bottom: 20px;
+        .ticket {
             padding: 10px;
-            background: #e7f3ff;
-            border-radius: 4px;
+            border-bottom: 1px solid #e0e0e0;
         }
-        .queue-info, .tickets-list {
-            margin-bottom: 20px;
-        }
-        .queue-info p, .tickets-list p {
-            margin: 5px 0;
-        }
-        .ticket-item {
-            padding: 10px;
-            border-bottom: 1px solid #ddd;
-        }
-        .ticket-item:last-child {
+        .ticket:last-child {
             border-bottom: none;
         }
-        .status-pendente { color: #007bff; }
-        .status-chamado { color: #ffc107; }
-        .status-attended { color: #28a745; }
-        .status-cancelado { color: #dc3545; }
+        .status-pendente { color: #1a73e8; font-weight: bold; }
+        .status-attended { color: #0d652d; font-weight: bold; }
+        .status-chamado { color: #f4b400; font-weight: bold; }
+        .status-cancelado { color: #d93025; font-weight: bold; }
         .error {
-            color: #721c24;
-            background: #f8d7da;
+            color: #d93025;
+            background: #fce8e6;
             padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 20px;
+            border-radius: 5px;
+            margin-bottom: 15px;
             display: none;
         }
         .loading {
             text-align: center;
-            padding: 20px;
+            padding: 15px;
+            color: #555;
             display: none;
         }
         button {
-            padding: 8px 16px;
-            background: #007bff;
+            padding: 10px 20px;
+            background: #1a73e8;
             color: #fff;
             border: none;
-            border-radius: 4px;
+            border-radius: 5px;
             cursor: pointer;
+            margin-top: 10px;
         }
-        button:hover {
-            background: #0056b3;
+        button:hover:not(:disabled) {
+            background: #1557b0;
         }
         button:disabled {
             background: #ccc;
@@ -77,27 +78,206 @@
 </head>
 <body>
     <div class="container">
-        <h1>Gestão de Filas</h1>
+        <h1>Fila Vacinação</h1>
         <div id="error" class="error"></div>
         <div id="loading" class="loading">Carregando...</div>
-        <div id="user-info" class="user-info">
-            <h3>Usuário</h3>
-            <p id="user-email">Carregando...</p>
-            <p id="user-department">Carregando...</p>
+
+        <div class="section" id="user-section">
+            <h2>Gestor</h2>
+            <p id="user-email">Email: Carregando...</p>
+            <p id="user-department">Departamento: Carregando...</p>
             <button id="logout">Sair</button>
         </div>
-        <div id="queue-info" class="queue-info">
-            <h3>Fila</h3>
-            <p id="queue-service">Nenhuma fila encontrada</p>
-            <p id="queue-status">Status: N/A</p>
-            <p id="queue-tickets">Tickets Ativos: 0</p>
+
+        <div class="section" id="queue-section">
+            <h2>Fila</h2>
+            <p id="queue-service">Serviço: Carregando...</p>
+            <p id="queue-status">Status: Carregando...</p>
+            <p id="queue-tickets">Tickets Ativos: Carregando...</p>
             <button id="call-next" disabled>Chamar Próximo</button>
         </div>
-        <div id="tickets-list" class="tickets-list">
-            <h3>Tickets</h3>
+
+        <div class="section" id="tickets-section">
+            <h2>Tickets</h2>
             <div id="tickets-container"></div>
         </div>
     </div>
-    <script src="app.js"></script>
+    <script>
+        const API_BASE_URL = 'https://fila-facilita2-0.onrender.com';
+
+        class FilaApp {
+            constructor() {
+                this.token = localStorage.getItem('token');
+                this.user = JSON.parse(localStorage.getItem('userInfo')) || {};
+                this.queueId = null;
+                this.init();
+            }
+
+            async init() {
+                console.log('Inicializando app...');
+                console.log('Token:', this.token ? 'Presente' : 'Ausente');
+                console.log('Usuário:', this.user);
+
+                if (!this.token || !this.user.email || !this.user.user_id) {
+                    console.error('Usuário não autenticado');
+                    this.showError('Faça login para continuar');
+                    setTimeout(() => window.location.href = 'login.html', 2000);
+                    return;
+                }
+
+                this.setupListeners();
+                await this.loadData();
+            }
+
+            setupListeners() {
+                console.log('Configurando listeners...');
+                document.getElementById('logout').addEventListener('click', () => {
+                    console.log('Logout acionado');
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('userInfo');
+                    window.location.href = 'login.html';
+                });
+
+                document.getElementById('call-next').addEventListener('click', async () => {
+                    console.log('Chamar próximo clicado, queueId:', this.queueId);
+                    if (!this.queueId) {
+                        this.showError('Nenhuma fila disponível');
+                        return;
+                    }
+                    try {
+                        document.getElementById('call-next').disabled = true;
+                        const data = await this.fetchData(`/api/admin/queue/${this.queueId}/call`, 'POST');
+                        console.log('Resposta de chamar próximo:', data);
+                        this.showSuccess(`Ticket ${data.ticket_number} chamado (guichê ${data.counter})`);
+                        await this.loadData();
+                    } catch (error) {
+                        console.error('Erro ao chamar próximo:', error);
+                        this.showError('Erro ao chamar ticket');
+                    } finally {
+                        document.getElementById('call-next').disabled = false;
+                    }
+                });
+            }
+
+            async fetchData(endpoint, method = 'GET', body = null) {
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.token}`
+                };
+                const config = { method, headers };
+                if (body) config.body = JSON.stringify(body);
+
+                console.log(`Requisição: ${API_BASE_URL}${endpoint}`, { method, headers: { ...headers, Authorization: '[PROTECTED]' }, body });
+
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    console.error(`Erro ${response.status}:`, data);
+                    throw new Error(data.error || 'Erro na requisição');
+                }
+
+                return data;
+            }
+
+            async loadData() {
+                this.showLoading(true);
+                try {
+                    console.log('Carregando dados do usuário:', this.user);
+                    document.getElementById('user-email').textContent = `Email: ${this.user.email || 'N/A'}`;
+                    document.getElementById('user-department').textContent = `Departamento: ${this.user.department || 'N/A'}`;
+
+                    console.log('Buscando filas...');
+                    const queues = await this.fetchData('/api/admin/queues');
+                    console.log('Resposta /api/admin/queues:', queues);
+
+                    const queueService = document.getElementById('queue-service');
+                    const queueStatus = document.getElementById('queue-status');
+                    const queueTickets = document.getElementById('queue-tickets');
+                    const callNextBtn = document.getElementById('call-next');
+
+                    if (!queues || queues.length === 0) {
+                        console.warn('Nenhuma fila encontrada');
+                        queueService.textContent = 'Serviço: Nenhuma fila';
+                        queueStatus.textContent = 'Status: N/A';
+                        queueTickets.textContent = 'Tickets Ativos: 0';
+                        callNextBtn.disabled = true;
+                    } else {
+                        const queue = queues[0];
+                        this.queueId = queue.id;
+                        queueService.textContent = `Serviço: ${queue.service || 'N/A'}`;
+                        queueStatus.textContent = `Status: ${queue.status || 'N/A'}`;
+                        queueTickets.textContent = `Tickets Ativos: ${queue.active_tickets || 0}`;
+                        callNextBtn.disabled = queue.status !== 'Aberto';
+                        console.log('Fila carregada:', queue);
+                    }
+
+                    console.log('Buscando tickets...');
+                    const tickets = await this.fetchData('/api/tickets/admin');
+                    console.log('Resposta /api/tickets/admin:', tickets);
+                    this.renderTickets(tickets);
+                } catch (error) {
+                    console.error('Erro ao carregar dados:', error);
+                    this.showError('Erro ao carregar informações');
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            renderTickets(tickets) {
+                const container = document.getElementById('tickets-container');
+                container.innerHTML = '';
+
+                if (!tickets || tickets.length === 0) {
+                    console.warn('Nenhum ticket encontrado');
+                    container.innerHTML = '<p>Nenhum ticket disponível</p>';
+                    return;
+                }
+
+                tickets.forEach(ticket => {
+                    console.log('Renderizando ticket:', ticket);
+                    const ticketDiv = document.createElement('div');
+                    ticketDiv.className = 'ticket';
+                    ticketDiv.innerHTML = `
+                        <p><strong>Ticket:</strong> ${ticket.number || 'N/A'}</p>
+                        <p><strong>Serviço:</strong> ${ticket.service || 'N/A'}</p>
+                        <p><strong>Status:</strong> <span class="status-${(ticket.status || '').toLowerCase()}">${ticket.status || 'N/A'}</span></p>
+                        <p><strong>Guichê:</strong> ${ticket.counter || 'N/A'}</p>
+                    `;
+                    container.appendChild(ticketDiv);
+                });
+
+                console.log(`Total de tickets renderizados: ${tickets.length}`);
+            }
+
+            showError(message) {
+                console.log('Exibindo erro:', message);
+                const errorDiv = document.getElementById('error');
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+                setTimeout(() => errorDiv.style.display = 'none', 5000);
+            }
+
+            showSuccess(message) {
+                console.log('Exibindo sucesso:', message);
+                const errorDiv = document.getElementById('error');
+                errorDiv.textContent = message;
+                errorDiv.className = 'error success';
+                errorDiv.style.display = 'block';
+                setTimeout(() => {
+                    errorDiv.style.display = 'none';
+                    errorDiv.className = 'error';
+                }, 3000);
+            }
+
+            showLoading(show) {
+                console.log('Loading:', show);
+                document.getElementById('loading').style.display = show ? 'block' : 'none';
+            }
+        }
+
+        console.log('Carregando app...');
+        new FilaApp();
+    </script>
 </body>
 </html>
