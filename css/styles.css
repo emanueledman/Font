@@ -1,4 +1,3 @@
-
 :root {
     --primary: #4f46e5;
     --primary-light: #818cf8;
@@ -89,6 +88,12 @@ body {
 .sidebar-collapse .sidebar-header span,
 .sidebar-collapse .menu-item span {
     display: none;
+}
+
+.menu-items {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
 }
 
 .menu-item {
@@ -237,6 +242,10 @@ body {
 .card-title i {
     margin-right: 0.5rem;
     color: var(--primary);
+}
+
+.table-responsive {
+    overflow-x: auto;
 }
 
 table {
@@ -542,19 +551,6 @@ tbody tr:hover {
     max-width: 350px;
     display: flex;
     align-items: center;
-}
-
-.notification i {
-    margin-right: 0.75rem;
-    font-size: 1.25rem;
-}
-
-.notification.success i {
-    color: var(--success);
-}
-
-.notification.error i {
-    color: var(--danger);
 }
 
 @keyframes slideIn {

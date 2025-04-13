@@ -158,7 +158,7 @@ class ApiService {
 function showNotification(message, type = 'success') {
     const notification = document.createElement('div');
     notification.className = `notification ${type === 'success' ? 'alert-success' : 'alert-danger'}`;
-    notification.textContent = message;
+    notification.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${message}`;
     document.body.appendChild(notification);
     setTimeout(() => notification.remove(), 3000);
 }
@@ -315,7 +315,7 @@ function openCallNextModal(queueId, service) {
     const buttonText = document.getElementById('call-button-text');
     const spinner = document.getElementById('call-spinner');
 
-    if (!modal || !serviceText || !confirmBtn) {
+    if (!modal || !serviceText || !confirmBtn || !cancelBtn || !finishBtn) {
         console.error('[Modal] Elementos do modal não encontrados');
         showNotification('Erro: Interface não carregada corretamente', 'error');
         return;
@@ -340,6 +340,7 @@ function openCallNextModal(queueId, service) {
         buttonText.classList.add('hidden');
         spinner.classList.remove('hidden');
         confirmBtn.disabled = true;
+        cancelBtn.disabled = true;
 
         try {
             const result = await ApiService.callNextTicket(queueId);
@@ -367,6 +368,7 @@ function openCallNextModal(queueId, service) {
             buttonText.classList.remove('hidden');
             spinner.classList.add('hidden');
             confirmBtn.disabled = false;
+            cancelBtn.disabled = false;
         }
     };
 }
@@ -413,7 +415,7 @@ async function handleLogin(event) {
         initApp();
     } catch (error) {
         console.error('[Login] Erro:', error);
-        errorDiv.textContent = 'Erro ao fazer login: ' + error.message;
+        errorDiv.querySelector('span').textContent = 'Erro ao fazer login: ' + error.message;
         errorDiv.classList.remove('hidden');
     } finally {
         buttonText.classList.remove('hidden');
@@ -442,7 +444,9 @@ function toggleSidebar() {
     }
     console.log('[Sidebar] Alternando sidebar');
     const sidebar = document.getElementById('sidebar');
+    const content = document.querySelector('.content');
     sidebar.classList.toggle('sidebar-collapse');
+    content.classList.toggle('content-expand');
 }
 
 // Função para mostrar/esconder páginas
@@ -474,7 +478,7 @@ async function initApp(message = null) {
     const messageDiv = document.getElementById('login-message');
 
     if (message && messageDiv) {
-        messageDiv.textContent = message;
+        messageDiv.querySelector('span').textContent = message;
         messageDiv.classList.remove('hidden');
     }
 
@@ -524,7 +528,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cancelModalButton) cancelModalButton.addEventListener('click', closeCallNextModal);
 
     const finishModalButton = document.getElementById('finish-call-next');
-    if (finishModalButton) finishModalButton.addEventListener('click', closeCallNextModal);
+    if (finishModalButton) finishModalButton.addEventListener('click', () => {
+        closeCallNextModal();
+        updateDashboard();
+        updateQueuesPage();
+        updateTicketsPage();
+    });
 
     document.querySelectorAll('.menu-item[data-page]').forEach(item => {
         item.addEventListener('click', () => {

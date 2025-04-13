@@ -3,66 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Facilita - Dashboard Administrativo</title>
-    <link rel="stylesheet" href="/css/styles.css">
-    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body>
-    <div class="app-container">
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <h2>Facilita Admin</h2>
-            </div>
-            <nav class="sidebar-nav">
-                <ul>
-                    <li class="active"><a href="/dashboard.html"><i class="fas fa-home"></i> Dashboard</a></li>
-                </ul>
-            </nav>
-            <div class="sidebar-footer">
-                <button id="theme-toggle" class="btn btn-icon"><i class="fas fa-moon"></i></button>
-                <button id="logout-btn" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i> Sair</button>
-            </div>
-        </aside>
-        <main class="main-content">
-            <header class="header">
-                <h1>Minhas Filas</h1>
-                <div class="header-actions">
-                    <span id="user-info">Gestor</span>
-                    <button id="refresh-btn" class="btn btn-primary"><i class="fas fa-sync"></i> Atualizar</button>
-                </div>
-            </header>
-            <div class="card">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Serviço</th>
-                            <th>Senhas Ativas</th>
-                            <th>Senha Atual</th>
-                            <th>Status</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="queues-table"></tbody>
-                </table>
-            </div>
-        </main>
-    </div>
-    <div id="toast-container"></div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
-    <script src="/js/auth.js"></script>
-    <script src="/js/api.js"></script>
-    <script src="/js/toast.js"></script>
-    <script src="/js/dashboard.js"></script>
-</body>
-</html><!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FilaFacilita - Painel do Gestor</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
- 
+    <link rel="stylesheet" href="/css/styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
 </head>
 <body>
     <!-- Tela de Login -->
@@ -273,7 +217,73 @@
         </div>
     </div>
     
+    <!-- Modal para chamar próxima senha -->
+    <div id="call-next-modal" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Chamar Próxima Senha</h3>
+                <button id="close-call-modal" class="modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- Informações da chamada -->
+                <div id="call-next-info">
+                    <p style="text-align: center; margin-bottom: 1.5rem;">
+                        Você está prestes a chamar a próxima senha para:
+                    </p>
+                    <h3 id="call-next-service" style="text-align: center; margin-bottom: 2rem; color: var(--primary-dark);">
+                        Serviço
+                    </h3>
+                    <p style="text-align: center; color: var(--secondary);">
+                        Confirma a chamada da próxima senha na fila?
+                    </p>
+                </div>
+                
+                <!-- Resultado da chamada -->
+                <div id="call-next-result" class="hidden">
+                    <!-- Sucesso -->
+                    <div id="call-success" class="ticket-info hidden">
+                        <div class="icon-circle">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <h4>Senha chamada com sucesso!</h4>
+                        <div class="ticket-number" id="result-ticket-number">A123</div>
+                        <div class="counter-info">
+                            Guichê: <strong id="result-counter">1</strong>
+                        </div>
+                        <p>
+                            Senhas restantes na fila: <strong id="result-remaining">5</strong>
+                        </p>
+                    </div>
+                    
+                    <!-- Erro -->
+                    <div id="call-error" class="ticket-info hidden">
+                        <div class="icon-circle error">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </div>
+                        <h4>Erro ao chamar senha</h4>
+                        <p id="call-error-message">Ocorreu um erro ao chamar a próxima senha.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button id="cancel-call-next" class="btn btn-danger hidden">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button id="confirm-call-next" class="btn btn-primary">
+                    <span id="call-button-text">Confirmar</span>
+                    <span id="call-spinner" class="loading-spinner hidden"></span>
+                </button>
+                <button id="finish-call-next" class="btn btn-success hidden">
+                    <i class="fas fa-check"></i> Concluir
+                </button>
+            </div>
+        </div>
+    </div>
     
-     <script src="admin.js"></script>
+    <script src="/js/admin.js"></script>
 </body>
 </html>
