@@ -86,6 +86,8 @@ class ApiService {
 
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
+        } else {
+            throw new Error('Nenhum token de autenticação encontrado');
         }
 
         const config = {
@@ -105,7 +107,7 @@ class ApiService {
 
             if (response.status === 401) {
                 console.warn('[ApiService] Sessão expirada');
-                logout();
+                logout('Sessão expirada. Por favor, faça login novamente.');
                 throw new Error('Sessão expirada');
             }
 
@@ -139,6 +141,16 @@ class ApiService {
 
     static async callNextTicket(queueId) {
         return await this.request(`/api/admin/queue/${queueId}/call`, 'POST');
+    }
+
+    static async validateToken() {
+        try {
+            await this.request('/api/admin/queues');
+            return true;
+        } catch (error) {
+            console.error('[ApiService] Token inválido:', error);
+            return false;
+        }
     }
 }
 
@@ -184,6 +196,10 @@ function formatQueueStatus(activeTickets, dailyLimit) {
 
 // Função para atualizar dashboard
 async function updateDashboard() {
+    if (!token || !userInfo.email) {
+        logout('Acesso não autorizado. Por favor, faça login.');
+        return;
+    }
     try {
         const queues = await ApiService.getAdminQueues();
         const tickets = await ApiService.getAdminTickets();
@@ -227,6 +243,10 @@ async function updateDashboard() {
 
 // Função para atualizar página de filas
 async function updateQueuesPage() {
+    if (!token || !userInfo.email) {
+        logout('Acesso não autorizado. Por favor, faça login.');
+        return;
+    }
     try {
         const queues = await ApiService.getAdminQueues();
         const queuesBody = document.getElementById('queues-table-body');
@@ -253,6 +273,10 @@ async function updateQueuesPage() {
 
 // Função para atualizar página de senhas
 async function updateTicketsPage() {
+    if (!token || !userInfo.email) {
+        logout('Acesso não autorizado. Por favor, faça login.');
+        return;
+    }
     try {
         const tickets = await ApiService.getAdminTickets();
         const ticketsBody = document.getElementById('tickets-table-body');
@@ -274,6 +298,10 @@ async function updateTicketsPage() {
 
 // Função para abrir modal de chamar próxima senha
 function openCallNextModal(queueId, service) {
+    if (!token || !userInfo.email) {
+        logout('Acesso não autorizado. Por favor, faça login.');
+        return;
+    }
     console.log('[Modal] Abrindo modal para:', { queueId, service });
     const modal = document.getElementById('call-next-modal');
     const serviceText = document.getElementById('call-next-service');
@@ -357,11 +385,13 @@ async function handleLogin(event) {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     const errorDiv = document.getElementById('login-error');
+    const messageDiv = document.getElementById('login-message');
     const buttonText = document.getElementById('login-button-text');
     const spinner = document.getElementById('login-spinner');
     const loginBtn = document.querySelector('#login-form button');
 
     errorDiv.classList.add('hidden');
+    messageDiv.classList.add('hidden');
     buttonText.classList.add('hidden');
     spinner.classList.remove('hidden');
     loginBtn.disabled = true;
@@ -393,7 +423,7 @@ async function handleLogin(event) {
 }
 
 // Função para logout
-function logout() {
+function logout(message = null) {
     console.log('[Logout] Realizando logout');
     token = null;
     userInfo = {};
@@ -401,11 +431,15 @@ function logout() {
     localStorage.removeItem('userInfo');
     if (socket) socket.disconnect();
     stopPolling();
-    initApp();
+    initApp(message);
 }
 
 // Função para alternar sidebar
 function toggleSidebar() {
+    if (!token || !userInfo.email) {
+        logout('Acesso não autorizado. Por favor, faça login.');
+        return;
+    }
     console.log('[Sidebar] Alternando sidebar');
     const sidebar = document.getElementById('sidebar');
     sidebar.classList.toggle('sidebar-collapse');
@@ -413,6 +447,10 @@ function toggleSidebar() {
 
 // Função para mostrar/esconder páginas
 function showPage(pageId) {
+    if (!token || !userInfo.email) {
+        logout('Acesso não autorizado. Por favor, faça login.');
+        return;
+    }
     console.log('[Navegação] Mostrando página:', pageId);
     document.querySelectorAll('.page').forEach(page => page.classList.add('hidden'));
     document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
@@ -426,28 +464,45 @@ function showPage(pageId) {
 }
 
 // Função para inicializar a aplicação
-function initApp() {
+async function initApp(message = null) {
     console.log('[App] Inicializando aplicação', { token, userInfo });
     const loginScreen = document.getElementById('login-screen');
     const appScreen = document.getElementById('app-screen');
     const userAvatar = document.getElementById('user-avatar');
     const userName = document.getElementById('user-name');
     const userDepartment = document.getElementById('user-department');
+    const messageDiv = document.getElementById('login-message');
 
-    if (token && userInfo.email) {
-        loginScreen.classList.add('hidden');
-        appScreen.classList.remove('hidden');
-        userAvatar.textContent = userInfo.email[0].toUpperCase();
-        userName.textContent = userInfo.email.split('@')[0];
-        userDepartment.textContent = userInfo.department || 'N/A';
-        initWebSocket();
-        stopPolling();
-        updateDashboard();
-        showPage('dashboard');
-    } else {
+    if (message && messageDiv) {
+        messageDiv.textContent = message;
+        messageDiv.classList.remove('hidden');
+    }
+
+    if (!token || !userInfo.email) {
+        console.log('[App] Sem autenticação, mostrando tela de login');
         loginScreen.classList.remove('hidden');
         appScreen.classList.add('hidden');
+        return;
     }
+
+    // Validar token no servidor
+    const isValidToken = await ApiService.validateToken();
+    if (!isValidToken) {
+        console.log('[App] Token inválido, redirecionando para login');
+        logout('Sessão inválida. Por favor, faça login novamente.');
+        return;
+    }
+
+    console.log('[App] Usuário autenticado, mostrando aplicação');
+    loginScreen.classList.add('hidden');
+    appScreen.classList.remove('hidden');
+    userAvatar.textContent = userInfo.email[0].toUpperCase();
+    userName.textContent = userInfo.email.split('@')[0];
+    userDepartment.textContent = userInfo.department || 'N/A';
+    initWebSocket();
+    stopPolling();
+    updateDashboard();
+    showPage('dashboard');
 }
 
 // Configurar eventos
@@ -457,7 +512,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (loginForm) loginForm.addEventListener('submit', handleLogin);
 
     const logoutButton = document.getElementById('logout-button');
-    if (logoutButton) logoutButton.addEventListener('click', logout);
+    if (logoutButton) logoutButton.addEventListener('click', () => logout());
 
     const toggleSidebarButton = document.getElementById('toggle-sidebar');
     if (toggleSidebarButton) toggleSidebarButton.addEventListener('click', toggleSidebar);
