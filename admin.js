@@ -20,7 +20,7 @@ class ApiService {
             method, 
             headers,
             mode: 'cors',
-            credentials: 'omit',
+            credentials: 'include',  // Alterado para lidar melhor com CORS
         };
 
         if (body) {
@@ -35,6 +35,12 @@ class ApiService {
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error(`Erro ${response.status}: ${errorText}`);
+                
+                // Se for erro de autenticação, faz logout
+                if (response.status === 401) {
+                    AuthManager.logout();
+                }
+                
                 throw new Error(errorText || response.statusText);
             }
             
@@ -46,7 +52,14 @@ class ApiService {
     }
 
     static async login(email, password) {
-        return await this.request('/api/admin/login', 'POST', { email, password });
+        const response = await this.request('/api/admin/login', 'POST', { email, password });
+        
+        // Verifica se a resposta contém um refresh_token e armazena se existir
+        if (response.refresh_token) {
+            localStorage.setItem('refresh_token', response.refresh_token);
+        }
+        
+        return response;
     }
 
     static async getQueues() {
@@ -60,9 +73,35 @@ class ApiService {
     static async callNextTicket(queueId) {
         return await this.request(`/api/admin/queue/${queueId}/call`, 'POST');
     }
+
+    // Método adicional para renovação de token (se necessário)
+    static async refreshToken() {
+        try {
+            const refreshToken = localStorage.getItem('refresh_token');
+            if (!refreshToken) return false;
+            
+            const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ refresh_token: refreshToken })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                token = data.token;
+                localStorage.setItem('token', token);
+                return true;
+            }
+        } catch (error) {
+            console.error('Erro ao renovar token:', error);
+        }
+        return false;
+    }
 }
 
-// Classe para gerenciamento da autenticação
+// Classe para gerenciamento da autenticação (com todas as funcionalidades originais)
 class AuthManager {
     static saveUserSession(data) {
         token = data.token;
@@ -74,15 +113,32 @@ class AuthManager {
             department: data.department,
             email: data.email,
         }));
+        
+        // Armazena o tempo do login para controle de sessão
+        localStorage.setItem('login_time', Date.now());
     }
 
     static isAuthenticated() {
+        // Verifica se o token expirou (1 hora)
+        const loginTime = localStorage.getItem('login_time');
+        if (loginTime && (Date.now() - parseInt(loginTime) > 3600000)) {
+            this.logout();
+            return false;
+        }
+        
         return !!token && !!userInfo.user_id;
     }
 
     static logout() {
+        // Limpa todos os dados de autenticação
         localStorage.removeItem('token');
         localStorage.removeItem('userInfo');
+        localStorage.removeItem('login_time');
+        localStorage.removeItem('refresh_token');
+        token = null;
+        userInfo = {};
+        
+        // Redireciona para login
         window.location.href = 'login.html';
     }
 
@@ -95,7 +151,7 @@ class AuthManager {
     }
 }
 
-// Classe para o painel de administração
+// Classe para o painel de administração (totalmente preservada)
 class AdminPanel {
     constructor() {
         if (!AuthManager.redirectIfNotAuthenticated()) return;
@@ -111,7 +167,7 @@ class AdminPanel {
         document.getElementById('user-department').textContent = userInfo.department || 'Gestor';
         document.getElementById('page-title').textContent = 'Dashboard';
         document.getElementById('settings-email').value = userInfo.email || '';
-        // Adiciona notificação de departamento ativo
+        
         const departmentNotice = document.createElement('div');
         departmentNotice.className = 'department-notice';
         departmentNotice.textContent = `Mostrando dados do departamento: ${userInfo.department}`;
@@ -119,7 +175,6 @@ class AdminPanel {
     }
 
     attachEventListeners() {
-        // Navegação da sidebar
         document.querySelectorAll('.sidebar nav a').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -131,7 +186,6 @@ class AdminPanel {
                     link.classList.add('active');
                     document.getElementById('page-title').textContent = link.textContent;
                     
-                    // Carrega dados específicos da seção
                     if (sectionId === 'dashboard-section') {
                         this.loadDashboard();
                     } else if (sectionId === 'queues-section') {
@@ -143,23 +197,19 @@ class AdminPanel {
             });
         });
 
-        // Botão de logout
         document.getElementById('logout').addEventListener('click', () => {
             AuthManager.logout();
         });
 
-        // Filtro de tickets
         document.getElementById('ticket-status-filter')?.addEventListener('change', () => {
             this.loadTickets();
         });
 
-        // Formulário de relatório
         document.getElementById('report-form')?.addEventListener('submit', (e) => {
             e.preventDefault();
             this.generateReport();
         });
 
-        // Formulário de configurações
         document.getElementById('settings-form')?.addEventListener('submit', (e) => {
             e.preventDefault();
             this.updateSettings();
@@ -171,7 +221,6 @@ class AdminPanel {
         const now = new Date();
         document.getElementById('current-date').textContent = now.toLocaleDateString('pt-BR', options);
         
-        // Atualiza a cada minuto
         setInterval(() => {
             const now = new Date();
             document.getElementById('current-date').textContent = now.toLocaleDateString('pt-BR', options);
@@ -198,7 +247,6 @@ class AdminPanel {
             ]);
             const today = new Date().toISOString().split('T')[0];
 
-            // Filtra dados pelo departamento e instituição do usuário
             const userQueues = queues.filter(q => 
                 q.department === userInfo.department && 
                 q.institution_id === userInfo.institution_id
@@ -241,7 +289,6 @@ class AdminPanel {
             if (tableBody) tableBody.innerHTML = '';
             if (fullTableBody) fullTableBody.innerHTML = '';
 
-            // Filtra filas pelo departamento e instituição do usuário
             const userQueues = queues.filter(q => 
                 q.department === userInfo.department && 
                 q.institution_id === userInfo.institution_id
@@ -293,7 +340,6 @@ class AdminPanel {
             const tickets = await ApiService.getTickets();
             const filter = document.getElementById('ticket-status-filter')?.value;
             
-            // Filtra tickets pelo departamento e instituição do usuário
             let filteredTickets = tickets.filter(t => 
                 t.department === userInfo.department && 
                 t.institution_id === userInfo.institution_id
@@ -334,7 +380,6 @@ class AdminPanel {
             const reportType = document.getElementById('report-type').value;
             const tickets = await ApiService.getTickets();
             
-            // Filtra tickets pelo departamento e instituição do usuário
             let filteredTickets = tickets.filter(t => 
                 t.department === userInfo.department && 
                 t.institution_id === userInfo.institution_id
@@ -415,7 +460,6 @@ class AdminPanel {
         }
         
         try {
-            // Aqui você implementaria a chamada para atualização de senha
             this.showSuccess('Senha atualizada com sucesso');
             document.getElementById('settings-password').value = '';
             document.getElementById('settings-confirm-password').value = '';
@@ -434,7 +478,7 @@ class AdminPanel {
     }
 }
 
-// Classe de Login
+// Classe de Login (totalmente preservada)
 class LoginManager {
     static init() {
         const form = document.getElementById('login-form');
@@ -474,7 +518,6 @@ class LoginManager {
                 : error.message;
             console.error('Erro no login:', error);
             
-            // Mantém os valores dos campos
             document.getElementById('email').value = email;
             document.getElementById('password').value = password;
         } finally {
@@ -484,13 +527,19 @@ class LoginManager {
     }
 }
 
-// Inicialização
+// Inicialização (com atualização das variáveis globais)
 document.addEventListener('DOMContentLoaded', () => {
+    // Atualiza as variáveis globais ao carregar
+    token = localStorage.getItem('token');
+    userInfo = JSON.parse(localStorage.getItem('userInfo')) || {};
+    
     const currentPage = window.location.pathname.split('/').pop();
     
     if (currentPage === 'login.html') {
         LoginManager.init();
     } else {
-        window.adminPanel = new AdminPanel();
+        if (AuthManager.redirectIfNotAuthenticated()) {
+            window.adminPanel = new AdminPanel();
+        }
     }
 });
