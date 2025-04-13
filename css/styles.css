@@ -1,8 +1,8 @@
 :root {
-    --primary: #6366f1; /* Índigo suave */
-    --primary-dark: #4f46e5;
+    --primary: #4f46e5; /* Índigo moderno */
+    --primary-dark: #4338ca;
     --primary-light: #e0e7ff;
-    --secondary: #14b8a6; /* Teal moderno */
+    --secondary: #14b8a6; /* Teal vibrante */
     --secondary-dark: #0d9488;
     --danger: #ef4444;
     --warning: #f59e0b;
@@ -30,6 +30,16 @@ body {
     color: var(--gray-800);
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+}
+
+/* Layout */
+.main-content {
+    min-height: 100vh;
+    transition: margin-left 0.3s ease;
+}
+
+.main-content.full {
+    margin-left: 0;
 }
 
 /* Login Page */
@@ -74,7 +84,6 @@ body {
 .login-title {
     font-size: 1.5rem;
     font-weight: 600;
-    color: var(--gray-800);
 }
 
 .form-group {
@@ -121,6 +130,7 @@ body {
     border: none;
     cursor: pointer;
     transition: all 0.2s ease;
+    gap: 0.5rem;
 }
 
 .btn-primary {
@@ -143,14 +153,16 @@ body {
     width: 72px;
     transition: width 0.3s ease;
     border-right: 1px solid var(--gray-200);
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
     height: 100vh;
     display: flex;
     flex-direction: column;
+    z-index: 1000;
 }
 
-.sidebar.expanded {
+.sidebar.active {
     width: 240px;
 }
 
@@ -211,17 +223,12 @@ body {
 }
 
 .menu a span {
-    display: none;
+    opacity: 0;
+    transition: opacity 0.2s;
 }
 
-.sidebar.expanded .menu a span {
-    display: inline;
-}
-
-/* Main Content */
-.main-content {
-    padding: 1.5rem;
-    background: var(--gray-50);
+.sidebar.active .menu a span {
+    opacity: 1;
 }
 
 /* Header */
@@ -264,6 +271,7 @@ body {
     display: flex;
     align-items: center;
     gap: 1rem;
+    font-size: 0.875rem;
 }
 
 #logout-btn {
@@ -306,8 +314,6 @@ body {
 }
 
 .login-section .form-group input:focus {
-   .Concurrent
-
     border-color: var(--primary);
     box-shadow: 0 0 0 3px var(--primary-light);
     outline: none;
@@ -393,6 +399,9 @@ body {
     font-weight: 500;
     cursor: pointer;
     transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .controls button:hover {
@@ -430,7 +439,6 @@ body {
 .dashboard-card p {
     font-size: 1.75rem;
     font-weight: 600;
-    color: var(--gray-800);
 }
 
 /* Tables */
@@ -465,6 +473,44 @@ body {
     background: var(--primary-light);
 }
 
+/* Badges */
+.badge {
+    display: inline-flex;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.badge.open {
+    background: var(--secondary);
+    color: var(--white);
+}
+
+.badge.full {
+    background: var(--danger);
+    color: var(--white);
+}
+
+/* Table Action Buttons */
+.table button {
+    background: var(--primary);
+    color: var(--white);
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.table button:hover {
+    background: var(--primary-dark);
+}
+
 /* Chart Container */
 .chart-container {
     width: 100%;
@@ -487,14 +533,11 @@ body {
     align-items: center;
     justify-content: center;
     z-index: 1000;
-    visibility: hidden;
-    opacity: 0;
-    transition: opacity 0.3s, visibility 0.3s;
+    display: none;
 }
 
 .loader.active {
-    visibility: visible;
-    opacity: 1;
+    display: flex;
 }
 
 .spinner {
@@ -512,22 +555,36 @@ body {
     }
 }
 
+/* DataTables Overrides */
+.dataTable {
+    margin: 0 !important;
+}
+
+.dataTable thead th {
+    border-bottom: none;
+}
+
+.dataTable tbody td {
+    border-top: none;
+}
+
 /* Responsive */
 @media (max-width: 991px) {
     .sidebar {
-        position: fixed;
-        left: -100%;
-        transition: left 0.3s ease;
-        z-index: 1000;
+        left: -72px;
+    }
+
+    .sidebar.active {
+        left: 0;
         width: 240px;
     }
 
-    .sidebar.expanded {
-        left: 0;
+    .main-content {
+        margin-left: 0;
     }
 
-    .main-content {
-        padding: 1rem;
+    .main-content.full {
+        margin-left: 0;
     }
 }
 
