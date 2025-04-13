@@ -710,56 +710,6 @@
     </div>
 </div>
     
-    <!-- Modal para chamar próxima senha -->
-    <div id="call-next-modal" class="modal-backdrop hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">Chamar Próxima Senha</h3>
-                <button class="modal-close" id="close-call-modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div id="call-next-info">
-                    <p>Você está prestes a chamar a próxima senha para o serviço:</p>
-                    <h4 id="call-next-service" style="margin: 1rem 0;"></h4>
-                    <p>Deseja continuar?</p>
-                </div>
-                <div id="call-next-result" class="hidden">
-                    <div id="call-success" class="hidden">
-                        <div style="text-align: center; margin-bottom: 1rem;">
-                            <i class="fas fa-check-circle" style="font-size: 3rem; color: var(--success);"></i>
-                        </div>
-                        <h3 style="text-align: center; margin-bottom: 1rem;">Senha Chamada com Sucesso!</h3>
-                        <div class="ticket-card">
-                            <div class="ticket-number" id="result-ticket-number"></div>
-                            <div class="ticket-info">
-                                <span>Guichê:</span>
-                                <span id="result-counter"></span>
-                            </div>
-                            <div class="ticket-info">
-                                <span>Senhas restantes:</span>
-                                <span id="result-remaining"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="call-error" class="hidden">
-                        <div style="text-align: center; margin-bottom: 1rem;">
-                            <i class="fas fa-exclamation-circle" style="font-size: 3rem; color: var(--danger);"></i>
-                        </div>
-                        <h3 style="text-align: center; margin-bottom: 1rem;">Erro ao Chamar Senha</h3>
-                        <p id="call-error-message" style="text-align: center;"></p>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-danger" id="cancel-call-next">Cancelar</button>
-                <button class="btn btn-primary" id="confirm-call-next">
-                    <span id="call-button-text">Chamar Próxima</span>
-                    <span id="call-spinner" class="loading-spinner hidden"></span>
-                </button>
-                <button class="btn btn-success hidden" id="finish-call-next">OK</button>
-            </div>
-        </div>
-    </div>
     <script src="admin.js"></script>
 </body>
 </html>
