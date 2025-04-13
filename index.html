@@ -1,403 +1,739 @@
-// Configurações e variáveis globais
-const API_BASE_URL = 'https://fila-facilita2-0.onrender.com';
-let token = localStorage.getItem('token');
-let userInfo = JSON.parse(localStorage.getItem('userInfo')) || {};
-let socket;
-
-// Função para inicializar WebSocket
-function initWebSocket() {
-    if (socket) socket.disconnect();
-    socket = io(API_BASE_URL, {
-        auth: { token },
-        transports: ['websocket'],
-    });
-
-    socket.on('connect', () => {
-        console.log('[WebSocket] Conectado');
-        socket.emit('join', userInfo.id); // Entrar na sala do usuário
-    });
-
-    socket.on('queue_update', (data) => {
-        console.log('[WebSocket] Queue update:', data);
-        showNotification(`Fila atualizada: ${data.message}`, 'success');
-        updateDashboard();
-        updateQueuesPage();
-        updateTicketsPage();
-    });
-
-    socket.on('notification', (data) => {
-        if (data.user_id === userInfo.id) {
-            showNotification(data.message, 'success');
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FilaFacilita - Painel do Gestor</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --secondary: #64748b;
+            --danger: #dc2626;
+            --success: #16a34a;
+            --warning: #ca8a04;
+            --bg-light: #f8fafc;
+            --text-dark: #1e293b;
+            --text-light: #f8fafc;
+            --border: #e2e8f0;
         }
-    });
-
-    socket.on('disconnect', () => {
-        console.log('[WebSocket] Desconectado');
-    });
-}
-
-// Classe principal para gerenciamento de autenticação e requisições
-class ApiService {
-    static async request(endpoint, method = 'GET', body = null) {
-        const headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        };
-
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-
-        const config = {
-            method,
-            headers,
-            mode: 'cors',
-            credentials: 'omit',
-        };
-
-        if (body) {
-            config.body = JSON.stringify(body);
+        
+        body {
+            background-color: var(--bg-light);
+            color: var(--text-dark);
         }
-
-        try {
-            const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-
-            if (response.status === 401) {
-                logout();
-                throw new Error('Sessão expirada');
+        
+        .login-container {
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+            background-color: #f3f4f6;
+        }
+        
+        .login-card {
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .sidebar {
+            width: 250px;
+            background-color: #1e293b;
+            color: white;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar-collapse {
+            width: 70px;
+        }
+        
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 1rem;
+        }
+        
+        .sidebar-collapse .sidebar-header span,
+        .sidebar-collapse .menu-item span {
+            display: none;
+        }
+        
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border-radius: 0.25rem;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .menu-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .menu-item.active {
+            background-color: var(--primary);
+        }
+        
+        .menu-item i {
+            margin-right: 0.75rem;
+            width: 20px;
+            text-align: center;
+        }
+        
+        .sidebar-collapse .menu-item i {
+            margin-right: 0;
+        }
+        
+        .content {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 0.75rem;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 1.25rem;
+        }
+        
+        .stat-title {
+            color: var(--secondary);
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .stat-footer {
+            display: flex;
+            align-items: center;
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+        
+        .btn-success {
+            background-color: var(--success);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background-color: #15803d;
+        }
+        
+        .btn-danger {
+            background-color: var(--danger);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #b91c1c;
+        }
+        
+        .btn i {
+            margin-right: 0.5rem;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        th {
+            font-weight: 600;
+            color: var(--secondary);
+            background-color: #f8fafc;
+        }
+        
+        tbody tr:hover {
+            background-color: #f1f5f9;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .badge-success {
+            background-color: #dcfce7;
+            color: var(--success);
+        }
+        
+        .badge-warning {
+            background-color: #fef9c3;
+            color: var(--warning);
+        }
+        
+        .badge-danger {
+            background-color: #fee2e2;
+            color: var(--danger);
+        }
+        
+        .badge-info {
+            background-color: #dbeafe;
+            color: var(--primary);
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 0.25rem;
+            font-size: 1rem;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        
+        .alert {
+            padding: 0.75rem 1rem;
+            border-radius: 0.25rem;
+            margin-bottom: 1rem;
+        }
+        
+        .alert-danger {
+            background-color: #fee2e2;
+            color: var(--danger);
+            border: 1px solid #fecaca;
+        }
+        
+        .alert-success {
+            background-color: #dcfce7;
+            color: var(--success);
+            border: 1px solid #bbf7d0;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .ticket-card {
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .ticket-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        
+        .ticket-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+        
+        .ticket-status {
+            font-weight: 500;
+        }
+        
+        .ticket-actions {
+            margin-top: 1rem;
+        }
+        
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
             }
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || response.statusText);
+            
+            .sidebar {
+                width: 100%;
+                max-height: 60px;
+                overflow: hidden;
             }
-
-            return await response.json();
-        } catch (error) {
-            console.error(`[ApiService] Erro em ${endpoint}:`, error);
-            throw error;
+            
+            .sidebar.expanded {
+                max-height: none;
+            }
+            
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
         }
-    }
-
-    static async login(email, password) {
-        const result = await this.request('/api/admin/login', 'POST', { email, password });
-        token = result.token;
-        userInfo = {
-            id: result.user_id,
-            email: result.email,
-            role: result.user_role,
-            institutionId: result.institution_id,
-            department: result.department,
-        };
-        localStorage.setItem('token', token);
-        localStorage.setItem('userInfo', JSON.stringify(userInfo));
-        return result;
-    }
-
-    static async getAdminQueues() {
-        return await this.request('/api/admin/queues');
-    }
-
-    static async getAdminTickets() {
-        return await this.request('/api/tickets/admin');
-    }
-
-    static async callNextTicket(queueId) {
-        return await this.request(`/api/admin/queue/${queueId}/call`, 'POST');
-    }
-}
-
-// Função para exibir notificações temporárias
-function showNotification(message, type = 'success') {
-    const notification = document.createElement('div');
-    notification.className = `notification ${type === 'success' ? 'alert-success' : 'alert-danger'}`;
-    notification.textContent = message;
-    document.body.appendChild(notification);
-    setTimeout(() => notification.remove(), 3000);
-}
-
-// Função para formatar data
-function formatDate(dateString) {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    });
-}
-
-// Função para formatar status do ticket
-function formatTicketStatus(status) {
-    const statusMap = {
-        Pendente: '<span class="badge badge-warning">Pendente</span>',
-        attended: '<span class="badge badge-success">Atendido</span>',
-        Cancelado: '<span class="badge badge-danger">Cancelado</span>',
-        Chamado: '<span class="badge badge-info">Chamado</span>',
-    };
-    return statusMap[status] || `<span class="badge badge-info">${status}</span>`;
-}
-
-// Função para formatar status da fila
-function formatQueueStatus(activeTickets, dailyLimit) {
-    return activeTickets < dailyLimit
-        ? '<span class="badge badge-success">Aberto</span>'
-        : '<span class="badge badge-danger">Lotado</span>';
-}
-
-// Função para atualizar dashboard
-async function updateDashboard() {
-    try {
-        const queues = await ApiService.getAdminQueues();
-        const tickets = await ApiService.getAdminTickets();
-
-        // Atualizar estatísticas
-        document.getElementById('total-queues').textContent = queues.length;
-        document.getElementById('pending-tickets').textContent = tickets.filter(t => t.status === 'Pendente').length;
-        document.getElementById('attended-tickets').textContent = tickets.filter(t => t.status === 'attended').length;
-        document.getElementById('cancelled-tickets').textContent = tickets.filter(t => t.status === 'Cancelado').length;
-
-        // Atualizar tabela de resumo de filas
-        const queuesBody = document.getElementById('queues-summary-body');
-        queuesBody.innerHTML = queues.map(queue => `
-            <tr>
-                <td>${queue.service}</td>
-                <td>${queue.prefix}</td>
-                <td>${queue.active_tickets}</td>
-                <td>${queue.daily_limit}</td>
-                <td>${formatQueueStatus(queue.active_tickets, queue.daily_limit)}</td>
-                <td>
-                    <button class="btn btn-primary btn-sm" onclick="openCallNextModal('${queue.id}', '${queue.service}')">
-                        <i class="fas fa-bullhorn"></i> Chamar
-                    </button>
-                </td>
-            </tr>
-        `).join('');
-
-        // Atualizar tabela de últimas senhas
-        const recentTickets = tickets.slice(0, 5); // Últimas 5
-        const recentTicketsBody = document.getElementById('recent-tickets-body');
-        recentTicketsBody.innerHTML = recentTickets.map(ticket => `
-            <tr>
-                <td>${ticket.queue.prefix}${ticket.number}</td>
-                <td>${ticket.service}</td>
-                <td>${formatTicketStatus(ticket.status)}</td>
-                <td>${formatDate(ticket.issued_at)}</td>
-                <td>${formatDate(ticket.attended_at)}</td>
-            </tr>
-        `).join('');
-    } catch (error) {
-        showNotification('Erro ao atualizar dashboard: ' + error.message, 'error');
-    }
-}
-
-// Função para atualizar página de filas
-async function updateQueuesPage() {
-    try {
-        const queues = await ApiService.getAdminQueues();
-        const queuesBody = document.getElementById('queues-table-body');
-        queuesBody.innerHTML = queues.map(queue => `
-            <tr>
-                <td>${queue.id}</td>
-                <td>${queue.service}</td>
-                <td>${queue.prefix}</td>
-                <td>${queue.active_tickets}</td>
-                <td>${queue.daily_limit}</td>
-                <td>${queue.current_ticket || '-'}</td>
-                <td>${formatQueueStatus(queue.active_tickets, queue.daily_limit)}</td>
-                <td>
-                    <button class="btn btn-primary btn-sm" onclick="openCallNextModal('${queue.id}', '${queue.service}')">
-                        <i class="fas fa-bullhorn"></i> Chamar
-                    </button>
-                </td>
-            </tr>
-        `).join('');
-    } catch (error) {
-        showNotification('Erro ao atualizar filas: ' + error.message, 'error');
-    }
-}
-
-// Função para atualizar página de senhas
-async function updateTicketsPage() {
-    try {
-        const tickets = await ApiService.getAdminTickets();
-        const ticketsBody = document.getElementById('tickets-table-body');
-        ticketsBody.innerHTML = tickets.map(ticket => `
-            <tr>
-                <td>${ticket.id}</td>
-                <td>${ticket.queue.prefix}${ticket.number}</td>
-                <td>${ticket.service}</td>
-                <td>${formatTicketStatus(ticket.status)}</td>
-                <td>${formatDate(ticket.issued_at)}</td>
-                <td>${formatDate(ticket.attended_at)}</td>
-                <td>${ticket.counter || '-'}</td>
-            </tr>
-        `).join('');
-    } catch (error) {
-        showNotification('Erro ao atualizar senhas: ' + error.message, 'error');
-    }
-}
-
-// Função para abrir modal de chamar próxima senha
-function openCallNextModal(queueId, service) {
-    const modal = document.getElementById('call-next-modal');
-    const serviceText = document.getElementById('call-next-service');
-    const callInfo = document.getElementById('call-next-info');
-    const callResult = document.getElementById('call-next-result');
-    const callSuccess = document.getElementById('call-success');
-    const callError = document.getElementById('call-error');
-    const confirmBtn = document.getElementById('confirm-call-next');
-    const cancelBtn = document.getElementById('cancel-call-next');
-    const finishBtn = document.getElementById('finish-call-next');
-    const buttonText = document.getElementById('call-button-text');
-    const spinner = document.getElementById('call-spinner');
-
-    // Resetar modal
-    modal.classList.remove('hidden');
-    callInfo.classList.remove('hidden');
-    callResult.classList.add('hidden');
-    callSuccess.classList.add('hidden');
-    callError.classList.add('hidden');
-    confirmBtn.classList.remove('hidden');
-    cancelBtn.classList.remove('hidden');
-    finishBtn.classList.add('hidden');
-    buttonText.classList.remove('hidden');
-    spinner.classList.add('hidden');
-    serviceText.textContent = service;
-
-    // Configurar evento de confirmação
-    confirmBtn.onclick = async () => {
-        buttonText.classList.add('hidden');
-        spinner.classList.remove('hidden');
-        confirmBtn.disabled = true;
-
-        try {
-            const result = await ApiService.callNextTicket(queueId);
-            callInfo.classList.add('hidden');
-            callResult.classList.remove('hidden');
-            callSuccess.classList.remove('hidden');
-            confirmBtn.classList.add('hidden');
-            cancelBtn.classList.add('hidden');
-            finishBtn.classList.remove('hidden');
-
-            document.getElementById('result-ticket-number').textContent = `${result.ticket.queue.prefix}${result.ticket.number}`;
-            document.getElementById('result-counter').textContent = result.ticket.counter || '-';
-            document.getElementById('result-remaining').textContent = result.ticket.queue.active_tickets;
-        } catch (error) {
-            callInfo.classList.add('hidden');
-            callResult.classList.remove('hidden');
-            callError.classList.remove('hidden');
-            document.getElementById('call-error-message').textContent = error.message;
-            confirmBtn.classList.add('hidden');
-            cancelBtn.classList.add('hidden');
-            finishBtn.classList.remove('hidden');
+        
+        /* Estilos para modal */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
         }
-    };
-}
+        
+        .modal-content {
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--secondary);
+        }
+        
+        .modal-body {
+            padding: 1.5rem;
+        }
+        
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.5rem;
+        }
+        
+        /* Animações */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+        
+        /* Notificações */
+        .notification {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 1rem;
+            border-radius: 0.25rem;
+            background-color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1001;
+            animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s forwards;
+            max-width: 300px;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        
+        /* Loading Spinner */
+        .loading-spinner {
+            display: inline-block;
+            width: 1.5rem;
+            height: 1.5rem;
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Tela de Login -->
+    <div id="login-screen" class="login-container">
+        <div class="login-card">
+            <h1 style="text-align: center; margin-bottom: 1.5rem;">FilaFacilita</h1>
+            <h2 style="text-align: center; margin-bottom: 2rem;">Painel do Gestor</h2>
+            
+            <div id="login-error" class="alert alert-danger hidden"></div>
+            
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" id="email" name="email" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password" class="form-label">Senha</label>
+                    <input type="password" id="password" name="password" class="form-control" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                    <span id="login-button-text">Entrar</span>
+                    <span id="login-spinner" class="loading-spinner hidden"></span>
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Aplicação Principal -->
+    <div id="app-screen" class="app-container hidden">
+        <!-- Sidebar -->
+        <div id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <span>FilaFacilita</span>
+                <i id="toggle-sidebar" class="fas fa-bars" style="cursor: pointer;"></i>
+            </div>
+            
+            <div class="menu-item active" data-page="dashboard">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </div>
+            
+            <div class="menu-item" data-page="queues">
+                <i class="fas fa-list"></i>
+                <span>Filas</span>
+            </div>
+            
+            <div class="menu-item" data-page="tickets">
+                <i class="fas fa-ticket-alt"></i>
+                <span>Senhas</span>
+            </div>
+            
+            <div class="menu-item" id="logout-button" style="margin-top: auto;">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Sair</span>
+            </div>
+        </div>
+        
+        <!-- Conteúdo principal -->
+        <div class="content">
+            <div class="header">
+                <h1 id="page-title">Dashboard</h1>
+                
+                <div class="user-info">
+                    <div class="user-avatar" id="user-avatar">G</div>
+                    <div>
+                        <div id="user-name">Gestor</div>
+                        <div id="user-department" style="font-size: 0.875rem; color: var(--secondary);"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Página Dashboard -->
+            <div id="page-dashboard" class="page">
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <div class="stat-title">Total de Filas</div>
+                        <div class="stat-value" id="total-queues">0</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-title">Senhas Pendentes</div>
+                        <div class="stat-value" id="pending-tickets">0</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-title">Senhas Atendidas</div>
+                        <div class="stat-value" id="attended-tickets">0</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-title">Senhas Canceladas</div>
+                        <div class="stat-value" id="cancelled-tickets">0</div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Resumo de Filas</h2>
+                    </div>
+                    <table id="queues-summary-table">
+                        <thead>
+                            <tr>
+                                <th>Serviço</th>
+                                <th>Prefixo</th>
+                                <th>Senhas Ativas</th>
+                                <th>Limite Diário</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="queues-summary-body">
+                            <!-- Dados serão inseridos via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Últimas Senhas</h2>
+                    </div>
+                    <table id="recent-tickets-table">
+                        <thead>
+                            <tr>
+                                <th>Senha</th>
+                                <th>Serviço</th>
+                                <th>Status</th>
+                                <th>Emitida em</th>
+                                <th>Atendida em</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-tickets-body">
+                            <!-- Dados serão inseridos via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Página Filas -->
+            <div id="page-queues" class="page hidden">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Filas do Departamento</h2>
+                    </div>
+                    <table id="queues-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Serviço</th>
+                                <th>Prefixo</th>
+                                <th>Senhas Ativas</th>
+                                <th>Limite Diário</th>
+                                <th>Senha Atual</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="queues-table-body">
+                            <!-- Dados serão inseridos via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Página Senhas -->
+            <div id="page-tickets" class="page hidden">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Senhas do Departamento</h2>
+                    </div>
+                    <table id="tickets-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Número</th>
+                                <th>Serviço</th>
+                                <th>Status</th>
+                                <th>Emitida em</th>
+                                <th>Atendida em</th>
+                                <th>Guichê</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tickets-table-body">
+                            <!-- Dados serão inseridos via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para chamar próxima senha -->
+    <div id="call-next-modal" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Chamar Próxima Senha</h3>
+                <button class="modal-close" id="close-call-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="call-next-info">
+                    <p>Você está prestes a chamar a próxima senha para o serviço:</p>
+                    <h4 id="call-next-service" style="margin: 1rem 0;"></h4>
+                    <p>Deseja continuar?</p>
+                </div>
+                <div id="call-next-result" class="hidden">
+                    <div id="call-success" class="hidden">
+                        <div style="text-align: center; margin-bottom: 1rem;">
+                            <i class="fas fa-check-circle" style="font-size: 3rem; color: var(--success);"></i>
+                        </div>
+                        <h3 style="text-align: center; margin-bottom: 1rem;">Senha Chamada com Sucesso!</h3>
+                        <div class="ticket-card">
+                            <div class="ticket-number" id="result-ticket-number"></div>
+                            <div class="ticket-info">
+                                <span>Guichê:</span>
+                                <span id="result-counter"></span>
+                            </div>
+                            <div class="ticket-info">
+                                <span>Senhas restantes:</span>
+                                <span id="result-remaining"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="call-error" class="hidden">
+                        <div style="text-align: center; margin-bottom: 1rem;">
+                            <i class="fas fa-exclamation-circle" style="font-size: 3rem; color: var(--danger);"></i>
+                        </div>
+                        <h3 style="text-align: center; margin-bottom: 1rem;">Erro ao Chamar Senha</h3>
+                        <p id="call-error-message" style="text-align: center;"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-danger" id="cancel-call-next">Cancelar</button>
+                <button class="btn btn-primary" id="confirm-call-next">
+                    <span id="call-button-text">Chamar Próxima</span>
+                    <span id="call-spinner" class="loading-spinner hidden"></span>
+                </button>
+                <button class="btn btn-success hidden" id="finish-call-next">OK</button>
+            </div>
+        </div>
+    </div>
 
-// Função para fechar modal
-function closeCallNextModal() {
-    document.getElementById('call-next-modal').classList.add('hidden');
-}
-
-// Função para login
-async function handleLogin(event) {
-    event.preventDefault();
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    const errorDiv = document.getElementById('login-error');
-    const buttonText = document.getElementById('login-button-text');
-    const spinner = document.getElementById('login-spinner');
-    const loginBtn = document.querySelector('#login-form button');
-
-    errorDiv.classList.add('hidden');
-    buttonText.classList.add('hidden');
-    spinner.classList.remove('hidden');
-    loginBtn.disabled = true;
-
-    try {
-        await ApiService.login(email, password);
-        initApp();
-    } catch (error) {
-        errorDiv.textContent = 'Erro ao fazer login: ' + error.message;
-        errorDiv.classList.remove('hidden');
-    } finally {
-        buttonText.classList.remove('hidden');
-        spinner.classList.add('hidden');
-        loginBtn.disabled = false;
-    }
-}
-
-// Função para logout
-function logout() {
-    token = null;
-    userInfo = {};
-    localStorage.removeItem('token');
-    localStorage.removeItem('userInfo');
-    if (socket) socket.disconnect();
-    initApp();
-}
-
-// Função para alternar sidebar
-function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    sidebar.classList.toggle('sidebar-collapse');
-}
-
-// Função para mostrar/esconder páginas
-function showPage(pageId) {
-    document.querySelectorAll('.page').forEach(page => page.classList.add('hidden'));
-    document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
-    document.querySelector(`#page-${pageId}`).classList.remove('hidden');
-    document.querySelector(`.menu-item[data-page="${pageId}"]`).classList.add('active');
-    document.getElementById('page-title').textContent = {
-        dashboard: 'Dashboard',
-        queues: 'Filas',
-        tickets: 'Senhas',
-    }[pageId];
-}
-
-// Função para inicializar a aplicação
-function initApp() {
-    const loginScreen = document.getElementById('login-screen');
-    const appScreen = document.getElementById('app-screen');
-    const userAvatar = document.getElementById('user-avatar');
-    const userName = document.getElementById('user-name');
-    const userDepartment = document.getElementById('user-department');
-
-    if (token && userInfo.email) {
-        loginScreen.classList.add('hidden');
-        appScreen.classList.remove('hidden');
-        userAvatar.textContent = userInfo.email[0].toUpperCase();
-        userName.textContent = userInfo.email.split('@')[0];
-        userDepartment.textContent = userInfo.department || 'N/A';
-        initWebSocket();
-        updateDashboard();
-        showPage('dashboard');
-    } else {
-        loginScreen.classList.remove('hidden');
-        appScreen.classList.add('hidden');
-    }
-}
-
-// Configurar eventos
-document.getElementById('login-form').addEventListener('submit', handleLogin);
-document.getElementById('logout-button').addEventListener('click', logout);
-document.getElementById('toggle-sidebar').addEventListener('click', toggleSidebar);
-document.getElementById('close-call-modal').addEventListener('click', closeCallNextModal);
-document.getElementById('cancel-call-next').addEventListener('click', closeCallNextModal);
-document.getElementById('finish-call-next').addEventListener('click', closeCallNextModal);
-document.querySelectorAll('.menu-item[data-page]').forEach(item => {
-    item.addEventListener('click', () => {
-        const pageId = item.dataset.page;
-        showPage(pageId);
-        if (pageId === 'dashboard') updateDashboard();
-        else if (pageId === 'queues') updateQueuesPage();
-        else if (pageId === 'tickets') updateTicketsPage();
-    });
-});
-
-// Inicializar aplicação
-initApp();
+ 
+        // Configurações e variáveis globais
+    <script src="admin.js"></script>
+</body>
+</html>
