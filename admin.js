@@ -13,7 +13,7 @@ class ApiService {
         };
         
         if (token) {
-            headers['Authorization'] = `Bearer${token}`;
+            headers['Authorization'] = `Bearer ${token}`;
         }
 
         const config = { 
@@ -127,7 +127,7 @@ class AdminPanel {
     }
 
     initComponents() {
-        document.getElementById('user-name').textContent = userInfo.email;
+        document.getElementById('user-name').textContent = userInfo.email || 'Usuário';
         document.getElementById('user-department').textContent = userInfo.department || 'Gestor';
         document.getElementById('page-title').textContent = 'Dashboard';
         document.getElementById('settings-email').value = userInfo.email || '';
@@ -193,6 +193,11 @@ class AdminPanel {
 
     async loadInitialData() {
         try {
+            // Limpar todas as tabelas para evitar dados residuais
+            document.getElementById('queues-table').innerHTML = '';
+            document.getElementById('queues-table-full').innerHTML = '';
+            document.getElementById('tickets-table').innerHTML = '';
+            
             await Promise.all([
                 this.loadDashboard(),
                 this.loadQueues(),
@@ -211,16 +216,9 @@ class AdminPanel {
             ]);
             const today = new Date().toISOString().split('T')[0];
 
-            // Filtrar filas apenas por segurança (backend já filtra)
-            const userQueues = queues.filter(q => 
-                q.institution_id === userInfo.institution_id && 
-                q.department === userInfo.department
-            );
-            
-            // Tickets já vêm filtrados pelo backend, mas verificamos por consistência
+            // Usar tickets diretamente do backend
             const userTickets = tickets;
-
-            const activeQueues = userQueues.length;
+            const activeQueues = queues.length;
             const pendingTickets = userTickets.filter(t => t.status === 'Pendente').length;
             const attendedToday = userTickets.filter(t => t.status === 'attended' && t.issued_at.startsWith(today)).length;
             
@@ -256,22 +254,16 @@ class AdminPanel {
             if (tableBody) tableBody.innerHTML = '';
             if (fullTableBody) fullTableBody.innerHTML = '';
 
-            // Filtrar filas apenas por segurança (backend já filtra)
-            const userQueues = queues.filter(q => 
-                q.institution_id === userInfo.institution_id && 
-                q.department === userInfo.department
-            );
-            
-            console.log(`Carregadas ${userQueues.length} filas para o departamento ${userInfo.department}`);
+            console.log(`Carregadas ${queues.length} filas para o departamento ${userInfo.department}`);
 
-            if (userQueues.length === 0) {
+            if (queues.length === 0) {
                 const emptyRow = `<tr><td colspan="5">Nenhuma fila encontrada para seu departamento</td></tr>`;
                 if (tableBody) tableBody.innerHTML = emptyRow;
                 if (fullTableBody) fullTableBody.innerHTML = emptyRow;
                 return;
             }
 
-            userQueues.forEach(queue => {
+            queues.forEach(queue => {
                 const row = `
                     <tr>
                         <td>${queue.service}</td>
@@ -297,9 +289,11 @@ class AdminPanel {
         try {
             const data = await ApiService.callNextTicket(queueId);
             this.showSuccess(`Senha ${data.ticket_number} chamada para o guichê ${data.counter}`);
-            this.loadQueues();
-            this.loadTickets();
-            this.loadDashboard();
+            await Promise.all([
+                this.loadQueues(),
+                this.loadTickets(),
+                this.loadDashboard()
+            ]);
         } catch (error) {
             this.showError('Erro ao chamar próximo ticket', error);
         }
@@ -310,19 +304,20 @@ class AdminPanel {
             const tickets = await ApiService.getTickets();
             const filter = document.getElementById('ticket-status-filter')?.value;
             
-            // Tickets já vêm filtrados pelo backend, aplicamos apenas o filtro de status
+            // Usar tickets diretamente do backend
             let filteredTickets = tickets;
             if (filter) {
                 filteredTickets = filteredTickets.filter(t => t.status === filter);
             }
 
             const tableBody = document.getElementById('tickets-table');
-            tableBody.innerHTML = '';
+            tableBody.innerHTML = ''; // Limpar tabela antes de renderizar
 
+            console.log(`Response de /api/tickets/admin:`, tickets); // Log para debug
             console.log(`Carregados ${filteredTickets.length} tickets (filtro: ${filter || 'todos'})`);
 
             if (filteredTickets.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="5">Nenhum ticket encontrado</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="5">Nenhum ticket encontrado para seu departamento</td></tr>';
                 return;
             }
 
@@ -332,7 +327,7 @@ class AdminPanel {
                     <td>${ticket.number || ticket.ticket_number}</td>
                     <td>${ticket.service}</td>
                     <td><span class="status-${ticket.status.toLowerCase()}">${ticket.status}</span></td>
-                    <td>${ticket.wait_time || 'N/A'}</td>
+                    <td>${ticket.wait_time !== 'N/A' ? `${ticket.wait_time} min` : 'N/A'}</td>
                     <td>${ticket.counter || 'N/A'}</td>
                 `;
                 tableBody.appendChild(row);
@@ -349,7 +344,7 @@ class AdminPanel {
             const reportType = document.getElementById('report-type').value;
             const tickets = await ApiService.getTickets();
             
-            // Tickets já vêm filtrados pelo backend, aplicamos apenas filtros adicionais
+            // Usar tickets diretamente do backend
             let filteredTickets = tickets;
             if (date) {
                 filteredTickets = filteredTickets.filter(t => t.issued_at.startsWith(date));
@@ -388,7 +383,7 @@ class AdminPanel {
                         .filter(t => t.service === service && t.wait_time && t.wait_time !== 'N/A')
                         .map(t => parseFloat(t.wait_time) || 0);
                     return times.length ? 
-                        (times.reduce((a, b) => a + b, 0) / times.length) : 0;
+                        (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : 0;
                 });
 
                 chartInstance = new Chart(ctx, {
@@ -490,7 +485,7 @@ class LoginManager {
             console.error('Erro no login:', error);
             
             document.getElementById('email').value = email;
-            document.getElementById('password').value = password;
+            document.getElementById('password').value = '';
         } finally {
             submitBtn.disabled = false;
             submitBtn.textContent = 'Entrar';
