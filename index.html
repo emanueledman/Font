@@ -3,281 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fila Facilita - Painel Administrativo</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <title>Gestão de Filas - Vacinação</title>
     <style>
-        .error-message, .success-message {
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 4px;
-            text-align: center;
-        }
-        .error-message {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-        .success-message {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        .loading {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 15px;
-            border-radius: 4px;
-            z-index: 1000;
-            display: none;
-        }
-        .table-container {
-            position: relative;
-        }
-        button[aria-label] {
-            cursor: pointer;
-        }
-        /* Estilos para a linha do tempo (Dashboard) */
-        .timeline-container {
-            max-width: 800px;
-            margin: 20px auto;
-            position: relative;
-            padding: 20px 0;
-        }
-        .timeline-event {
-            position: relative;
-            margin-bottom: 20px;
-            padding-left: 50px;
-            opacity: 0;
-            animation: fadeIn 0.5s forwards;
-        }
-        .timeline-dot {
-            position: absolute;
-            left: 20px;
-            top: 10px;
-            width: 12px;
-            height: 12px;
-            background: #007bff;
-            border-radius: 50%;
-        }
-        .timeline-content {
-            background: #f9f9f9;
-            padding: 15px;
-            border-radius: 4px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        .timeline-empty, .timeline-error {
-            text-align: center;
-            padding: 20px;
-            color: #666;
-        }
-        @keyframes fadeIn {
-            to { opacity: 1; }
-        }
-        /* Estilos para os cards (Tickets) */
-        .cards-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            padding: 20px;
-        }
-        .ticket-card {
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            padding: 15px;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        .ticket-card:hover {
-            transform: translateY(-5px);
-        }
-        .ticket-card.expanded .card-body {
-            display: block;
-        }
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .card-header h3 {
+        body {
+            font-family: Arial, sans-serif;
             margin: 0;
-            font-size: 1.2em;
+            padding: 20px;
+            background-color: #f4f4f4;
         }
-        .card-header .status {
-            font-size: 0.9em;
-            padding: 5px 10px;
-            border-radius: 12px;
-            color: #fff;
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
-        .status-pendente { background: #007bff; }
-        .status-chamado { background: #ffc107; }
-        .status-attended { background: #28a745; }
-        .status-cancelado { background: #dc3545; }
-        .card-body {
-            display: none;
+        h1, h2, h3 {
+            color: #333;
         }
-        .card-body p {
+        .user-info {
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #e7f3ff;
+            border-radius: 4px;
+        }
+        .queue-info, .tickets-list {
+            margin-bottom: 20px;
+        }
+        .queue-info p, .tickets-list p {
             margin: 5px 0;
         }
-        .cards-empty, .cards-error {
-            grid-column: 1 / -1;
+        .ticket-item {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        .ticket-item:last-child {
+            border-bottom: none;
+        }
+        .status-pendente { color: #007bff; }
+        .status-chamado { color: #ffc107; }
+        .status-attended { color: #28a745; }
+        .status-cancelado { color: #dc3545; }
+        .error {
+            color: #721c24;
+            background: #f8d7da;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .loading {
             text-align: center;
             padding: 20px;
-            color: #666;
+            display: none;
+        }
+        button {
+            padding: 8px 16px;
+            background: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
         }
     </style>
 </head>
 <body>
-    <div class="admin-panel">
-        <div class="sidebar">
-            <div class="brand">
-                <i class="fas fa-ticket-alt"></i>
-                <h2>Fila Facilita</h2>
-            </div>
-            <div class="user-info">
-                <div class="avatar">
-                    <i class="fas fa-user"></i>
-                </div>
-                <div class="user-details">
-                    <h3 id="user-name">Nome do Usuário</h3>
-                    <p id="user-department">Departamento</p>
-                </div>
-            </div>
-            <nav>
-                <a href="#" data-section="dashboard-section" class="active" aria-label="Ver Dashboard">
-                    <i class="fas fa-tachometer-alt"></i> Dashboard
-                </a>
-                <a href="#" data-section="queues-section" aria-label="Gerenciar Filas">
-                    <i class="fas fa-list-ol"></i> Filas
-                </a>
-                <a href="#" data-section="tickets-section" aria-label="Gerenciar Tickets">
-                    <i class="fas fa-ticket-alt"></i> Tickets
-                </a>
-                <a href="#" data-section="reports-section" aria-label="Ver Relatórios">
-                    <i class="fas fa-chart-bar"></i> Relatórios
-                </a>
-                <a href="#" data-section="settings-section" aria-label="Configurações da Conta">
-                    <i class="fas fa-cog"></i> Configurações
-                </a>
-                <a href="#" id="logout" class="logout" aria-label="Sair">
-                    <i class="fas fa-sign-out-alt"></i> Sair
-                </a>
-            </nav>
+    <div class="container">
+        <h1>Gestão de Filas</h1>
+        <div id="error" class="error"></div>
+        <div id="loading" class="loading">Carregando...</div>
+        <div id="user-info" class="user-info">
+            <h3>Usuário</h3>
+            <p id="user-email">Carregando...</p>
+            <p id="user-department">Carregando...</p>
+            <button id="logout">Sair</button>
         </div>
-        <div class="main-content">
-            <header>
-                <h1 id="page-title">Dashboard</h1>
-                <div class="header-actions">
-                    <div class="date-time">
-                        <i class="far fa-calendar-alt"></i>
-                        <span id="current-date">13 de abril, 2025</span>
-                    </div>
-                </div>
-            </header>
-            
-            <!-- Dashboard Section -->
-            <section id="dashboard-section" class="section active">
-                <div class="timeline-container">
-                    <h2>Eventos Recentes</h2>
-                    <div id="timeline-events">
-                        <!-- Eventos serão carregados dinamicamente -->
-                    </div>
-                </div>
-            </section>
-            
-            <!-- Queues Section -->
-            <section id="queues-section" class="section">
-                <div class="section-header">
-                    <h2>Gerenciamento de Filas</h2>
-                </div>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Serviço</th>
-                                <th>Tickets Ativos</th>
-                                <th>Ticket Atual</th>
-                                <th>Status</th>
-                                <th>Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody id="queues-table-full">
-                            <!-- Dados serão carregados dinamicamente -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-            
-            <!-- Tickets Section -->
-            <section id="tickets-section" class="section">
-                <div class="section-header">
-                    <h2>Gerenciamento de Tickets</h2>
-                </div>
-                <div class="cards-container" id="tickets-cards">
-                    <!-- Cards serão carregados dinamicamente -->
-                </div>
-            </section>
-            
-            <!-- Reports Section -->
-            <section id="reports-section" class="section">
-                <div class="section-header">
-                    <h2>Relatórios e Estatísticas</h2>
-                </div>
-                <div class="report-container">
-                    <div class="report-filters">
-                        <form id="report-form">
-                            <div class="form-group">
-                                <label for="report-date">Data:</label>
-                                <input type="date" id="report-date" value="" aria-label="Selecionar data do relatório">
-                            </div>
-                            <div class="form-group">
-                                <label for="report-type">Tipo de Relatório:</label>
-                                <select id="report-type" aria-label="Selecionar tipo de relatório">
-                                    <option value="status">Tickets por Status</option>
-                                    <option value="wait-time">Tempo Médio de Espera</option>
-                                </select>
-                            </div>
-                            <button type="submit" class="btn primary-btn" aria-label="Gerar relatório">Gerar Relatório</button>
-                        </form>
-                    </div>
-                    <div class="report-chart-container">
-                        <canvas id="report-chart" aria-label="Gráfico do relatório"></canvas>
-                    </div>
-                </div>
-            </section>
-            
-            <!-- Settings Section -->
-            <section id="settings-section" class="section">
-                <div class="section-header">
-                    <h2>Configurações da Conta</h2>
-                </div>
-                <div class="settings-container">
-                    <form id="settings-form">
-                        <div class="form-group">
-                            <label for="settings-email">Email:</label>
-                            <input type="email" id="settings-email" disabled aria-label="Email do usuário">
-                        </div>
-                        <div class="form-group">
-                            <label for="settings-password">Nova Senha:</label>
-                            <input type="password" id="settings-password" aria-label="Nova senha">
-                        </div>
-                        <div class="form-group">
-                            <label for="settings-confirm-password">Confirmar Senha:</label>
-                            <input type="password" id="settings-confirm-password" aria-label="Confirmar nova senha">
-                        </div>
-                        <button type="submit" class="btn primary-btn" aria-label="Atualizar senha">Atualizar Senha</button>
-                    </form>
-                </div>
-            </section>
+        <div id="queue-info" class="queue-info">
+            <h3>Fila</h3>
+            <p id="queue-service">Nenhuma fila encontrada</p>
+            <p id="queue-status">Status: N/A</p>
+            <p id="queue-tickets">Tickets Ativos: 0</p>
+            <button id="call-next" disabled>Chamar Próximo</button>
+        </div>
+        <div id="tickets-list" class="tickets-list">
+            <h3>Tickets</h3>
+            <div id="tickets-container"></div>
         </div>
     </div>
-    
-    <script src="admin.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
