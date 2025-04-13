@@ -14,8 +14,10 @@ function initWebSocket() {
 
     socket.on('connect', () => {
         console.log('[WebSocket] Conectado');
-        socket.emit('join', userInfo.id); // Entrar na sala do usuário
-        socket.emit('join', `department_${userInfo.department_id}`); // Entrar na sala do departamento
+        socket.emit('join', userInfo.id); // Sala do usuário
+        if (userInfo.department_id) {
+            socket.emit('join', `department_${userInfo.department_id}`); // Sala do departamento
+        }
     });
 
     socket.on('ticket_update', (data) => {
@@ -35,14 +37,13 @@ function initWebSocket() {
     });
 
     socket.on('notification', (data) => {
-        if (!data.user_id || data.user_id === userInfo.id) {
+        if (!data.user_id || data.user_id === userInfo.id || data.department_id === userInfo.department_id) {
             showNotification(data.message, 'success');
         }
     });
 
     socket.on('disconnect', () => {
         console.log('[WebSocket] Desconectado');
-        // Iniciar polling como fallback
         startPolling();
     });
 }
@@ -117,7 +118,7 @@ class ApiService {
             role: result.user_role,
             institutionId: result.institution_id,
             department: result.department,
-            department_id: result.department_id, // Adicionado para WebSocket
+            department_id: result.department_id,
         };
         localStorage.setItem('token', token);
         localStorage.setItem('userInfo', JSON.stringify(userInfo));
@@ -207,7 +208,7 @@ async function updateDashboard() {
         `).join('');
 
         // Atualizar tabela de últimas senhas
-        const recentTickets = tickets.slice(0, 5); // Últimas 5
+        const recentTickets = tickets.slice(0, 5);
         const recentTicketsBody = document.getElementById('recent-tickets-body');
         recentTicketsBody.innerHTML = recentTickets.map(ticket => `
             <tr>
@@ -411,7 +412,6 @@ function initApp() {
     } else {
         loginScreen.classList.remove('hidden');
         appScreen.classList.add('hidden');
-        startPolling();
     }
 }
 
