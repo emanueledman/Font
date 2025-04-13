@@ -3,7 +3,6 @@ const API_BASE_URL = 'https://fila-facilita2-0.onrender.com';
 let token = localStorage.getItem('token');
 let userInfo = JSON.parse(localStorage.getItem('userInfo')) || {};
 let socket;
-let ticketStatusChart, reportChart;
 
 // Função para inicializar WebSocket
 function initWebSocket() {
@@ -80,16 +79,16 @@ function stopPolling() {
 // Classe para requisições à API
 class ApiService {
     static async request(endpoint, method = 'GET', body = null) {
-        if (!token) {
-            logout('Acesso não autorizado. Por favor, faça login.');
-            throw new Error('Nenhum token de autenticação encontrado');
-        }
-
         const headers = {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'Authorization': `Bearer ${token}`,
         };
+
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        } else {
+            throw new Error('Nenhum token de autenticação encontrado');
+        }
 
         const config = {
             method,
@@ -129,25 +128,7 @@ class ApiService {
     }
 
     static async login(email, password) {
-        const headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        };
-
-        const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ email, password }),
-            mode: 'cors',
-            credentials: 'omit',
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || 'Erro ao fazer login');
-        }
-
-        return await response.json();
+        return await this.request('/api/admin/login', 'POST', { email, password });
     }
 
     static async getAdminQueues() {
@@ -160,10 +141,6 @@ class ApiService {
 
     static async callNextTicket(queueId) {
         return await this.request(`/api/admin/queue/${queueId}/call`, 'POST');
-    }
-
-    static async getReport(date) {
-        return await this.request(`/api/admin/report?date=${date}`);
     }
 
     static async validateToken() {
@@ -182,7 +159,7 @@ function showNotification(message, type = 'success') {
     const notification = document.createElement('div');
     notification.className = `notification ${type === 'success' ? 'alert-success' : 'alert-danger'}`;
     notification.textContent = message;
-    document.getElementById('toast-container').appendChild(notification);
+    document.body.appendChild(notification);
     setTimeout(() => notification.remove(), 3000);
 }
 
@@ -215,41 +192,6 @@ function formatQueueStatus(activeTickets, dailyLimit) {
     return activeTickets < dailyLimit
         ? '<span class="badge badge-success">Aberto</span>'
         : '<span class="badge badge-danger">Lotado</span>';
-}
-
-// Função para inicializar gráficos
-function initCharts(tickets) {
-    if (ticketStatusChart) ticketStatusChart.destroy();
-    const ctx = document.getElementById('ticketStatusChart')?.getContext('2d');
-    if (!ctx) return;
-
-    const statusCounts = {
-        Pendente: tickets.filter(t => t.status === 'Pendente').length,
-        Atendido: tickets.filter(t => t.status === 'attended').length,
-        Cancelado: tickets.filter(t => t.status === 'Cancelado').length,
-        Chamado: tickets.filter(t => t.status === 'Chamado').length,
-    };
-
-    ticketStatusChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Pendente', 'Atendido', 'Cancelado', 'Chamado'],
-            datasets: [{
-                data: [statusCounts.Pendente, statusCounts.Atendido, statusCounts.Cancelado, statusCounts.Chamado],
-                backgroundColor: ['#ffc107', '#28a745', '#dc3545', '#17a2b8'],
-                borderColor: ['#fff', '#fff', '#fff', '#fff'],
-                borderWidth: 1,
-            }],
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'top' },
-                title: { display: true, text: 'Distribuição de Status das Senhas' },
-            },
-        },
-    });
 }
 
 // Função para atualizar dashboard
@@ -294,8 +236,6 @@ async function updateDashboard() {
                 <td>${formatDate(ticket.attended_at)}</td>
             </tr>
         `).join('');
-
-        initCharts(tickets);
     } catch (error) {
         showNotification('Erro ao atualizar dashboard: ' + error.message, 'error');
     }
@@ -356,83 +296,12 @@ async function updateTicketsPage() {
     }
 }
 
-// Função para gerar relatório
-async function generateReport() {
-    if (!token || !userInfo.email) {
-        logout('Acesso não autorizado. Por favor, faça login.');
-        return;
-    }
-    const dateInput = document.getElementById('report-date').value;
-    if (!dateInput) {
-        showNotification('Selecione uma data para o relatório', 'error');
-        return;
-    }
-
-    try {
-        const report = await ApiService.getReport(dateInput);
-        const reportBody = document.getElementById('report-table-body');
-        reportBody.innerHTML = report.map(item => `
-            <tr>
-                <td>${item.service}</td>
-                <td>${item.issued}</td>
-                <td>${item.attended}</td>
-                <td>${item.avg_time ? item.avg_time.toFixed(1) : '-'}</td>
-            </tr>
-        `).join('');
-
-        if (reportChart) reportChart.destroy();
-        const ctx = document.getElementById('reportChart')?.getContext('2d');
-        if (ctx) {
-            reportChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: report.map(item => item.service),
-                    datasets: [
-                        {
-                            label: 'Senhas Emitidas',
-                            data: report.map(item => item.issued),
-                            backgroundColor: '#007bff',
-                        },
-                        {
-                            label: 'Senhas Atendidas',
-                            data: report.map(item => item.attended),
-                            backgroundColor: '#28a745',
-                        },
-                    ],
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'top' },
-                        title: { display: true, text: `Relatório de ${new Date(dateInput).toLocaleDateString('pt-BR')}` },
-                    },
-                    scales: {
-                        y: { beginAtZero: true },
-                    },
-                },
-            });
-        }
-    } catch (error) {
-        showNotification('Erro ao gerar relatório: ' + error.message, 'error');
-    }
-}
-
 // Função para abrir modal de chamar próxima senha
 function openCallNextModal(queueId, service) {
-    // Verifica autenticação
     if (!token || !userInfo.email) {
         logout('Acesso não autorizado. Por favor, faça login.');
         return;
     }
-
-    // Verifica se está na tela de login
-    const loginScreen = document.getElementById('login-screen');
-    if (!loginScreen.classList.contains('hidden')) {
-        console.warn('[Modal] Tentativa de abrir modal na tela de login. Ignorando.');
-        return;
-    }
-
     console.log('[Modal] Abrindo modal para:', { queueId, service });
     const modal = document.getElementById('call-next-modal');
     const serviceText = document.getElementById('call-next-service');
@@ -452,6 +321,7 @@ function openCallNextModal(queueId, service) {
         return;
     }
 
+    // Resetar modal
     modal.classList.remove('hidden');
     callInfo.classList.remove('hidden');
     callResult.classList.add('hidden');
@@ -464,6 +334,7 @@ function openCallNextModal(queueId, service) {
     spinner.classList.add('hidden');
     serviceText.textContent = service || 'Serviço não especificado';
 
+    // Configurar evento de confirmação
     confirmBtn.onclick = async () => {
         console.log('[Modal] Confirmando chamada para queueId:', queueId);
         buttonText.classList.add('hidden');
@@ -504,12 +375,7 @@ function openCallNextModal(queueId, service) {
 function closeCallNextModal() {
     console.log('[Modal] Fechando modal');
     const modal = document.getElementById('call-next-modal');
-    if (modal) {
-        modal.classList.add('hidden');
-        console.log('[Modal] Modal fechado com sucesso');
-    } else {
-        console.error('[Modal] Modal não encontrado ao tentar fechar');
-    }
+    if (modal) modal.classList.add('hidden');
 }
 
 // Função para login
@@ -565,9 +431,6 @@ function logout(message = null) {
     localStorage.removeItem('userInfo');
     if (socket) socket.disconnect();
     stopPolling();
-    // Garante que o modal seja fechado ao fazer logout
-    const modal = document.getElementById('call-next-modal');
-    if (modal) modal.classList.add('hidden');
     initApp(message);
 }
 
@@ -579,9 +442,7 @@ function toggleSidebar() {
     }
     console.log('[Sidebar] Alternando sidebar');
     const sidebar = document.getElementById('sidebar');
-    const mainContent = document.querySelector('.main-content');
     sidebar.classList.toggle('sidebar-collapse');
-    mainContent.classList.toggle('expanded');
 }
 
 // Função para mostrar/esconder páginas
@@ -599,7 +460,6 @@ function showPage(pageId) {
         dashboard: 'Dashboard',
         queues: 'Filas',
         tickets: 'Senhas',
-        reports: 'Relatórios',
     }[pageId];
 }
 
@@ -612,13 +472,6 @@ async function initApp(message = null) {
     const userName = document.getElementById('user-name');
     const userDepartment = document.getElementById('user-department');
     const messageDiv = document.getElementById('login-message');
-    const modal = document.getElementById('call-next-modal');
-
-    // Garante que o modal esteja escondido ao carregar a página
-    if (modal) {
-        modal.classList.add('hidden');
-        console.log('[App] Modal escondido durante inicialização');
-    }
 
     if (message && messageDiv) {
         messageDiv.textContent = message;
@@ -665,44 +518,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (toggleSidebarButton) toggleSidebarButton.addEventListener('click', toggleSidebar);
 
     const closeModalButton = document.getElementById('close-call-modal');
-    if (closeModalButton) {
-        closeModalButton.addEventListener('click', closeCallNextModal);
-        console.log('[Event] Evento de fechar modal configurado');
-    }
+    if (closeModalButton) closeModalButton.addEventListener('click', closeCallNextModal);
 
     const cancelModalButton = document.getElementById('cancel-call-next');
-    if (cancelModalButton) {
-        cancelModalButton.addEventListener('click', closeCallNextModal);
-        console.log('[Event] Evento de cancelar modal configurado');
-    }
+    if (cancelModalButton) cancelModalButton.addEventListener('click', closeCallNextModal);
 
     const finishModalButton = document.getElementById('finish-call-next');
-    if (finishModalButton) {
-        finishModalButton.addEventListener('click', closeCallNextModal);
-        console.log('[Event] Evento de finalizar modal configurado');
-    }
-
-    const refreshButton = document.getElementById('refresh-btn');
-    if (refreshButton) refreshButton.addEventListener('click', () => {
-        const currentPage = document.querySelector('.page:not(.hidden)')?.id.replace('page-', '');
-        if (currentPage === 'dashboard') updateDashboard();
-        else if (currentPage === 'queues') updateQueuesPage();
-        else if (currentPage === 'tickets') updateTicketsPage();
-        else if (currentPage === 'reports') generateReport();
-    });
-
-    const generateReportButton = document.getElementById('generate-report');
-    if (generateReportButton) generateReportButton.addEventListener('click', generateReport);
+    if (finishModalButton) finishModalButton.addEventListener('click', closeCallNextModal);
 
     document.querySelectorAll('.menu-item[data-page]').forEach(item => {
-        item.addEventListener('click', (e) => {
-            e.preventDefault();
+        item.addEventListener('click', () => {
             const pageId = item.dataset.page;
             showPage(pageId);
             if (pageId === 'dashboard') updateDashboard();
             else if (pageId === 'queues') updateQueuesPage();
             else if (pageId === 'tickets') updateTicketsPage();
-            else if (pageId === 'reports') generateReport();
         });
     });
 
