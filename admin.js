@@ -13,7 +13,7 @@ class ApiService {
         };
         
         if (token) {
-            headers['Authorization'] = `Bearer ${token}`;  // Adiciona o prefixo Bearer corretamente
+            headers['Authorization'] = `Bearer ${token}`;
         }
 
         const config = { 
@@ -32,12 +32,17 @@ class ApiService {
         try {
             const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
             
+            // Log da resposta para depuração
+            console.log(`Resposta de ${endpoint}:`, {
+                status: response.status,
+                statusText: response.statusText
+            });
+            
             // Tratamento especial para erros de autenticação
             if (response.status === 401) {
                 console.error('Erro de autenticação. Token pode estar inválido ou expirado.');
-                // Opcionalmente, você pode redirecionar para login
-                // AuthManager.logout();
-                // return;
+                AuthManager.logout();
+                return;
             }
             
             if (!response.ok) {
@@ -46,7 +51,9 @@ class ApiService {
                 throw new Error(errorText || response.statusText);
             }
             
-            return await response.json();
+            const data = await response.json();
+            console.log(`Dados recebidos de ${endpoint}:`, data);
+            return data;
         } catch (error) {
             console.error(`Erro na requisição ${endpoint}:`, error);
             throw error;
@@ -211,9 +218,10 @@ class AdminPanel {
             const tickets = await ApiService.getTickets();
             const today = new Date().toISOString().split('T')[0];
 
-            // Filtra apenas as filas e tickets do departamento do usuário
-            const userQueues = queues.filter(q => q.department === userInfo.department);
-            const userTickets = tickets.filter(t => t.department === userInfo.department);
+            // MODIFICAÇÃO: Removido filtro por departamento para mostrar TODAS as filas do gestor
+            // Filtra apenas as filas da instituição do usuário
+            const userQueues = queues.filter(q => q.institution_id === userInfo.institution_id);
+            const userTickets = tickets;
 
             const activeQueues = userQueues.length;
             const pendingTickets = userTickets.filter(t => t.status === 'Pendente').length;
@@ -229,6 +237,13 @@ class AdminPanel {
             document.getElementById('pending-tickets').textContent = pendingTickets;
             document.getElementById('avg-wait-time').textContent = `${avgWaitTime} min`;
             document.getElementById('attended-tickets').textContent = attendedToday;
+            
+            console.log("Dados do dashboard carregados:", {
+                filas_ativas: activeQueues,
+                tickets_pendentes: pendingTickets,
+                tempo_medio: avgWaitTime,
+                atendimentos_hoje: attendedToday
+            });
         } catch (error) {
             this.showError('Erro ao carregar dashboard', error);
         }
@@ -243,11 +258,14 @@ class AdminPanel {
             if (tableBody) tableBody.innerHTML = '';
             if (fullTableBody) fullTableBody.innerHTML = '';
 
-            // Filtra apenas as filas do departamento do usuário
-            const userQueues = queues.filter(q => q.department === userInfo.department);
+            // MODIFICAÇÃO: Mostrar todas as filas da instituição em vez de filtrar por departamento
+            // const userQueues = queues.filter(q => q.department === userInfo.department);
+            const userQueues = queues.filter(q => q.institution_id === userInfo.institution_id);
+            
+            console.log(`Carregadas ${userQueues.length} filas para a instituição ${userInfo.institution_id}`);
 
             if (userQueues.length === 0) {
-                const emptyRow = `<tr><td colspan="5">Nenhuma fila encontrada para seu departamento</td></tr>`;
+                const emptyRow = `<tr><td colspan="5">Nenhuma fila encontrada para sua instituição</td></tr>`;
                 if (tableBody) tableBody.innerHTML = emptyRow;
                 if (fullTableBody) fullTableBody.innerHTML = emptyRow;
                 return;
@@ -259,7 +277,7 @@ class AdminPanel {
                         <td>${queue.service}</td>
                         <td>${queue.active_tickets}</td>
                         <td>${queue.current_ticket ? `${queue.prefix}${queue.current_ticket.toString().padStart(3, '0')}` : 'N/A'}</td>
-                        <td><span class="status-${queue.status.toLowerCase()}">${queue.status}</span></td>
+                        <td><span class="status-${queue.status ? queue.status.toLowerCase() : 'ativo'}">${queue.status || 'Ativo'}</span></td>
                         <td><button class="btn secondary-btn" onclick="adminPanel.callNextTicket('${queue.id}')">Chamar Próximo</button></td>
                     </tr>
                 `;
@@ -292,8 +310,8 @@ class AdminPanel {
             const tickets = await ApiService.getTickets();
             const filter = document.getElementById('ticket-status-filter')?.value;
             
-            // Filtra apenas os tickets do departamento do usuário
-            let filteredTickets = tickets.filter(t => t.department === userInfo.department);
+            // MODIFICAÇÃO: Removido filtro por departamento para mostrar TODOS os tickets
+            let filteredTickets = tickets;
             
             if (filter) {
                 filteredTickets = filteredTickets.filter(t => t.status === filter);
@@ -301,6 +319,8 @@ class AdminPanel {
 
             const tableBody = document.getElementById('tickets-table');
             tableBody.innerHTML = '';
+
+            console.log(`Carregados ${filteredTickets.length} tickets (filtro: ${filter || 'todos'})`);
 
             if (filteredTickets.length === 0) {
                 tableBody.innerHTML = '<tr><td colspan="5">Nenhum ticket encontrado</td></tr>';
@@ -310,7 +330,7 @@ class AdminPanel {
             filteredTickets.forEach(ticket => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${ticket.number}</td>
+                    <td>${ticket.number || ticket.ticket_number}</td>
                     <td>${ticket.service}</td>
                     <td><span class="status-${ticket.status.toLowerCase()}">${ticket.status}</span></td>
                     <td>${ticket.wait_time || 'N/A'}</td>
@@ -330,8 +350,8 @@ class AdminPanel {
             const reportType = document.getElementById('report-type').value;
             const tickets = await ApiService.getTickets();
             
-            // Filtra apenas os tickets do departamento do usuário
-            let filteredTickets = tickets.filter(t => t.department === userInfo.department);
+            // MODIFICAÇÃO: Não filtrar por departamento
+            let filteredTickets = tickets;
             
             if (date) {
                 filteredTickets = filteredTickets.filter(t => t.issued_at.startsWith(date));
