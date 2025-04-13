@@ -3,513 +3,243 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FilaFacilita - Painel do Gestor</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <title>Facilita - Painel do Gestor</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.css">
     <style>
-        :root {
-            --primary: #2563eb;
-            --primary-dark: #1e40af;
-            --secondary: #64748b;
-            --danger: #dc2626;
-            --success: #16a34a;
-            --warning: #ca8a04;
-            --bg-light: #f8fafc;
-            --text-dark: #1e293b;
-            --text-light: #f8fafc;
-            --border: #e2e8f0;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
         body {
-            background-color: var(--bg-light);
-            color: var(--text-dark);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            overflow-x: hidden;
         }
-        
-        .login-container {
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 1rem;
-            background-color: #f3f4f6;
-        }
-        
-        .login-card {
-            background: white;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            padding: 2rem;
-            width: 100%;
-            max-width: 400px;
-        }
-        
         .app-container {
             display: flex;
             min-height: 100vh;
         }
-        
         .sidebar {
             width: 250px;
-            background-color: #1e293b;
+            background-color: #1a3c34;
             color: white;
-            padding: 1rem;
-            display: flex;
-            flex-direction: column;
-            transition: all 0.3s ease;
-        }
-        
-        .sidebar-collapse {
-            width: 70px;
-        }
-        
-        .sidebar-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            margin-bottom: 1rem;
-        }
-        
-        .sidebar-collapse .sidebar-header span,
-        .sidebar-collapse .menu-item span {
-            display: none;
-        }
-        
-        .menu-item {
-            display: flex;
-            align-items: center;
-            padding: 0.75rem 1rem;
-            border-radius: 0.25rem;
-            margin-bottom: 0.5rem;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        
-        .menu-item:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-        }
-        
-        .menu-item.active {
-            background-color: var(--primary);
-        }
-        
-        .menu-item i {
-            margin-right: 0.75rem;
-            width: 20px;
-            text-align: center;
-        }
-        
-        .sidebar-collapse .menu-item i {
-            margin-right: 0;
-        }
-        
-        .content {
-            flex: 1;
-            padding: 1.5rem;
+            transition: width 0.3s;
+            padding: 20px;
+            position: fixed;
+            height: 100%;
             overflow-y: auto;
         }
-        
+        .sidebar-collapse {
+            width: 80px;
+        }
+        .sidebar-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .sidebar-nav ul {
+            list-style: none;
+            padding: 0;
+        }
+        .sidebar-nav li {
+            margin: 10px 0;
+        }
+        .sidebar-nav a {
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .sidebar-nav a:hover, .sidebar-nav a.active {
+            background-color: #2a5f54;
+        }
+        .sidebar-nav i {
+            margin-right: 10px;
+        }
+        .sidebar-footer {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+        }
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+            width: calc(100% - 250px);
+            transition: all 0.3s;
+        }
+        .main-content.expanded {
+            margin-left: 80px;
+            width: calc(100% - 80px);
+        }
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 2rem;
+            margin-bottom: 20px;
         }
-        
-        .user-info {
-            display: flex;
-            align-items: center;
-        }
-        
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background-color: var(--primary);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            margin-right: 0.75rem;
-        }
-        
         .card {
             background: white;
-            border-radius: 0.5rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
         }
-        
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid var(--border);
-        }
-        
-        .card-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-        }
-        
-        .stats-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .stat-card {
-            background: white;
-            border-radius: 0.5rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            padding: 1.25rem;
-        }
-        
-        .stat-title {
-            color: var(--secondary);
-            font-size: 0.875rem;
-            margin-bottom: 0.5rem;
-        }
-        
-        .stat-value {
-            font-size: 1.5rem;
-            font-weight: 600;
-        }
-        
-        .stat-footer {
-            display: flex;
-            align-items: center;
-            margin-top: 0.5rem;
-            font-size: 0.875rem;
-        }
-        
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0.5rem 1rem;
-            border-radius: 0.25rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: none;
-        }
-        
-        .btn-primary {
-            background-color: var(--primary);
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background-color: var(--primary-dark);
-        }
-        
-        .btn-success {
-            background-color: var(--success);
-            color: white;
-        }
-        
-        .btn-success:hover {
-            background-color: #15803d;
-        }
-        
-        .btn-danger {
-            background-color: var(--danger);
-            color: white;
-        }
-        
-        .btn-danger:hover {
-            background-color: #b91c1c;
-        }
-        
-        .btn i {
-            margin-right: 0.5rem;
-        }
-        
-        table {
+        .table {
             width: 100%;
             border-collapse: collapse;
         }
-        
-        th, td {
-            padding: 0.75rem 1rem;
+        .table th, .table td {
+            padding: 12px;
             text-align: left;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid #eee;
         }
-        
-        th {
-            font-weight: 600;
-            color: var(--secondary);
-            background-color: #f8fafc;
-        }
-        
-        tbody tr:hover {
-            background-color: #f1f5f9;
-        }
-        
         .badge {
-            display: inline-block;
-            padding: 0.25rem 0.5rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 500;
+            padding: 5px 10px;
+            border-radius: 12px;
+            font-size: 0.9em;
         }
-        
-        .badge-success {
-            background-color: #dcfce7;
-            color: var(--success);
+        .badge-success { background-color: #28a745; color: white; }
+        .badge-warning { background-color: #ffc107; color: black; }
+        .badge-danger { background-color: #dc3545; color: white; }
+        .badge-info { background-color: #17a2b8; color: white; }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s;
         }
-        
-        .badge-warning {
-            background-color: #fef9c3;
-            color: var(--warning);
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-primary:hover { background-color: #0056b3; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        .btn-danger:hover { background-color: #c82333; }
+        .btn-icon { background: none; color: white; }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 1000;
+            animation: slideIn 0.3s;
         }
-        
-        .badge-danger {
-            background-color: #fee2e2;
-            color: var(--danger);
+        .alert-success { background-color: #28a745; color: white; }
+        .alert-danger { background-color: #dc3545; color: white; }
+        .alert-warning { background-color: #ffc107; color: black; }
+        .hidden { display: none; }
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #1a3c34, #2a5f54);
         }
-        
-        .badge-info {
-            background-color: #dbeafe;
-            color: var(--primary);
+        .login-card {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
         }
-        
         .form-group {
-            margin-bottom: 1rem;
+            margin-bottom: 20px;
+            text-align: left;
         }
-        
         .form-label {
             display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
+            margin-bottom: 5px;
+            font-weight: bold;
         }
-        
         .form-control {
             width: 100%;
-            padding: 0.5rem 0.75rem;
-            border: 1px solid var(--border);
-            border-radius: 0.25rem;
-            font-size: 1rem;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1em;
         }
-        
-        .form-control:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        .loading-spinner::before {
+            content: '';
+            border: 2px solid #fff;
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 5px;
         }
-        
-        .alert {
-            padding: 0.75rem 1rem;
-            border-radius: 0.25rem;
-            margin-bottom: 1rem;
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
-        
-        .alert-danger {
-            background-color: #fee2e2;
-            color: var(--danger);
-            border: 1px solid #fecaca;
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
         }
-        
-        .alert-success {
-            background-color: #dcfce7;
-            color: var(--success);
-            border: 1px solid #bbf7d0;
-        }
-        
-        .hidden {
-            display: none;
-        }
-        
-        .ticket-card {
-            background: white;
-            border-radius: 0.5rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-            border-left: 4px solid var(--primary);
-        }
-        
-        .ticket-number {
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
-        }
-        
-        .ticket-info {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 0.5rem;
-        }
-        
-        .ticket-status {
-            font-weight: 500;
-        }
-        
-        .ticket-actions {
-            margin-top: 1rem;
-        }
-        
-        /* Responsividade */
-        @media (max-width: 768px) {
-            .app-container {
-                flex-direction: column;
-            }
-            
-            .sidebar {
-                width: 100%;
-                max-height: 60px;
-                overflow: hidden;
-            }
-            
-            .sidebar.expanded {
-                max-height: none;
-            }
-            
-            .stats-container {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        /* Estilos para modal */
-        .modal-backdrop {
+        .modal {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
+            background: rgba(0,0,0,0.5);
             display: flex;
             justify-content: center;
             align-items: center;
             z-index: 1000;
         }
-        
         .modal-content {
             background: white;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            width: 90%;
+            padding: 20px;
+            border-radius: 10px;
+            width: 100%;
             max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
+            position: relative;
         }
-        
-        .modal-header {
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .modal-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-        }
-        
         .modal-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
             background: none;
             border: none;
-            font-size: 1.5rem;
+            font-size: 1.2em;
             cursor: pointer;
-            color: var(--secondary);
         }
-        
-        .modal-body {
-            padding: 1.5rem;
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 20px;
         }
-        
-        .modal-footer {
-            padding: 1rem 1.5rem;
-            border-top: 1px solid var(--border);
-            display: flex;
-            justify-content: flex-end;
-            gap: 0.5rem;
-        }
-        
-        /* Animações */
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        
-        .fade-in {
-            animation: fadeIn 0.3s ease;
-        }
-        
-        /* Notificações */
-        .notification {
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            padding: 1rem;
-            border-radius: 0.25rem;
-            background-color: white;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            z-index: 1001;
-            animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s forwards;
-            max-width: 300px;
-        }
-        
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        
-        @keyframes fadeOut {
-            from { opacity: 1; }
-            to { opacity: 0; }
-        }
-        
-        /* Loading Spinner */
-        .loading-spinner {
-            display: inline-block;
-            width: 1.5rem;
-            height: 1.5rem;
-            border: 3px solid rgba(0, 0, 0, 0.1);
-            border-radius: 50%;
-            border-top-color: var(--primary);
-            animation: spin 1s ease-in-out infinite;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 80px;
+            }
+            .main-content {
+                margin-left: 80px;
+                width: calc(100% - 80px);
+            }
         }
     </style>
 </head>
 <body>
     <!-- Tela de Login -->
-    <div id="login-screen" class="login-container">
+    <div id="login-screen" class="login-container hidden">
         <div class="login-card">
             <h1 style="text-align: center; margin-bottom: 1.5rem;">FilaFacilita</h1>
             <h2 style="text-align: center; margin-bottom: 2rem;">Painel do Gestor</h2>
-            
+            <div id="login-message" class="alert alert-warning hidden"></div>
             <div id="login-error" class="alert alert-danger hidden"></div>
-            
             <form id="login-form">
                 <div class="form-group">
                     <label for="email" class="form-label">Email</label>
                     <input type="email" id="email" name="email" class="form-control" required>
                 </div>
-                
                 <div class="form-group">
                     <label for="password" class="form-label">Senha</label>
                     <input type="password" id="password" name="password" class="form-control" required>
                 </div>
-                
                 <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
                     <span id="login-button-text">Entrar</span>
                     <span id="login-spinner" class="loading-spinner hidden"></span>
@@ -517,80 +247,75 @@
             </form>
         </div>
     </div>
-    
-    <!-- Aplicação Principal -->
+
+    <!-- Aplicação -->
     <div id="app-screen" class="app-container hidden">
-        <!-- Sidebar -->
-        <div id="sidebar" class="sidebar">
+        <aside id="sidebar" class="sidebar">
             <div class="sidebar-header">
-                <span>FilaFacilita</span>
-                <i id="toggle-sidebar" class="fas fa-bars" style="cursor: pointer;"></i>
+                <h2>Facilita Admin</h2>
             </div>
-            
-            <div class="menu-item active" data-page="dashboard">
-                <i class="fas fa-tachometer-alt"></i>
-                <span>Dashboard</span>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="menu-item" data-page="dashboard"><a href="#" class="active"><i class="fas fa-home"></i> Dashboard</a></li>
+                    <li class="menu-item" data-page="queues"><a href="#"><i class="fas fa-list"></i> Filas</a></li>
+                    <li class="menu-item" data-page="tickets"><a href="#"><i class="fas fa-ticket-alt"></i> Senhas</a></li>
+                    <li class="menu-item" data-page="reports"><a href="#"><i class="fas fa-chart-bar"></i> Relatórios</a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="toggle-sidebar" class="btn btn-icon"><i class="fas fa-bars"></i></button>
+                <button id="logout-button" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i> Sair</button>
             </div>
-            
-            <div class="menu-item" data-page="queues">
-                <i class="fas fa-list"></i>
-                <span>Filas</span>
-            </div>
-            
-            <div class="menu-item" data-page="tickets">
-                <i class="fas fa-ticket-alt"></i>
-                <span>Senhas</span>
-            </div>
-            
-            <div class="menu-item" id="logout-button" style="margin-top: auto;">
-                <i class="fas fa-sign-out-alt"></i>
-                <span>Sair</span>
-            </div>
-        </div>
-        
-        <!-- Conteúdo principal -->
-        <div class="content">
-            <div class="header">
+        </aside>
+        <main class="main-content">
+            <header class="header">
                 <h1 id="page-title">Dashboard</h1>
-                
-                <div class="user-info">
-                    <div class="user-avatar" id="user-avatar">G</div>
-                    <div>
-                        <div id="user-name">Gestor</div>
-                        <div id="user-department" style="font-size: 0.875rem; color: var(--secondary);"></div>
-                    </div>
+                <div class="header-actions">
+                    <span id="user-info">
+                        <span id="user-avatar" class="badge badge-info"></span>
+                        <span id="user-name"></span> (<span id="user-department"></span>)
+                    </span>
+                    <button id="refresh-btn" class="btn btn-primary"><i class="fas fa-sync"></i> Atualizar</button>
                 </div>
-            </div>
-            
+            </header>
+
             <!-- Página Dashboard -->
             <div id="page-dashboard" class="page">
-                <div class="stats-container">
-                    <div class="stat-card">
-                        <div class="stat-title">Total de Filas</div>
-                        <div class="stat-value" id="total-queues">0</div>
+                <div class="card">
+                    <h3>Estatísticas Gerais</h3>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="card">
+                                <h4>Total de Filas</h4>
+                                <p id="total-queues">0</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card">
+                                <h4>Senhas Pendentes</h4>
+                                <p id="pending-tickets">0</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card">
+                                <h4>Senhas Atendidas</h4>
+                                <p id="attended-tickets">0</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card">
+                                <h4>Senhas Canceladas</h4>
+                                <p id="cancelled-tickets">0</p>
+                            </div>
+                        </div>
                     </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-title">Senhas Pendentes</div>
-                        <div class="stat-value" id="pending-tickets">0</div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-title">Senhas Atendidas</div>
-                        <div class="stat-value" id="attended-tickets">0</div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-title">Senhas Canceladas</div>
-                        <div class="stat-value" id="cancelled-tickets">0</div>
+                    <div class="chart-container">
+                        <canvas id="ticketStatusChart"></canvas>
                     </div>
                 </div>
-                
                 <div class="card">
-                    <div class="card-header">
-                        <h2 class="card-title">Resumo de Filas</h2>
-                    </div>
-                    <table id="queues-summary-table">
+                    <h3>Resumo das Filas</h3>
+                    <table class="table">
                         <thead>
                             <tr>
                                 <th>Serviço</th>
@@ -601,40 +326,31 @@
                                 <th>Ações</th>
                             </tr>
                         </thead>
-                        <tbody id="queues-summary-body">
-                            <!-- Dados serão inseridos via JavaScript -->
-                        </tbody>
+                        <tbody id="queues-summary-body"></tbody>
                     </table>
                 </div>
-                
                 <div class="card">
-                    <div class="card-header">
-                        <h2 class="card-title">Últimas Senhas</h2>
-                    </div>
-                    <table id="recent-tickets-table">
+                    <h3>Senhas Recentes</h3>
+                    <table class="table">
                         <thead>
                             <tr>
-                                <th>Senha</th>
+                                <th>Número</th>
                                 <th>Serviço</th>
                                 <th>Status</th>
-                                <th>Emitida em</th>
-                                <th>Atendida em</th>
+                                <th>Emitido</th>
+                                <th>Atendido</th>
                             </tr>
                         </thead>
-                        <tbody id="recent-tickets-body">
-                            <!-- Dados serão inseridos via JavaScript -->
-                        </tbody>
+                        <tbody id="recent-tickets-body"></tbody>
                     </table>
                 </div>
             </div>
-            
+
             <!-- Página Filas -->
             <div id="page-queues" class="page hidden">
                 <div class="card">
-                    <div class="card-header">
-                        <h2 class="card-title">Filas do Departamento</h2>
-                    </div>
-                    <table id="queues-table">
+                    <h3>Gerenciamento de Filas</h3>
+                    <table class="table">
                         <thead>
                             <tr>
                                 <th>ID</th>
@@ -647,43 +363,98 @@
                                 <th>Ações</th>
                             </tr>
                         </thead>
-                        <tbody id="queues-table-body">
-                            <!-- Dados serão inseridos via JavaScript -->
-                        </tbody>
+                        <tbody id="queues-table-body"></tbody>
                     </table>
                 </div>
             </div>
-            
+
             <!-- Página Senhas -->
             <div id="page-tickets" class="page hidden">
                 <div class="card">
-                    <div class="card-header">
-                        <h2 class="card-title">Senhas do Departamento</h2>
-                    </div>
-                    <table id="tickets-table">
+                    <h3>Lista de Senhas</h3>
+                    <table class="table">
                         <thead>
                             <tr>
                                 <th>ID</th>
                                 <th>Número</th>
                                 <th>Serviço</th>
                                 <th>Status</th>
-                                <th>Emitida em</th>
-                                <th>Atendida em</th>
+                                <th>Emitido</th>
+                                <th>Atendido</th>
                                 <th>Guichê</th>
                             </tr>
                         </thead>
-                        <tbody id="tickets-table-body">
-                            <!-- Dados serão inseridos via JavaScript -->
-                        </tbody>
+                        <tbody id="tickets-table-body"></tbody>
                     </table>
                 </div>
             </div>
+
+            <!-- Página Relatórios -->
+            <div id="page-reports" class="page hidden">
+                <div class="card">
+                    <h3>Relatórios</h3>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="report-date">Data</label>
+                                <input type="date" id="report-date" class="form-control">
+                            </div>
+                            <button id="generate-report" class="btn btn-primary">Gerar Relatório</button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="reportChart"></canvas>
+                    </div>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Serviço</th>
+                                <th>Senhas Emitidas</th>
+                                <th>Senhas Atendidas</th>
+                                <th>Tempo Médio (min)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="report-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal para Chamar Próxima Senha -->
+    <div id="call-next-modal" class="modal hidden">
+        <div class="modal-content">
+            <button id="close-call-modal" class="modal-close">&times;</button>
+            <div id="call-next-info">
+                <h3>Chamar Próxima Senha</h3>
+                <p>Serviço: <span id="call-next-service"></span></p>
+                <button id="confirm-call-next" class="btn btn-primary">
+                    <span id="call-button-text">Confirmar</span>
+                    <span id="call-spinner" class="loading-spinner hidden"></span>
+                </button>
+                <button id="cancel-call-next" class="btn btn-danger">Cancelar</button>
+            </div>
+            <div id="call-next-result" class="hidden">
+                <div id="call-success" class="hidden">
+                    <h3>Senha Chamada</h3>
+                    <p>Número: <span id="result-ticket-number"></span></p>
+                    <p>Guichê: <span id="result-counter"></span></p>
+                    <p>Senhas Restantes: <span id="result-remaining"></span></p>
+                </div>
+                <div id="call-error" class="hidden">
+                    <h3>Erro</h3>
+                    <p id="call-error-message"></p>
+                </div>
+                <button id="finish-call-next" class="btn btn-primary">Fechar</button>
+            </div>
         </div>
     </div>
-    
 
- 
-        // Configurações e variáveis globais
+    <div id="toast-container"></div>
+
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
     <script src="admin.js"></script>
 </body>
 </html>

@@ -3,6 +3,7 @@ const API_BASE_URL = 'https://fila-facilita2-0.onrender.com';
 let token = localStorage.getItem('token');
 let userInfo = JSON.parse(localStorage.getItem('userInfo')) || {};
 let socket;
+let ticketStatusChart, reportChart;
 
 // Função para inicializar WebSocket
 function initWebSocket() {
@@ -79,14 +80,16 @@ function stopPolling() {
 // Classe para requisições à API
 class ApiService {
     static async request(endpoint, method = 'GET', body = null) {
+        if (!token) {
+            logout('Acesso não autorizado. Por favor, faça login.');
+            throw new Error('Nenhum token de autenticação encontrado');
+        }
+
         const headers = {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
+            'Authorization': `Bearer ${token}`,
         };
-
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
-        }
 
         const config = {
             method,
@@ -105,7 +108,7 @@ class ApiService {
 
             if (response.status === 401) {
                 console.warn('[ApiService] Sessão expirada');
-                logout();
+                logout('Sessão expirada. Por favor, faça login novamente.');
                 throw new Error('Sessão expirada');
             }
 
@@ -126,7 +129,25 @@ class ApiService {
     }
 
     static async login(email, password) {
-        return await this.request('/api/admin/login', 'POST', { email, password });
+        const headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        };
+
+        const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ email, password }),
+            mode: 'cors',
+            credentials: 'omit',
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Erro ao fazer login');
+        }
+
+        return await response.json();
     }
 
     static async getAdminQueues() {
@@ -140,6 +161,20 @@ class ApiService {
     static async callNextTicket(queueId) {
         return await this.request(`/api/admin/queue/${queueId}/call`, 'POST');
     }
+
+    static async getReport(date) {
+        return await this.request(`/api/admin/report?date=${date}`);
+    }
+
+    static async validateToken() {
+        try {
+            await this.request('/api/admin/queues');
+            return true;
+        } catch (error) {
+            console.error('[ApiService] Token inválido:', error);
+            return false;
+        }
+    }
 }
 
 // Função para notificações
@@ -147,7 +182,7 @@ function showNotification(message, type = 'success') {
     const notification = document.createElement('div');
     notification.className = `notification ${type === 'success' ? 'alert-success' : 'alert-danger'}`;
     notification.textContent = message;
-    document.body.appendChild(notification);
+    document.getElementById('toast-container').appendChild(notification);
     setTimeout(() => notification.remove(), 3000);
 }
 
@@ -182,8 +217,47 @@ function formatQueueStatus(activeTickets, dailyLimit) {
         : '<span class="badge badge-danger">Lotado</span>';
 }
 
+// Função para inicializar gráficos
+function initCharts(tickets) {
+    if (ticketStatusChart) ticketStatusChart.destroy();
+    const ctx = document.getElementById('ticketStatusChart')?.getContext('2d');
+    if (!ctx) return;
+
+    const statusCounts = {
+        Pendente: tickets.filter(t => t.status === 'Pendente').length,
+        Atendido: tickets.filter(t => t.status === 'attended').length,
+        Cancelado: tickets.filter(t => t.status === 'Cancelado').length,
+        Chamado: tickets.filter(t => t.status === 'Chamado').length,
+    };
+
+    ticketStatusChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Pendente', 'Atendido', 'Cancelado', 'Chamado'],
+            datasets: [{
+                data: [statusCounts.Pendente, statusCounts.Atendido, statusCounts.Cancelado, statusCounts.Chamado],
+                backgroundColor: ['#ffc107', '#28a745', '#dc3545', '#17a2b8'],
+                borderColor: ['#fff', '#fff', '#fff', '#fff'],
+                borderWidth: 1,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' },
+                title: { display: true, text: 'Distribuição de Status das Senhas' },
+            },
+        },
+    });
+}
+
 // Função para atualizar dashboard
 async function updateDashboard() {
+    if (!token || !userInfo.email) {
+        logout('Acesso não autorizado. Por favor, faça login.');
+        return;
+    }
     try {
         const queues = await ApiService.getAdminQueues();
         const tickets = await ApiService.getAdminTickets();
@@ -220,6 +294,8 @@ async function updateDashboard() {
                 <td>${formatDate(ticket.attended_at)}</td>
             </tr>
         `).join('');
+
+        initCharts(tickets);
     } catch (error) {
         showNotification('Erro ao atualizar dashboard: ' + error.message, 'error');
     }
@@ -227,6 +303,10 @@ async function updateDashboard() {
 
 // Função para atualizar página de filas
 async function updateQueuesPage() {
+    if (!token || !userInfo.email) {
+        logout('Acesso não autorizado. Por favor, faça login.');
+        return;
+    }
     try {
         const queues = await ApiService.getAdminQueues();
         const queuesBody = document.getElementById('queues-table-body');
@@ -253,6 +333,10 @@ async function updateQueuesPage() {
 
 // Função para atualizar página de senhas
 async function updateTicketsPage() {
+    if (!token || !userInfo.email) {
+        logout('Acesso não autorizado. Por favor, faça login.');
+        return;
+    }
     try {
         const tickets = await ApiService.getAdminTickets();
         const ticketsBody = document.getElementById('tickets-table-body');
@@ -272,8 +356,74 @@ async function updateTicketsPage() {
     }
 }
 
+// Função para gerar relatório
+async function generateReport() {
+    if (!token || !userInfo.email) {
+        logout('Acesso não autorizado. Por favor, faça login.');
+        return;
+    }
+    const dateInput = document.getElementById('report-date').value;
+    if (!dateInput) {
+        showNotification('Selecione uma data para o relatório', 'error');
+        return;
+    }
+
+    try {
+        const report = await ApiService.getReport(dateInput);
+        const reportBody = document.getElementById('report-table-body');
+        reportBody.innerHTML = report.map(item => `
+            <tr>
+                <td>${item.service}</td>
+                <td>${item.issued}</td>
+                <td>${item.attended}</td>
+                <td>${item.avg_time ? item.avg_time.toFixed(1) : '-'}</td>
+            </tr>
+        `).join('');
+
+        if (reportChart) reportChart.destroy();
+        const ctx = document.getElementById('reportChart')?.getContext('2d');
+        if (ctx) {
+            reportChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: report.map(item => item.service),
+                    datasets: [
+                        {
+                            label: 'Senhas Emitidas',
+                            data: report.map(item => item.issued),
+                            backgroundColor: '#007bff',
+                        },
+                        {
+                            label: 'Senhas Atendidas',
+                            data: report.map(item => item.attended),
+                            backgroundColor: '#28a745',
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' },
+                        title: { display: true, text: `Relatório de ${new Date(dateInput).toLocaleDateString('pt-BR')}` },
+                    },
+                    scales: {
+                        y: { beginAtZero: true },
+                    },
+                },
+            });
+        }
+    } catch (error) {
+        showNotification('Erro ao gerar relatório: ' + error.message, 'error');
+    }
+}
+
 // Função para abrir modal de chamar próxima senha
 function openCallNextModal(queueId, service) {
+    if (!token || !userInfo.email) {
+        logout('Acesso não autorizado. Por favor, faça login.');
+        return;
+    }
     console.log('[Modal] Abrindo modal para:', { queueId, service });
     const modal = document.getElementById('call-next-modal');
     const serviceText = document.getElementById('call-next-service');
@@ -293,7 +443,6 @@ function openCallNextModal(queueId, service) {
         return;
     }
 
-    // Resetar modal
     modal.classList.remove('hidden');
     callInfo.classList.remove('hidden');
     callResult.classList.add('hidden');
@@ -306,7 +455,6 @@ function openCallNextModal(queueId, service) {
     spinner.classList.add('hidden');
     serviceText.textContent = service || 'Serviço não especificado';
 
-    // Configurar evento de confirmação
     confirmBtn.onclick = async () => {
         console.log('[Modal] Confirmando chamada para queueId:', queueId);
         buttonText.classList.add('hidden');
@@ -357,11 +505,13 @@ async function handleLogin(event) {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     const errorDiv = document.getElementById('login-error');
+    const messageDiv = document.getElementById('login-message');
     const buttonText = document.getElementById('login-button-text');
     const spinner = document.getElementById('login-spinner');
     const loginBtn = document.querySelector('#login-form button');
 
     errorDiv.classList.add('hidden');
+    messageDiv.classList.add('hidden');
     buttonText.classList.add('hidden');
     spinner.classList.remove('hidden');
     loginBtn.disabled = true;
@@ -393,7 +543,7 @@ async function handleLogin(event) {
 }
 
 // Função para logout
-function logout() {
+function logout(message = null) {
     console.log('[Logout] Realizando logout');
     token = null;
     userInfo = {};
@@ -401,18 +551,28 @@ function logout() {
     localStorage.removeItem('userInfo');
     if (socket) socket.disconnect();
     stopPolling();
-    initApp();
+    initApp(message);
 }
 
 // Função para alternar sidebar
 function toggleSidebar() {
+    if (!token || !userInfo.email) {
+        logout('Acesso não autorizado. Por favor, faça login.');
+        return;
+    }
     console.log('[Sidebar] Alternando sidebar');
     const sidebar = document.getElementById('sidebar');
+    const mainContent = document.querySelector('.main-content');
     sidebar.classList.toggle('sidebar-collapse');
+    mainContent.classList.toggle('expanded');
 }
 
 // Função para mostrar/esconder páginas
 function showPage(pageId) {
+    if (!token || !userInfo.email) {
+        logout('Acesso não autorizado. Por favor, faça login.');
+        return;
+    }
     console.log('[Navegação] Mostrando página:', pageId);
     document.querySelectorAll('.page').forEach(page => page.classList.add('hidden'));
     document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
@@ -422,32 +582,50 @@ function showPage(pageId) {
         dashboard: 'Dashboard',
         queues: 'Filas',
         tickets: 'Senhas',
+        reports: 'Relatórios',
     }[pageId];
 }
 
 // Função para inicializar a aplicação
-function initApp() {
+async function initApp(message = null) {
     console.log('[App] Inicializando aplicação', { token, userInfo });
     const loginScreen = document.getElementById('login-screen');
     const appScreen = document.getElementById('app-screen');
     const userAvatar = document.getElementById('user-avatar');
     const userName = document.getElementById('user-name');
     const userDepartment = document.getElementById('user-department');
+    const messageDiv = document.getElementById('login-message');
 
-    if (token && userInfo.email) {
-        loginScreen.classList.add('hidden');
-        appScreen.classList.remove('hidden');
-        userAvatar.textContent = userInfo.email[0].toUpperCase();
-        userName.textContent = userInfo.email.split('@')[0];
-        userDepartment.textContent = userInfo.department || 'N/A';
-        initWebSocket();
-        stopPolling();
-        updateDashboard();
-        showPage('dashboard');
-    } else {
+    if (message && messageDiv) {
+        messageDiv.textContent = message;
+        messageDiv.classList.remove('hidden');
+    }
+
+    if (!token || !userInfo.email) {
+        console.log('[App] Sem autenticação, mostrando tela de login');
         loginScreen.classList.remove('hidden');
         appScreen.classList.add('hidden');
+        return;
     }
+
+    // Validar token no servidor
+    const isValidToken = await ApiService.validateToken();
+    if (!isValidToken) {
+        console.log('[App] Token inválido, redirecionando para login');
+        logout('Sessão inválida. Por favor, faça login novamente.');
+        return;
+    }
+
+    console.log('[App] Usuário autenticado, mostrando aplicação');
+    loginScreen.classList.add('hidden');
+    appScreen.classList.remove('hidden');
+    userAvatar.textContent = userInfo.email[0].toUpperCase();
+    userName.textContent = userInfo.email.split('@')[0];
+    userDepartment.textContent = userInfo.department || 'N/A';
+    initWebSocket();
+    stopPolling();
+    updateDashboard();
+    showPage('dashboard');
 }
 
 // Configurar eventos
@@ -457,7 +635,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (loginForm) loginForm.addEventListener('submit', handleLogin);
 
     const logoutButton = document.getElementById('logout-button');
-    if (logoutButton) logoutButton.addEventListener('click', logout);
+    if (logoutButton) logoutButton.addEventListener('click', () => logout());
 
     const toggleSidebarButton = document.getElementById('toggle-sidebar');
     if (toggleSidebarButton) toggleSidebarButton.addEventListener('click', toggleSidebar);
@@ -471,13 +649,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const finishModalButton = document.getElementById('finish-call-next');
     if (finishModalButton) finishModalButton.addEventListener('click', closeCallNextModal);
 
+    const refreshButton = document.getElementById('refresh-btn');
+    if (refreshButton) refreshButton.addEventListener('click', () => {
+        const currentPage = document.querySelector('.page:not(.hidden)')?.id.replace('page-', '');
+        if (currentPage === 'dashboard') updateDashboard();
+        else if (currentPage === 'queues') updateQueuesPage();
+        else if (currentPage === 'tickets') updateTicketsPage();
+        else if (currentPage === 'reports') generateReport();
+    });
+
+    const generateReportButton = document.getElementById('generate-report');
+    if (generateReportButton) generateReportButton.addEventListener('click', generateReport);
+
     document.querySelectorAll('.menu-item[data-page]').forEach(item => {
-        item.addEventListener('click', () => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
             const pageId = item.dataset.page;
             showPage(pageId);
             if (pageId === 'dashboard') updateDashboard();
             else if (pageId === 'queues') updateQueuesPage();
             else if (pageId === 'tickets') updateTicketsPage();
+            else if (pageId === 'reports') generateReport();
         });
     });
 
