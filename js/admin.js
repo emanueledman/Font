@@ -78,15 +78,15 @@ function stopPolling() {
 
 // Classe para requisições à API
 class ApiService {
-    static async request(endpoint, method = 'GET', body = null) {
+    static async request(endpoint, method = 'GET', body = null, requireAuth = true) {
         const headers = {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
         };
 
-        if (token) {
+        if (requireAuth && token) {
             headers['Authorization'] = `Bearer ${token}`;
-        } else {
+        } else if (requireAuth && !token) {
             throw new Error('Nenhum token de autenticação encontrado');
         }
 
@@ -128,7 +128,8 @@ class ApiService {
     }
 
     static async login(email, password) {
-        return await this.request('/api/admin/login', 'POST', { email, password });
+        console.log('[ApiService] Tentando login com:', { email });
+        return await this.request('/api/admin/login', 'POST', { email, password }, false);
     }
 
     static async getAdminQueues() {
@@ -399,7 +400,14 @@ async function handleLogin(event) {
     loginBtn.disabled = true;
 
     try {
+        console.log('[Login] Enviando requisição para API:', { email });
         const result = await ApiService.login(email, password);
+        console.log('[Login] Resposta da API:', result);
+
+        if (!result.token) {
+            throw new Error('Token não retornado pela API');
+        }
+
         token = result.token;
         userInfo = {
             id: result.user_id,
@@ -415,7 +423,7 @@ async function handleLogin(event) {
         initApp();
     } catch (error) {
         console.error('[Login] Erro:', error);
-        errorDiv.querySelector('span').textContent = 'Erro ao fazer login: ' + error.message;
+        errorDiv.querySelector('span').textContent = 'Erro ao fazer login: ' + (error.message || 'Tente novamente');
         errorDiv.classList.remove('hidden');
     } finally {
         buttonText.classList.remove('hidden');
@@ -490,6 +498,7 @@ async function initApp(message = null) {
     }
 
     // Validar token no servidor
+    console.log('[App] Validando token');
     const isValidToken = await ApiService.validateToken();
     if (!isValidToken) {
         console.log('[App] Token inválido, redirecionando para login');
