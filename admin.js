@@ -13,7 +13,7 @@ class ApiService {
         };
         
         if (token) {
-            headers['Authorization'] = `${token}`;  // Garante que o token use o prefixo 'Bearer '
+            headers['Authorization'] = `Bearer ${token}`;  // Adiciona o prefixo Bearer corretamente
         }
 
         const config = { 
@@ -78,10 +78,10 @@ class AuthManager {
             return false;
         }
         
-        // Garantir que estamos armazenando o token com o formato correto
+        // Garantir que estamos armazenando o token sem o prefixo
         token = data.token;
-        if (!token.startsWith('Bearer ') && !token.includes('Bearer ')) {
-            token = `Bearer ${token}`;
+        if (token.startsWith('Bearer ')) {
+            token = token.substring(7);  // Remove o prefixo se existir
         }
         
         localStorage.setItem('token', token);
