@@ -1,653 +1,459 @@
-:root {
-    --orange: #ff6f47;
-    --red: #ff4d4f;
-    --green: #52c41a;
-    --blue: #1890ff;
-    --purple: #722ed1;
-    --teal: #13c2c2;
-    --gray-50: #fafafa;
-    --gray-100: #f4f4f5;
-    --gray-200: #e4e4e7;
-    --gray-400: #a1a1aa;
-    --gray-800: #27272a;
-    --white: #ffffff;
-    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
-    background-color: var(--gray-50);
-    color: var(--gray-800);
-    line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
-}
-
-/* Layout */
-.main-content {
-    min-height: 100vh;
-    transition: margin-left 0.3s ease;
-    padding-bottom: 60px; /* Espaço para nav-mobile */
-}
-
-.main-content.full {
-    margin-left: 0;
-}
-
-/* Login Page */
-.login-wrapper {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--gray-50);
-    padding: 1.5rem;
-}
-
-.login-container {
-    width: 100%;
-    max-width: 420px;
-    background: var(--white);
-    border-radius: 12px;
-    padding: 2rem;
-    box-shadow: var(--shadow-md);
-}
-
-.login-header {
-    text-align: center;
-    margin-bottom: 2rem;
-}
-
-.login-logo {
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: var(--blue);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-}
-
-.login-title {
-    font-size: 1.5rem;
-    font-weight: 500;
-}
-
-.form-group {
-    margin-bottom: 1.5rem;
-}
-
-.form-label {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--gray-800);
-    margin-bottom: 0.5rem;
-    display: block;
-}
-
-.form-control {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    border: 1px solid var(--gray-200);
-    border-radius: 8px;
-    font-size: 0.9375rem;
-    transition: border-color 0.2s;
-}
-
-.form-control:focus {
-    border-color: var(--blue);
-    outline: none;
-}
-
-.form-error {
-    color: var(--red);
-    font-size: 0.75rem;
-    margin-top: 0.25rem;
-}
-
-.btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 500;
-    font-size: 0.9375rem;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    gap: 0.5rem;
-}
-
-.btn-primary {
-    background: var(--blue);
-    color: var(--white);
-}
-
-.btn-primary:hover {
-    background: #40a9ff;
-}
-
-.btn-block {
-    width: 100%;
-}
-
-/* Sidebar */
-.sidebar {
-    background: var(--white);
-    width: 72px;
-    transition: width 0.3s ease;
-    border-right: 1px solid var(--gray-200);
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    z-index: 1000;
-}
-
-.sidebar.active {
-    width: 240px;
-}
-
-.logo {
-    padding: 1.5rem 1rem;
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--blue);
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    border-bottom: 1px solid var(--gray-200);
-}
-
-.logo i {
-    font-size: 1.5rem;
-}
-
-.menu {
-    list-style: none;
-    padding: 1rem 0;
-    flex-grow: 1;
-}
-
-.menu li {
-    margin: 0.5rem 0;
-}
-
-.menu a {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 0.75rem 1rem;
-    color: var(--gray-800);
-    text-decoration: none;
-    border-radius: 8px;
-    margin: 0 0.5rem;
-    transition: all 0.2s ease;
-}
-
-.menu a:hover {
-    background: var(--gray-100);
-}
-
-.menu a.active {
-    background: var(--blue);
-    color: var(--white);
-}
-
-.menu a i {
-    font-size: 1.25rem;
-    width: 24px;
-    text-align: center;
-}
-
-.menu a.active i {
-    color: var(--white);
-}
-
-.menu a span {
-    opacity: 0;
-    transition: opacity 0.2s;
-}
-
-.sidebar.active .menu a span {
-    opacity: 1;
-}
-
-/* Header */
-.header {
-    background: var(--white);
-    padding: 1rem 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-radius: 12px;
-    box-shadow: var(--shadow-sm);
-    margin-bottom: 1.5rem;
-}
-
-.menu-toggle {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    color: var(--gray-800);
-    cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 8px;
-    transition: background 0.2s;
-}
-
-.menu-toggle:hover {
-    background: var(--gray-100);
-}
-
-.menu-toggle:focus {
-    outline: 2px solid var(--blue);
-}
-
-#section-title {
-    font-size: 1.5rem;
-    font-weight: 500;
-}
-
-.user-info {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    font-size: 0.875rem;
-}
-
-#logout-btn {
-    background: var(--red);
-    color: var(--white);
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-#logout-btn:hover {
-    background: #ff7875;
-}
-
-/* Login Section */
-.login-section {
-    background: var(--white);
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: var(--shadow-sm);
-    max-width: 420px;
-    margin: 0 auto 1.5rem;
-}
-
-.login-section h2 {
-    font-size: 1.5rem;
-    font-weight: 500;
-    margin-bottom: 1.5rem;
-}
-
-.login-section .form-group input {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    border: 1px solid var(--gray-200);
-    border-radius: 8px;
-    font-size: 0.9375rem;
-}
-
-.login-section .form-group input:focus {
-    border-color: var(--blue);
-    outline: none;
-}
-
-.login-section button {
-    width: 100%;
-    padding: 0.75rem;
-    background: var(--blue);
-    color: var(--white);
-    border: none;
-    border-radius: 8px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.login-section button:hover {
-    background: #40a9ff;
-}
-
-.error {
-    color: var(--red);
-    font-size: 0.875rem;
-    margin-top: 0.5rem;
-    text-align: center;
-}
-
-/* Content Sections */
-.content-section {
-    display: none;
-    background: var(--white);
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: var(--shadow-sm);
-    margin-bottom: 1.5rem;
-}
-
-.content-section.active {
-    display: block;
-}
-
-.section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 1.5rem;
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-
-.section-header h2 {
-    font-size: 1.25rem;
-    font-weight: 500;
-}
-
-.controls {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.controls input {
-    padding: 0.75rem 1rem;
-    border: 1px solid var(--gray-200);
-    border-radius: 8px;
-    font-size: 0.9375rem;
-    min-width: 200px;
-}
-
-.controls input:focus {
-    border-color: var(--blue);
-    outline: none;
-}
-
-.controls button {
-    padding: 0.75rem 1.5rem;
-    background: var(--blue);
-    color: var(--white);
-    border: none;
-    border-radius: 8px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.controls button:hover {
-    background: #40a9ff;
-}
-
-/* Dashboard Grid */
-.dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-bottom: 2rem;
-}
-
-.dashboard-card {
-    border-radius: 12px;
-    padding: 1rem;
-    box-shadow: var(--shadow-sm);
-    color: var(--white);
-    text-align: center;
-}
-
-.dashboard-card.card-orange {
-    background: var(--orange);
-}
-
-.dashboard-card.card-red {
-    background: var(--red);
-}
-
-.dashboard-card.card-green {
-    background: var(--green);
-}
-
-.dashboard-card.card-purple {
-    background: var(--purple);
-}
-
-.dashboard-card h3 {
-    font-size: 0.875rem;
-    font-weight: 400;
-    margin-bottom: 0.5rem;
-}
-
-.dashboard-card p {
-    font-size: 1.5rem;
-    font-weight: 700;
-}
-
-/* Tables */
-.table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    font-size: 0.9375rem;
-    background: var(--white);
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
-}
-
-.table th,
-.table td {
-    padding: 1rem;
-    text-align: left;
-}
-
-.table th {
-    background: var(--gray-50);
-    font-weight: 500;
-    color: var(--gray-800);
-}
-
-.table td {
-    border-top: 1px solid var(--gray-100);
-}
-
-.table tbody tr:hover {
-    background: var(--gray-100);
-}
-
-/* Badges */
-.badge {
-    display: inline-flex;
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--white);
-}
-
-.badge.open {
-    background: var(--green);
-}
-
-.badge.full {
-    background: var(--red);
-}
-
-/* Table Action Buttons */
-.table button {
-    background: var(--blue);
-    color: var(--white);
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.table button:hover {
-    background: #40a9ff;
-}
-
-/* Chart Container */
-.chart-container {
-    width: 100%;
-    height: 320px;
-    background: var(--white);
-    border-radius: 12px;
-    padding: 1rem;
-    box-shadow: var(--shadow-sm);
-}
-
-/* Loader */
-.loader {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(255, 255, 255, 0.85);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    display: none;
-}
-
-.loader.active {
-    display: flex;
-}
-
-.spinner {
-    width: 48px;
-    height: 48px;
-    border: 4px solid var(--gray-200);
-    border-top-color: var(--blue);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
+// Configurações do toastr
+toastr.options = {
+    closeButton: true,
+    progressBar: true,
+    positionClass: 'toast-top-right',
+    timeOut: 3000
+};
+
+// Configurações e variáveis globais
+const API_BASE_URL = 'https://fila-facilita2-0.onrender.com';
+let token = localStorage.getItem('token');
+let userInfo = JSON.parse(localStorage.getItem('userInfo')) || {};
+let chartInstance = null;
+let dashboardChart = null;
+let socket = null;
+
+// Classe principal para gerenciamento de autenticação e requisições
+class ApiService {
+    static async request(endpoint, method = 'GET', body = null) {
+        const headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        };
+        
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const config = { 
+            method, 
+            headers,
+            mode: 'cors',
+            credentials: 'omit',
+        };
+
+        if (body) {
+            config.body = JSON.stringify(body);
+        }
+
+        console.log(`[ApiService] Enviando requisição para: ${API_BASE_URL}${endpoint}`);
+        showLoader();
+
+        try {
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+            
+            if (response.status === 401) {
+                console.warn(`[ApiService] Erro 401 na requisição ${endpoint}.`);
+                handleLogout();
+                throw new Error(`Sessão expirada`);
+            }
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || 'Erro desconhecido');
+            }
+            
+            const data = await response.json();
+            hideLoader();
+            return data;
+        } catch (error) {
+            console.error(`[ApiService] Erro na requisição ${endpoint}:`, error);
+            hideLoader();
+            throw new Error(error.message || 'Falha na requisição');
+        }
+    }
+
+    static async login(email, password) {
+        return await this.request('/api/admin/login', 'POST', { email, password });
+    }
+
+    static async getQueues() {
+        return await this.request('/api/admin/queues');
+    }
+
+    static async getTickets() {
+        return await this.request('/api/tickets/admin');
+    }
+
+    static async callNextTicket(queueId) {
+        return await this.request(`/api/admin/queue/${queueId}/call`, 'POST');
+    }
+
+    static async getReport(date) {
+        return await this.request(`/api/admin/report?date=${date}`);
     }
 }
 
-/* DataTables Overrides */
-.dataTable {
-    margin: 0 !important;
+// Funções de manipulação da interface
+function showLoader() {
+    document.getElementById('loader').style.display = 'block';
 }
 
-.dataTable thead th {
-    border-bottom: none;
+function hideLoader() {
+    document.getElementById('loader').style.display = 'none';
 }
 
-.dataTable tbody td {
-    border-top: none;
+function showError(message) {
+    document.getElementById('error-message').textContent = message;
+    toastr.error(message);
 }
 
-/* Mobile Navigation */
-.nav-mobile {
-    display: none;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    background: var(--white);
-    border-top: 1px solid var(--gray-200);
-    padding: 0.5rem 0;
-    z-index: 1000;
-    display: flex;
-    justify-content: space-around;
+function clearError() {
+    document.getElementById('error-message').textContent = '';
 }
 
-.nav-mobile a {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 0.5rem;
-    color: var(--gray-400);
-    text-decoration: none;
-    font-size: 0.75rem;
-}
+async function handleLogin() {
+    clearError();
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
 
-.nav-mobile a.active {
-    color: var(--blue);
-}
-
-.nav-mobile a i {
-    font-size: 1.25rem;
-    margin-bottom: 0.25rem;
-}
-
-/* Responsive */
-@media (max-width: 991px) {
-    .sidebar {
-        left: -72px;
-    }
-
-    .sidebar.active {
-        left: 0;
-        width: 240px;
-    }
-
-    .main-content {
-        margin-left: 0;
-    }
-
-    .main-content.full {
-        margin-left: 0;
-    }
-
-    .sidebar {
-        display: none;
-    }
-
-    .nav-mobile {
-        display: flex;
-    }
-
-    .header .menu-toggle {
-        display: none;
+    try {
+        const response = await ApiService.login(email, password);
+        token = response.token;
+        userInfo = {
+            user_id: response.user_id,
+            user_role: response.user_role,
+            department: response.department,
+            department_id: response.department_id,
+            email: response.email
+        };
+        localStorage.setItem('token', token);
+        localStorage.setItem('userInfo', JSON.stringify(userInfo));
+        toastr.success('Login realizado com sucesso!');
+        initApp();
+    } catch (error) {
+        showError('Erro ao fazer login: ' + (error.message || 'Falha na autenticação'));
     }
 }
 
-@media (max-width: 767px) {
-    .dashboard-grid {
-        grid-template-columns: 1fr;
+function handleLogout() {
+    if (socket) {
+        socket.disconnect();
     }
+    token = null;
+    userInfo = {};
+    localStorage.removeItem('token');
+    localStorage.removeItem('userInfo');
+    toastr.info('Sessão encerrada.');
+    initApp();
+}
 
-    .section-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
+async function loadDashboard() {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const [queues, tickets, report] = await Promise.all([
+            ApiService.getQueues(),
+            ApiService.getTickets(),
+            ApiService.getReport(today)
+        ]);
 
-    .controls {
-        width: 100%;
-    }
+        // Filas ativas: filas com active_tickets < daily_limit
+        const activeQueues = queues.filter(q => q.active_tickets < q.daily_limit).length;
+        // Tickets pendentes: status 'Pendente' ou 'Chamado'
+        const pendingTickets = tickets.filter(t => t.status === 'Pendente' || t.status === 'Chamado').length;
+        // Tickets atendidos: status 'attended'
+        const attendedTickets = tickets.filter(t => t.status === 'attended').length;
+        // Tempo médio: média dos avg_time do relatório
+        const avgTimes = report.filter(r => r.avg_time).map(r => r.avg_time);
+        const avgWaitTime = avgTimes.length ? Math.round(avgTimes.reduce((a, b) => a + b, 0) / avgTimes.length) : 0;
 
-    .controls input {
-        width: 100%;
-        min-width: 0;
+        document.getElementById('active-queues').textContent = activeQueues;
+        document.getElementById('pending-tickets').textContent = pendingTickets;
+        document.getElementById('attended-tickets').textContent = attendedTickets;
+        document.getElementById('avg-wait-time').textContent = `${avgWaitTime} min`;
+
+        // Gráfico
+        if (dashboardChart) {
+            dashboardChart.destroy();
+        }
+        const ctx = document.getElementById('dashboard-chart').getContext('2d');
+        dashboardChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: report.map(r => r.service),
+                datasets: [{
+                    label: 'Tickets Emitidos',
+                    data: report.map(r => r.issued),
+                    backgroundColor: '#2563eb',
+                    borderColor: '#1e40af',
+                    borderWidth: 1
+                }, {
+                    label: 'Tickets Atendidos',
+                    data: report.map(r => r.attended),
+                    backgroundColor: '#10b981',
+                    borderColor: '#059669',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: { beginAtZero: true }
+                },
+                plugins: {
+                    legend: { position: 'top' },
+                    title: { display: true, text: 'Atendimento de Hoje' }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao carregar dashboard:', error);
+        showError('Erro ao carregar dashboard: ' + (error.message || 'Falha ao carregar dados'));
     }
 }
+
+async function loadQueues() {
+    try {
+        const queues = await ApiService.getQueues();
+        const queueContent = document.getElementById('queue-content');
+        queueContent.innerHTML = '';
+
+        if (queues.length === 0) {
+            queueContent.innerHTML = '<tr><td colspan="5">Nenhuma fila encontrada.</td></tr>';
+            return;
+        }
+
+        const filter = document.getElementById('queue-filter').value.toLowerCase();
+        queues
+            .filter(queue => queue.service.toLowerCase().includes(filter))
+            .forEach(queue => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${queue.service}</td>
+                    <td>${queue.department}</td>
+                    <td>${queue.active_tickets}/${queue.daily_limit}</td>
+                    <td><span class="badge ${queue.status === 'Aberto' ? 'open' : 'full'}">${queue.status}</span></td>
+                    <td>
+                        <button onclick="callNextTicket('${queue.id}')"><i class="fas fa-phone"></i> Chamar</button>
+                    </td>
+                `;
+                queueContent.appendChild(row);
+            });
+
+        if ($.fn.DataTable.isDataTable('#queues-table')) {
+            $('#queues-table').DataTable().destroy();
+        }
+        $('#queues-table').DataTable({
+            pageLength: 10,
+            language: { url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/pt-BR.json' }
+        });
+    } catch (error) {
+        showError('Erro ao carregar filas: ' + (error.message || 'Falha ao carregar filas'));
+    }
+}
+
+async function loadTickets() {
+    try {
+        const tickets = await ApiService.getTickets();
+        const ticketContent = document.getElementById('ticket-content');
+        ticketContent.innerHTML = '';
+
+        if (tickets.length === 0) {
+            ticketContent.innerHTML = '<tr><td colspan="4">Nenhum ticket ativo encontrado.</td></tr>';
+            return;
+        }
+
+        const filter = document.getElementById('ticket-filter').value.toLowerCase();
+        tickets
+            .filter(ticket => ticket.number.toLowerCase().includes(filter))
+            .forEach(ticket => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${ticket.number}</td>
+                    <td>${ticket.service}</td>
+                    <td>${ticket.status}</td>
+                    <td>${ticket.counter || 'N/A'}</td>
+                `;
+                ticketContent.appendChild(row);
+            });
+
+        if ($.fn.DataTable.isDataTable('#tickets-table')) {
+            $('#tickets-table').DataTable().destroy();
+        }
+        $('#tickets-table').DataTable({
+            pageLength: 10,
+            language: { url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/pt-BR.json' }
+        });
+    } catch (error) {
+        showError('Erro ao carregar tickets: ' + (error.message || 'Falha ao carregar tickets'));
+    }
+}
+
+async function callNextTicket(queueId) {
+    clearError();
+    try {
+        const response = await ApiService.callNextTicket(queueId);
+        toastr.success(response.message);
+        loadTickets();
+        loadDashboard();
+    } catch (error) {
+        showError('Erro ao chamar próximo ticket: ' + (error.message || 'Falha ao chamar ticket'));
+    }
+}
+
+async function loadReport() {
+    try {
+        const date = document.getElementById('report-date').value || new Date().toISOString().split('T')[0];
+        const report = await ApiService.getReport(date);
+
+        // Gráfico
+        if (chartInstance) {
+            chartInstance.destroy();
+        }
+        const ctx = document.getElementById('report-chart').getContext('2d');
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: report.map(r => r.service),
+                datasets: [{
+                    label: 'Tickets Emitidos',
+                    data: report.map(r => r.issued),
+                    backgroundColor: '#2563eb',
+                    borderColor: '#1e40af',
+                    borderWidth: 1
+                }, {
+                    label: 'Tickets Atendidos',
+                    data: report.map(r => r.attended),
+                    backgroundColor: '#10b981',
+                    borderColor: '#059669',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: { beginAtZero: true }
+                },
+                plugins: {
+                    legend: { position: 'top' },
+                    title: { display: true, text: `Relatório de Atendimento (${date})` }
+                }
+            }
+        });
+    } catch (error) {
+        showError('Erro ao carregar relatório: ' + (error.message || 'Falha ao carregar relatório'));
+    }
+}
+
+function exportReport() {
+    const date = document.getElementById('report-date').value || new Date().toISOString().split('T')[0];
+
+    ApiService.getReport(date).then(report => {
+        const headers = ['Serviço', 'Tickets Emitidos', 'Tickets Atendidos', 'Tempo Médio (min)'];
+        const rows = report.map(r => [r.service, r.issued, r.attended, r.avg_time ? Math.round(r.avg_time) : 'N/A']);
+        const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `relatorio_${date}.csv`;
+        link.click();
+    }).catch(error => {
+        showError('Erro ao exportar relatório: ' + (error.message || 'Falha ao exportar relatório'));
+    });
+}
+
+function initWebSocket() {
+    if (socket) {
+        socket.disconnect();
+    }
+    socket = io(API_BASE_URL, {
+        auth: { token: token },
+        transports: ['websocket']
+    });
+
+    socket.on('connect', () => {
+        console.log('WebSocket conectado');
+        socket.emit('join', `department_${userInfo.department_id}`);
+    });
+
+    socket.on('notification', data => {
+        toastr.info(data.message);
+        loadQueues();
+        loadTickets();
+        loadDashboard();
+    });
+
+    socket.on('disconnect', () => {
+        console.log('WebSocket desconectado');
+    });
+}
+
+function initApp() {
+    const loginSection = document.getElementById('login-section');
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('main-content');
+    const logoutBtn = document.getElementById('logout-btn');
+    const userInfoDiv = document.getElementById('user-info');
+    const sections = document.querySelectorAll('.content-section');
+
+    if (token && userInfo.email) {
+        loginSection.style.display = 'none';
+        sidebar.style.display = 'block';
+        mainContent.classList.remove('full');
+        logoutBtn.style.display = 'block';
+        userInfoDiv.innerHTML = `${userInfo.email} | ${userInfo.department || 'N/A'}`;
+        showSection('dashboard');
+        loadDashboard();
+        initWebSocket();
+    } else {
+        loginSection.style.display = 'block';
+        sidebar.style.display = 'none';
+        mainContent.classList.add('full');
+        logoutBtn.style.display = 'none';
+        userInfoDiv.innerHTML = '';
+        sections.forEach(section => section.classList.remove('active'));
+    }
+
+    // Navegação
+    document.querySelectorAll('.sidebar a').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const section = link.getAttribute('data-section');
+            showSection(section);
+        });
+    });
+
+    // Filtros
+    document.getElementById('queue-filter').addEventListener('input', loadQueues);
+    document.getElementById('ticket-filter').addEventListener('input', loadTickets);
+    
+    // Menu toggle
+    document.getElementById('menu-toggle').addEventListener('click', () => {
+        sidebar.classList.toggle('active');
+    });
+}
+
+function showSection(sectionId) {
+    document.querySelectorAll('.content-section').forEach(section => {
+        section.classList.remove('active');
+    });
+    document.getElementById(`${sectionId}-section`).classList.add('active');
+
+    document.querySelectorAll('.sidebar a').forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('data-section') === sectionId) {
+            link.classList.add('active');
+        }
+    });
+
+    const titles = {
+        dashboard: 'Dashboard',
+        queues: 'Filas',
+        tickets: 'Tickets',
+        reports: 'Relatórios'
+    };
+    document.getElementById('section-title').textContent = titles[sectionId];
+
+    if (sectionId === 'queues') {
+        loadQueues();
+    } else if (sectionId === 'tickets') {
+        loadTickets();
+    } else if (sectionId === 'reports') {
+        loadReport();
+    } else if (sectionId === 'dashboard') {
+        loadDashboard();
+    }
+}
+
+// Inicializa a aplicação
+document.getElementById('logout-btn').addEventListener('click', handleLogout);
+initApp();

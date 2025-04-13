@@ -1,21 +1,18 @@
 :root {
-    --primary: #4f46e5; /* Índigo moderno */
-    --primary-dark: #4338ca;
-    --primary-light: #e0e7ff;
-    --secondary: #14b8a6; /* Teal vibrante */
-    --secondary-dark: #0d9488;
-    --danger: #ef4444;
-    --warning: #f59e0b;
+    --orange: #ff6f47;
+    --red: #ff4d4f;
+    --green: #52c41a;
+    --blue: #1890ff;
+    --purple: #722ed1;
+    --teal: #13c2c2;
     --gray-50: #fafafa;
     --gray-100: #f4f4f5;
     --gray-200: #e4e4e7;
-    --gray-300: #d4d4d8;
     --gray-400: #a1a1aa;
     --gray-800: #27272a;
     --white: #ffffff;
     --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
 }
 
 * {
@@ -25,7 +22,7 @@
 }
 
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
     background-color: var(--gray-50);
     color: var(--gray-800);
     line-height: 1.6;
@@ -36,6 +33,7 @@ body {
 .main-content {
     min-height: 100vh;
     transition: margin-left 0.3s ease;
+    padding-bottom: 60px; /* Espaço para nav-mobile */
 }
 
 .main-content.full {
@@ -48,7 +46,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, var(--primary-light) 0%, var(--gray-50) 100%);
+    background: var(--gray-50);
     padding: 1.5rem;
 }
 
@@ -59,11 +57,6 @@ body {
     border-radius: 12px;
     padding: 2rem;
     box-shadow: var(--shadow-md);
-    transition: transform 0.3s ease;
-}
-
-.login-container:hover {
-    transform: translateY(-4px);
 }
 
 .login-header {
@@ -74,7 +67,7 @@ body {
 .login-logo {
     font-size: 1.75rem;
     font-weight: 700;
-    color: var(--primary);
+    color: var(--blue);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -83,7 +76,7 @@ body {
 
 .login-title {
     font-size: 1.5rem;
-    font-weight: 600;
+    font-weight: 500;
 }
 
 .form-group {
@@ -104,17 +97,16 @@ body {
     border: 1px solid var(--gray-200);
     border-radius: 8px;
     font-size: 0.9375rem;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition: border-color 0.2s;
 }
 
 .form-control:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px var(--primary-light);
+    border-color: var(--blue);
     outline: none;
 }
 
 .form-error {
-    color: var(--danger);
+    color: var(--red);
     font-size: 0.75rem;
     margin-top: 0.25rem;
 }
@@ -134,13 +126,12 @@ body {
 }
 
 .btn-primary {
-    background: var(--primary);
+    background: var(--blue);
     color: var(--white);
 }
 
 .btn-primary:hover {
-    background: var(--primary-dark);
-    transform: translateY(-2px);
+    background: #40a9ff;
 }
 
 .btn-block {
@@ -170,7 +161,7 @@ body {
     padding: 1.5rem 1rem;
     font-size: 1.25rem;
     font-weight: 700;
-    color: var(--primary);
+    color: var(--blue);
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -208,7 +199,7 @@ body {
 }
 
 .menu a.active {
-    background: var(--primary);
+    background: var(--blue);
     color: var(--white);
 }
 
@@ -259,12 +250,12 @@ body {
 }
 
 .menu-toggle:focus {
-    outline: 2px solid var(--primary);
+    outline: 2px solid var(--blue);
 }
 
 #section-title {
     font-size: 1.5rem;
-    font-weight: 600;
+    font-weight: 500;
 }
 
 .user-info {
@@ -275,7 +266,7 @@ body {
 }
 
 #logout-btn {
-    background: var(--danger);
+    background: var(--red);
     color: var(--white);
     border: none;
     padding: 0.5rem 1rem;
@@ -286,7 +277,7 @@ body {
 }
 
 #logout-btn:hover {
-    background: #dc2626;
+    background: #ff7875;
 }
 
 /* Login Section */
@@ -301,7 +292,7 @@ body {
 
 .login-section h2 {
     font-size: 1.5rem;
-    font-weight: 600;
+    font-weight: 500;
     margin-bottom: 1.5rem;
 }
 
@@ -314,15 +305,14 @@ body {
 }
 
 .login-section .form-group input:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px var(--primary-light);
+    border-color: var(--blue);
     outline: none;
 }
 
 .login-section button {
     width: 100%;
     padding: 0.75rem;
-    background: var(--primary);
+    background: var(--blue);
     color: var(--white);
     border: none;
     border-radius: 8px;
@@ -332,11 +322,11 @@ body {
 }
 
 .login-section button:hover {
-    background: var(--primary-dark);
+    background: #40a9ff;
 }
 
 .error {
-    color: var(--danger);
+    color: var(--red);
     font-size: 0.875rem;
     margin-top: 0.5rem;
     text-align: center;
@@ -366,8 +356,8 @@ body {
 }
 
 .section-header h2 {
-    font-size: 1.5rem;
-    font-weight: 600;
+    font-size: 1.25rem;
+    font-weight: 500;
 }
 
 .controls {
@@ -385,14 +375,13 @@ body {
 }
 
 .controls input:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px var(--primary-light);
+    border-color: var(--blue);
     outline: none;
 }
 
 .controls button {
     padding: 0.75rem 1.5rem;
-    background: var(--primary);
+    background: var(--blue);
     color: var(--white);
     border: none;
     border-radius: 8px;
@@ -405,40 +394,50 @@ body {
 }
 
 .controls button:hover {
-    background: var(--primary-dark);
+    background: #40a9ff;
 }
 
 /* Dashboard Grid */
 .dashboard-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
     margin-bottom: 2rem;
 }
 
 .dashboard-card {
-    background: var(--white);
     border-radius: 12px;
-    padding: 1.5rem;
+    padding: 1rem;
     box-shadow: var(--shadow-sm);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    color: var(--white);
+    text-align: center;
 }
 
-.dashboard-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-md);
+.dashboard-card.card-orange {
+    background: var(--orange);
+}
+
+.dashboard-card.card-red {
+    background: var(--red);
+}
+
+.dashboard-card.card-green {
+    background: var(--green);
+}
+
+.dashboard-card.card-purple {
+    background: var(--purple);
 }
 
 .dashboard-card h3 {
     font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--gray-400);
-    margin-bottom: 0.75rem;
+    font-weight: 400;
+    margin-bottom: 0.5rem;
 }
 
 .dashboard-card p {
-    font-size: 1.75rem;
-    font-weight: 600;
+    font-size: 1.5rem;
+    font-weight: 700;
 }
 
 /* Tables */
@@ -461,7 +460,7 @@ body {
 
 .table th {
     background: var(--gray-50);
-    font-weight: 600;
+    font-weight: 500;
     color: var(--gray-800);
 }
 
@@ -470,7 +469,7 @@ body {
 }
 
 .table tbody tr:hover {
-    background: var(--primary-light);
+    background: var(--gray-100);
 }
 
 /* Badges */
@@ -480,21 +479,20 @@ body {
     border-radius: 12px;
     font-size: 0.75rem;
     font-weight: 500;
+    color: var(--white);
 }
 
 .badge.open {
-    background: var(--secondary);
-    color: var(--white);
+    background: var(--green);
 }
 
 .badge.full {
-    background: var(--danger);
-    color: var(--white);
+    background: var(--red);
 }
 
 /* Table Action Buttons */
 .table button {
-    background: var(--primary);
+    background: var(--blue);
     color: var(--white);
     border: none;
     padding: 0.5rem 1rem;
@@ -508,7 +506,7 @@ body {
 }
 
 .table button:hover {
-    background: var(--primary-dark);
+    background: #40a9ff;
 }
 
 /* Chart Container */
@@ -543,8 +541,8 @@ body {
 .spinner {
     width: 48px;
     height: 48px;
-    border: 4px solid var(--primary-light);
-    border-top-color: var(--primary);
+    border: 4px solid var(--gray-200);
+    border-top-color: var(--blue);
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -568,6 +566,40 @@ body {
     border-top: none;
 }
 
+/* Mobile Navigation */
+.nav-mobile {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: var(--white);
+    border-top: 1px solid var(--gray-200);
+    padding: 0.5rem 0;
+    z-index: 1000;
+    display: flex;
+    justify-content: space-around;
+}
+
+.nav-mobile a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.5rem;
+    color: var(--gray-400);
+    text-decoration: none;
+    font-size: 0.75rem;
+}
+
+.nav-mobile a.active {
+    color: var(--blue);
+}
+
+.nav-mobile a i {
+    font-size: 1.25rem;
+    margin-bottom: 0.25rem;
+}
+
 /* Responsive */
 @media (max-width: 991px) {
     .sidebar {
@@ -585,6 +617,18 @@ body {
 
     .main-content.full {
         margin-left: 0;
+    }
+
+    .sidebar {
+        display: none;
+    }
+
+    .nav-mobile {
+        display: flex;
+    }
+
+    .header .menu-toggle {
+        display: none;
     }
 }
 
