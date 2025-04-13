@@ -13,7 +13,7 @@ class ApiService {
         };
         
         if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
+            headers['Authorization'] = `Bearer ${token}`;  // Garante que o token use o prefixo 'Bearer '
         }
 
         const config = { 
@@ -27,10 +27,18 @@ class ApiService {
             config.body = JSON.stringify(body);
         }
 
-        console.log(`Enviando requisição para: ${API_BASE_URL}${endpoint}`, { method, headers, body });
+        console.log(`Enviando requisição para: ${API_BASE_URL}${endpoint}`, { method, headers: {...headers, Authorization: token ? 'Bearer [PROTECTED]' : undefined}, body });
 
         try {
             const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+            
+            // Tratamento especial para erros de autenticação
+            if (response.status === 401) {
+                console.error('Erro de autenticação. Token pode estar inválido ou expirado.');
+                // Opcionalmente, você pode redirecionar para login
+                // AuthManager.logout();
+                // return;
+            }
             
             if (!response.ok) {
                 const errorText = await response.text();
@@ -65,7 +73,17 @@ class ApiService {
 // Classe para gerenciamento da autenticação
 class AuthManager {
     static saveUserSession(data) {
+        if (!data.token) {
+            console.error('Token não fornecido na resposta de login');
+            return false;
+        }
+        
+        // Garantir que estamos armazenando o token com o formato correto
         token = data.token;
+        if (!token.startsWith('Bearer ') && !token.includes('Bearer ')) {
+            token = `Bearer ${token}`;
+        }
+        
         localStorage.setItem('token', token);
         localStorage.setItem('userInfo', JSON.stringify({
             user_id: data.user_id,
@@ -74,6 +92,8 @@ class AuthManager {
             department: data.department,
             email: data.email,
         }));
+        
+        return true;
     }
 
     static isAuthenticated() {
@@ -350,7 +370,7 @@ class AdminPanel {
                         .filter(t => t.service === service && t.wait_time && t.wait_time !== 'N/A')
                         .map(t => parseFloat(t.wait_time.split(' ')[0]) || 0);
                     return times.length ? 
-                        times.reduce((a, b) => a + b, 0) / times.length : 0;
+                        (times.reduce((a, b) => a + b, 0) / times.length) : 0;
                 });
 
                 chartInstance = new Chart(ctx, {
@@ -440,8 +460,11 @@ class LoginManager {
                 throw new Error(data.error);
             }
             
-            AuthManager.saveUserSession(data);
-            window.location.href = 'index.html';
+            if (AuthManager.saveUserSession(data)) {
+                window.location.href = 'index.html';
+            } else {
+                throw new Error('Erro ao salvar a sessão');
+            }
         } catch (error) {
             errorMessage.textContent = error.message.includes('Credenciais') 
                 ? 'Credenciais inválidas' 
