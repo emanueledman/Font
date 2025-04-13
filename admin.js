@@ -1,6 +1,6 @@
 // Configurações e variáveis globais
 const API_BASE_URL = 'https://fila-facilita2-0.onrender.com';
-let token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0NDUwOTQwNCwiaWF0IjoxNzQ0NTA1ODA0fQ.0LWJ3lZ7DfN9CYYHEJCh4kg4wi7G4XVsgp9vzcaV8ww';
+let token = localStorage.getItem('token');
 let userInfo = JSON.parse(localStorage.getItem('userInfo')) || {};
 let chartInstance = null;
 
