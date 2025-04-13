@@ -34,7 +34,7 @@ class ApiService {
         });
 
         try {
-            const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+            const response = await fetch(${API_BASE_URL}${endpoint}, config);
             
             if (response.status === 401) {
                 console.warn(`[ApiService] Erro 401 na requisição ${endpoint}. Token pode estar inválido.`);
@@ -82,7 +82,6 @@ class AuthManager {
     static saveUserSession(data) {
         console.log('[AuthManager] Resposta recebida do login:', data);
         
-        // Mapear campos alternativos, caso o backend use nomes diferentes
         const userId = data.user_id || data.id;
         const departmentId = data.department_id || data.department;
         
@@ -99,7 +98,7 @@ class AuthManager {
         const sessionData = {
             user_id: userId,
             user_role: data.user_role || 'unknown',
-            department_id: departmentId || null, // Permitir null para department_id
+            department_id: departmentId || null,
             email: data.email || 'unknown'
         };
         
@@ -183,6 +182,7 @@ class AdminPanel {
         } catch (error) {
             console.error('[AdminPanel] Erro ao carregar nome do departamento:', error);
             document.getElementById('user-department').textContent = 'Erro ao carregar';
+            this.showError('Erro ao carregar nome do departamento', error);
         }
     }
 
@@ -277,9 +277,11 @@ class AdminPanel {
                 ApiService.getTickets()
             ]);
 
-            const filteredQueues = queues
-                .flatMap(inst => inst.queues)
-                .filter(queue => !userInfo.department_id || queue.department_id === userInfo.department_id);
+            console.log('[AdminPanel] Filas recebidas:', queues);
+            console.log('[AdminPanel] Tickets recebidos:', tickets);
+
+            // Remover filtragem por department_id temporariamente para depuração
+            const filteredQueues = queues.flatMap(inst => inst.queues);
 
             await Promise.all([
                 this.loadDashboard(filteredQueues, tickets),
@@ -290,9 +292,11 @@ class AdminPanel {
             console.log('[AdminPanel] Dados iniciais carregados com sucesso:', { filteredQueues, tickets });
         } catch (error) {
             console.error('[AdminPanel] Erro ao carregar dados iniciais:', error);
-            this.showError('Erro ao carregar dados iniciais. Verifique sua conexão ou faça login novamente.', error);
+            this.showError('Erro ao carregar dados iniciais. Tente novamente.', error);
             if (error.message.includes('Sessão expirada')) {
-                AuthManager.logout('session_expired');
+                setTimeout(() => {
+                    AuthManager.logout('session_expired');
+                }, 3000); // Atraso para exibir mensagem
             }
         } finally {
             this.isLoading = false;
@@ -318,21 +322,23 @@ class AdminPanel {
                     ApiService.getQueues(),
                     ApiService.getTickets()
                 ]);
-                queuesData = queuesResponse
-                    .flatMap(inst => inst.queues)
-                    .filter(queue => !userInfo.department_id || queue.department_id === userInfo.department_id);
+                console.log('[AdminPanel] Filas recebidas no dashboard:', queuesResponse);
+                console.log('[AdminPanel] Tickets recebidos no dashboard:', ticketsResponse);
+                queuesData = queuesResponse.flatMap(inst => inst.queues);
                 ticketsData = ticketsResponse;
             }
             
             const today = new Date().toISOString().split('T')[0];
     
-            const activeQueues = queuesData.length;
-            const pendingTickets = ticketsData.filter(t => t.status === 'Pendente').length;
-            const attendedToday = ticketsData.filter(t => t.status === 'attended' && t.issued_at.startsWith(today)).length;
+            const activeQueues = queuesData ? queuesData.length : 0;
+            const pendingTickets = ticketsData ? ticketsData.filter(t => t.status === 'Pendente').length : 0;
+            const attendedToday = ticketsData ? ticketsData.filter(t => t.status === 'attended' && t.issued_at?.startsWith(today)).length : 0;
             
             const waitTimes = ticketsData
-                .filter(t => t.wait_time && t.wait_time !== 'N/A' && !isNaN(parseFloat(t.wait_time)))
-                .map(t => parseFloat(t.wait_time));
+                ? ticketsData
+                    .filter(t => t.wait_time && t.wait_time !== 'N/A' && !isNaN(parseFloat(t.wait_time)))
+                    .map(t => parseFloat(t.wait_time))
+                : [];
             
             const avgWaitTime = waitTimes.length ? 
                 (waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length).toFixed(1) : '0.0';
@@ -350,9 +356,11 @@ class AdminPanel {
             });
         } catch (error) {
             console.error('[AdminPanel] Erro ao carregar dashboard:', error);
-            this.showError('Erro ao carregar dashboard', error);
+            this.showError('Erro ao carregar dashboard. Verifique sua conexão ou tente novamente.', error);
             if (error.message.includes('Sessão expirada')) {
-                AuthManager.logout('session_expired');
+                setTimeout(() => {
+                    AuthManager.logout('session_expired');
+                }, 3000);
             }
         } finally {
             this.isLoading = false;
@@ -371,29 +379,29 @@ class AdminPanel {
             let queuesData = queues;
             if (!queuesData) {
                 const queuesResponse = await ApiService.getQueues();
-                queuesData = queuesResponse
-                    .flatMap(inst => inst.queues)
-                    .filter(queue => !userInfo.department_id || queue.department_id === userInfo.department_id);
+                console.log('[AdminPanel] Filas recebidas:', queuesResponse);
+                queuesData = queuesResponse.flatMap(inst => inst.queues);
             }
             
             tableBody.innerHTML = '';
             fullTableBody.innerHTML = '';
 
-            console.log(`[AdminPanel] Carregadas ${queuesData.length} filas`);
+            console.log(`[AdminPanel] Carregadas ${queuesData.length} filas`, queuesData);
 
             if (queuesData.length === 0) {
                 const emptyRow = `<tr><td colspan="5">Nenhuma fila encontrada</td></tr>`;
                 tableBody.innerHTML = emptyRow;
                 fullTableBody.innerHTML = emptyRow;
+                console.warn('[AdminPanel] Nenhuma fila encontrada após processamento');
                 return;
             }
 
             queuesData.forEach(queue => {
                 const row = `
                     <tr>
-                        <td>${queue.service}</td>
-                        <td>${queue.active_tickets}</td>
-                        <td>${queue.current_ticket ? `${queue.prefix}${queue.current_ticket.toString().padStart(3, '0')}` : 'N/A'}</td>
+                        <td>${queue.service || 'N/A'}</td>
+                        <td>${queue.active_tickets || 0}</td>
+                        <td>${queue.current_ticket ? `${queue.prefix || ''}${queue.current_ticket.toString().padStart(3, '0')}` : 'N/A'}</td>
                         <td><span class="status-${queue.status ? queue.status.toLowerCase() : 'ativo'}">${queue.status || 'Ativo'}</span></td>
                         <td><button class="btn secondary-btn" onclick="adminPanel.callNextTicket('${queue.service}')" aria-label="Chamar próximo ticket para ${queue.service}">Chamar Próximo</button></td>
                     </tr>
@@ -406,14 +414,18 @@ class AdminPanel {
             console.error('[AdminPanel] Erro ao carregar filas:', error);
             this.showError('Erro ao carregar filas', error);
             if (error.message.includes('Sessão expirada')) {
-                AuthManager.logout('session_expired');
+                setTimeout(() => {
+                    AuthManager.logout('session_expired');
+                }, 3000);
             }
+            tableBody.innerHTML = '<tr><td colspan="5">Erro ao carregar filas</td></tr>';
+            fullTableBody.innerHTML = '<tr><td colspan="5">Erro ao carregar filas</td></tr>';
         }
     }
 
     async callNextTicket(service) {
         try {
-            console.log('[AdminPanel] Chamando próximo ticket');
+            console.log('[AdminPanel] Chamando próximo ticket para', service);
             const data = await ApiService.callNextTicket(service);
             this.showSuccess(`Senha ${data.ticket_number} chamada para o guichê ${data.counter}`);
             await this.loadInitialData();
@@ -421,7 +433,9 @@ class AdminPanel {
             console.error('[AdminPanel] Erro ao chamar próximo ticket:', error);
             this.showError('Erro ao chamar próximo ticket', error);
             if (error.message.includes('Sessão expirada')) {
-                AuthManager.logout('session_expired');
+                setTimeout(() => {
+                    AuthManager.logout('session_expired');
+                }, 3000);
             }
         }
     }
@@ -443,7 +457,7 @@ class AdminPanel {
     
             tableBody.innerHTML = '';
     
-            console.log(`[AdminPanel] Carregados ${filteredTickets.length} tickets (filtro: ${filter || 'todos'})`);
+            console.log(`[AdminPanel] Carregados ${filteredTickets.length} tickets (filtro: ${filter || 'todos'})`, filteredTickets);
     
             if (filteredTickets.length === 0) {
                 tableBody.innerHTML = '<tr><td colspan="5">Nenhum ticket encontrado</td></tr>';
@@ -453,10 +467,10 @@ class AdminPanel {
             filteredTickets.forEach(ticket => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${ticket.number}</td>
-                    <td>${ticket.service}</td>
-                    <td><span class="status-${ticket.status.toLowerCase()}">${ticket.status}</span></td>
-                    <td>${ticket.wait_time !== 'N/A' ? `${ticket.wait_time} min` : 'N/A'}</td>
+                    <td>${ticket.number || 'N/A'}</td>
+                    <td>${ticket.service || 'N/A'}</td>
+                    <td><span class="status-${ticket.status ? ticket.status.toLowerCase() : 'desconhecido'}">${ticket.status || 'Desconhecido'}</span></td>
+                    <td>${ticket.wait_time && ticket.wait_time !== 'N/A' ? `${ticket.wait_time} min` : 'N/A'}</td>
                     <td>${ticket.counter || 'N/A'}</td>
                 `;
                 tableBody.appendChild(row);
@@ -465,8 +479,11 @@ class AdminPanel {
             console.error('[AdminPanel] Erro ao carregar tickets:', error);
             this.showError('Erro ao carregar tickets', error);
             if (error.message.includes('Sessão expirada')) {
-                AuthManager.logout('session_expired');
+                setTimeout(() => {
+                    AuthManager.logout('session_expired');
+                }, 3000);
             }
+            tableBody.innerHTML = '<tr><td colspan="5">Erro ao carregar tickets</td></tr>';
         }
     }
 
@@ -486,7 +503,7 @@ class AdminPanel {
             
             let filteredTickets = tickets;
             if (date) {
-                filteredTickets = tickets.filter(t => t.issued_at.startsWith(date));
+                filteredTickets = tickets.filter(t => t.issued_at?.startsWith(date));
             }
 
             const ctx = document.getElementById('report-chart').getContext('2d');
@@ -546,7 +563,9 @@ class AdminPanel {
             console.error('[AdminPanel] Erro ao gerar relatório:', error);
             this.showError('Erro ao gerar relatório', error);
             if (error.message.includes('Sessão expirada')) {
-                AuthManager.logout('session_expired');
+                setTimeout(() => {
+                    AuthManager.logout('session_expired');
+                }, 3000);
             }
         } finally {
             this.isLoading = false;
@@ -693,7 +712,7 @@ class LoginManager {
                 throw new Error('Erro ao salvar a sessão. Verifique os dados retornados pelo servidor.');
             }
         } catch (error) {
-            console.error('[LoginManager] Erro no login:', error, { response: error });
+            console.error('[LoginManager] Erro no login:', error);
             errorMessage.textContent = error.message.includes('Credenciais') 
                 ? 'Credenciais inválidas' 
                 : error.message;
