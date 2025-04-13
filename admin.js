@@ -193,7 +193,7 @@ class AdminPanel {
 
     async loadInitialData() {
         try {
-            // Limpar tabelas para evitar dados residuais
+            // Limpar todas as tabelas para evitar dados residuais
             document.getElementById('queues-table').innerHTML = '';
             document.getElementById('queues-table-full').innerHTML = '';
             document.getElementById('tickets-table').innerHTML = '';
@@ -216,14 +216,9 @@ class AdminPanel {
             ]);
             const today = new Date().toISOString().split('T')[0];
 
-            // Confiar nos tickets filtrados pelo backend
+            // Usar tickets diretamente do backend
             const userTickets = tickets;
-            const userQueues = queues.filter(q => 
-                q.institution_id === userInfo.institution_id && 
-                q.department === userInfo.department
-            );
-
-            const activeQueues = userQueues.length;
+            const activeQueues = queues.length;
             const pendingTickets = userTickets.filter(t => t.status === 'Pendente').length;
             const attendedToday = userTickets.filter(t => t.status === 'attended' && t.issued_at.startsWith(today)).length;
             
@@ -259,22 +254,16 @@ class AdminPanel {
             if (tableBody) tableBody.innerHTML = '';
             if (fullTableBody) fullTableBody.innerHTML = '';
 
-            // Filtrar filas por segurança
-            const userQueues = queues.filter(q => 
-                q.institution_id === userInfo.institution_id && 
-                q.department === userInfo.department
-            );
-            
-            console.log(`Carregadas ${userQueues.length} filas para o departamento ${userInfo.department}`);
+            console.log(`Carregadas ${queues.length} filas para o departamento ${userInfo.department}`);
 
-            if (userQueues.length === 0) {
+            if (queues.length === 0) {
                 const emptyRow = `<tr><td colspan="5">Nenhuma fila encontrada para seu departamento</td></tr>`;
                 if (tableBody) tableBody.innerHTML = emptyRow;
                 if (fullTableBody) fullTableBody.innerHTML = emptyRow;
                 return;
             }
 
-            userQueues.forEach(queue => {
+            queues.forEach(queue => {
                 const row = `
                     <tr>
                         <td>${queue.service}</td>
@@ -315,15 +304,16 @@ class AdminPanel {
             const tickets = await ApiService.getTickets();
             const filter = document.getElementById('ticket-status-filter')?.value;
             
-            // Confiar nos tickets filtrados pelo backend
+            // Usar tickets diretamente do backend
             let filteredTickets = tickets;
             if (filter) {
                 filteredTickets = filteredTickets.filter(t => t.status === filter);
             }
 
             const tableBody = document.getElementById('tickets-table');
-            tableBody.innerHTML = '';
+            tableBody.innerHTML = ''; // Limpar tabela antes de renderizar
 
+            console.log(`Response de /api/tickets/admin:`, tickets); // Log para debug
             console.log(`Carregados ${filteredTickets.length} tickets (filtro: ${filter || 'todos'})`);
 
             if (filteredTickets.length === 0) {
@@ -354,7 +344,7 @@ class AdminPanel {
             const reportType = document.getElementById('report-type').value;
             const tickets = await ApiService.getTickets();
             
-            // Confiar nos tickets filtrados pelo backend
+            // Usar tickets diretamente do backend
             let filteredTickets = tickets;
             if (date) {
                 filteredTickets = filteredTickets.filter(t => t.issued_at.startsWith(date));
