@@ -27,7 +27,7 @@ class ApiService {
             config.body = JSON.stringify(body);
         }
 
-        console.log(`Enviando requisição para: ${API_BASE_URL}${endpoint}`, {
+        console.log(`[ApiService] Enviando requisição para: ${API_BASE_URL}${endpoint}`, {
             method,
             headers: { ...headers, Authorization: token ? '[PROTECTED]' : undefined },
             body
@@ -37,40 +37,42 @@ class ApiService {
             const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
             
             if (response.status === 401) {
-                console.warn(`Erro 401 na requisição ${endpoint}. Possível token inválido.`);
-                throw new Error('Sessão expirada');
+                console.warn(`[ApiService] Erro 401 na requisição ${endpoint}. Token pode estar inválido.`);
+                throw new Error(`Sessão expirada na requisição ${endpoint}`);
             }
             
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error(`Erro ${response.status} na requisição ${endpoint}: ${errorText}`);
+                console.error(`[ApiService] Erro ${response.status} na requisição ${endpoint}: ${errorText}`);
                 throw new Error(errorText || response.statusText);
             }
             
-            return await response.json();
+            const data = await response.json();
+            console.log(`[ApiService] Resposta recebida de ${endpoint}:`, data);
+            return data;
         } catch (error) {
-            console.error(`Erro na requisição ${endpoint}:`, error);
+            console.error(`[ApiService] Erro na requisição ${endpoint}:`, error);
             throw error;
         }
     }
 
     static async login(email, password) {
-        console.log('Tentando login com:', { email });
+        console.log('[ApiService] Tentando login com:', { email });
         return await this.request('/api/admin/login', 'POST', { email, password });
     }
 
     static async getQueues() {
-        console.log('Buscando filas');
+        console.log('[ApiService] Buscando filas');
         return await this.request('/api/queues');
     }
 
     static async getTickets() {
-        console.log('Buscando tickets');
+        console.log('[ApiService] Buscando tickets');
         return await this.request('/api/tickets/admin');
     }
 
     static async callNextTicket(service) {
-        console.log(`Chamando próximo ticket para serviço: ${service}`);
+        console.log(`[ApiService] Chamando próximo ticket para serviço: ${service}`);
         return await this.request(`/api/queue/${service}/call`, 'POST');
     }
 }
@@ -78,9 +80,9 @@ class ApiService {
 // Classe para gerenciamento da autenticação
 class AuthManager {
     static saveUserSession(data) {
-        console.log('Salvando sessão do usuário:', data);
+        console.log('[AuthManager] Salvando sessão do usuário:', data);
         if (!data.token || !data.user_id || !data.department_id) {
-            console.error('Dados insuficientes para salvar sessão:', data);
+            console.error('[AuthManager] Dados insuficientes para salvar sessão:', data);
             return false;
         }
         
@@ -97,32 +99,34 @@ class AuthManager {
             email: data.email,
         }));
         userInfo = JSON.parse(localStorage.getItem('userInfo'));
-        console.log('Sessão salva com sucesso:', userInfo);
+        console.log('[AuthManager] Sessão salva com sucesso:', userInfo);
         
         return true;
     }
 
     static isAuthenticated() {
         const isValid = !!token && !!userInfo.user_id && !!userInfo.department_id;
-        console.log('Verificando autenticação:', { isValid, token: !!token, userInfo });
+        console.log('[AuthManager] Verificando autenticação:', { isValid, token: !!token, userInfo });
         return isValid;
     }
 
-    static logout() {
-        console.log('Executando logout');
+    static logout(reason = '') {
+        console.log('[AuthManager] Executando logout', { reason });
         localStorage.removeItem('token');
         localStorage.removeItem('userInfo');
         token = null;
         userInfo = {};
-        window.location.href = 'login.html';
+        const redirectUrl = reason ? `login.html?reason=${encodeURIComponent(reason)}` : 'login.html';
+        window.location.href = redirectUrl;
     }
 
     static redirectIfNotAuthenticated() {
         if (!this.isAuthenticated()) {
-            console.warn('Usuário não autenticado, redirecionando para login');
-            window.location.href = 'login.html';
+            console.warn('[AuthManager] Usuário não autenticado, redirecionando para login');
+            this.logout('not_authenticated');
             return false;
         }
+        console.log('[AuthManager] Usuário autenticado, prosseguindo');
         return true;
     }
 }
@@ -130,7 +134,7 @@ class AuthManager {
 // Classe para o painel de administração
 class AdminPanel {
     constructor() {
-        console.log('Inicializando AdminPanel');
+        console.log('[AdminPanel] Inicializando');
         if (!AuthManager.redirectIfNotAuthenticated()) return;
         
         this.isLoading = false;
@@ -141,16 +145,14 @@ class AdminPanel {
     }
 
     initComponents() {
-        console.log('Inicializando componentes do painel');
+        console.log('[AdminPanel] Inicializando componentes');
         document.getElementById('user-name').textContent = userInfo.email || 'Usuário';
         document.getElementById('user-department').textContent = 'Carregando departamento...';
         document.getElementById('page-title').textContent = 'Dashboard';
         document.getElementById('settings-email').value = userInfo.email || '';
         
-        // Carregar nome do departamento dinamicamente
         this.loadDepartmentName();
 
-        // Adicionar container para mensagens de erro
         const mainContent = document.querySelector('.main-content');
         const errorDiv = document.createElement('div');
         errorDiv.id = 'error-message';
@@ -161,27 +163,28 @@ class AdminPanel {
 
     async loadDepartmentName() {
         try {
-            console.log('Carregando nome do departamento para department_id:', userInfo.department_id);
+            console.log('[AdminPanel] Carregando nome do departamento para department_id:', userInfo.department_id);
             const queuesData = await ApiService.getQueues();
             const department = queuesData
                 .flatMap(inst => inst.queues)
                 .find(q => q.department_id === userInfo.department_id);
-            document.getElementById('user-department').textContent = department?.department || 'Sem Departamento';
-            console.log('Nome do departamento carregado:', department?.department);
+            const departmentName = department?.department || 'Sem Departamento';
+            document.getElementById('user-department').textContent = departmentName;
+            console.log('[AdminPanel] Nome do departamento carregado:', departmentName);
         } catch (error) {
-            console.error('Erro ao carregar nome do departamento:', error);
+            console.error('[AdminPanel] Erro ao carregar nome do departamento:', error);
             document.getElementById('user-department').textContent = 'Erro ao carregar';
         }
     }
 
     attachEventListeners() {
-        console.log('Anexando event listeners');
+        console.log('[AdminPanel] Anexando event listeners');
         document.querySelectorAll('.sidebar nav a').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const sectionId = link.getAttribute('data-section');
                 if (sectionId) {
-                    console.log('Navegando para seção:', sectionId);
+                    console.log('[AdminPanel] Navegando para seção:', sectionId);
                     document.querySelectorAll('.section').forEach(section => section.classList.remove('active'));
                     document.getElementById(sectionId).classList.add('active');
                     document.querySelectorAll('.sidebar nav a').forEach(l => l.classList.remove('active'));
@@ -200,30 +203,30 @@ class AdminPanel {
         });
 
         document.getElementById('logout').addEventListener('click', () => {
-            console.log('Botão de logout clicado');
-            AuthManager.logout();
+            console.log('[AdminPanel] Botão de logout clicado');
+            AuthManager.logout('user_initiated');
         });
 
         document.getElementById('ticket-status-filter')?.addEventListener('change', () => {
-            console.log('Filtro de tickets alterado');
+            console.log('[AdminPanel] Filtro de tickets alterado');
             this.loadTickets();
         });
 
         document.getElementById('report-form')?.addEventListener('submit', (e) => {
             e.preventDefault();
-            console.log('Formulário de relatório enviado');
+            console.log('[AdminPanel] Formulário de relatório enviado');
             this.generateReport();
         });
 
         document.getElementById('settings-form')?.addEventListener('submit', (e) => {
             e.preventDefault();
-            console.log('Formulário de configurações enviado');
+            console.log('[AdminPanel] Formulário de configurações enviado');
             this.updateSettings();
         });
 
         document.querySelectorAll('.sidebar nav a').forEach(link => {
             link.addEventListener('click', () => {
-                console.log('Limpando mensagens de erro ao mudar de aba');
+                console.log('[AdminPanel] Limpando mensagens de erro ao mudar de aba');
                 this.hideError();
             });
         });
@@ -234,14 +237,14 @@ class AdminPanel {
         const update = () => {
             const now = new Date();
             document.getElementById('current-date').textContent = now.toLocaleDateString('pt-BR', options);
-            console.log('Data e hora atualizadas:', now);
+            console.log('[AdminPanel] Data e hora atualizadas:', now);
         };
         update();
         return setInterval(update, 60000);
     }
 
     destroy() {
-        console.log('Destruindo AdminPanel');
+        console.log('[AdminPanel] Destruindo');
         if (this.intervalId) {
             clearInterval(this.intervalId);
         }
@@ -252,14 +255,14 @@ class AdminPanel {
 
     async loadInitialData() {
         if (this.isLoading) {
-            console.log('Carregamento inicial já em andamento');
+            console.log('[AdminPanel] Carregamento inicial já em andamento');
             return;
         }
         this.isLoading = true;
         this.showLoading();
 
         try {
-            console.log('Carregando dados iniciais');
+            console.log('[AdminPanel] Carregando dados iniciais');
             const [queues, tickets] = await Promise.all([
                 ApiService.getQueues(),
                 ApiService.getTickets()
@@ -275,11 +278,13 @@ class AdminPanel {
                 this.loadTickets(tickets)
             ]);
 
-            console.log('Dados iniciais carregados com sucesso:', { filteredQueues, tickets });
+            console.log('[AdminPanel] Dados iniciais carregados com sucesso:', { filteredQueues, tickets });
         } catch (error) {
-            console.error('Erro ao carregar dados iniciais:', error);
-            this.showError('Erro ao carregar dados iniciais', error);
-            // Não chamar logout aqui, apenas exibir erro
+            console.error('[AdminPanel] Erro ao carregar dados iniciais:', error);
+            this.showError('Erro ao carregar dados iniciais. Verifique sua conexão ou faça login novamente.', error);
+            if (error.message.includes('Sessão expirada')) {
+                AuthManager.logout('session_expired');
+            }
         } finally {
             this.isLoading = false;
             this.hideLoading();
@@ -288,14 +293,14 @@ class AdminPanel {
 
     async loadDashboard(queues = null, tickets = null) {
         if (this.isLoading) {
-            console.log('Dashboard já está sendo carregado');
+            console.log('[AdminPanel] Dashboard já está sendo carregado');
             return;
         }
         this.isLoading = true;
         this.showLoading();
 
         try {
-            console.log('Carregando dashboard');
+            console.log('[AdminPanel] Carregando dashboard');
             let queuesData = queues;
             let ticketsData = tickets;
 
@@ -328,15 +333,18 @@ class AdminPanel {
             document.getElementById('avg-wait-time').textContent = `${avgWaitTime} min`;
             document.getElementById('attended-tickets').textContent = attendedToday;
             
-            console.log('Dados do dashboard carregados:', {
+            console.log('[AdminPanel] Dados do dashboard carregados:', {
                 filas_ativas: activeQueues,
                 tickets_pendentes: pendingTickets,
                 tempo_medio: avgWaitTime,
                 atendimentos_hoje: attendedToday
             });
         } catch (error) {
-            console.error('Erro ao carregar dashboard:', error);
+            console.error('[AdminPanel] Erro ao carregar dashboard:', error);
             this.showError('Erro ao carregar dashboard', error);
+            if (error.message.includes('Sessão expirada')) {
+                AuthManager.logout('session_expired');
+            }
         } finally {
             this.isLoading = false;
             this.hideLoading();
@@ -350,7 +358,7 @@ class AdminPanel {
         if (!tableBody && !fullTableBody) return;
 
         try {
-            console.log('Carregando filas');
+            console.log('[AdminPanel] Carregando filas');
             let queuesData = queues;
             if (!queuesData) {
                 const queuesResponse = await ApiService.getQueues();
@@ -362,7 +370,7 @@ class AdminPanel {
             tableBody.innerHTML = '';
             fullTableBody.innerHTML = '';
 
-            console.log(`Carregadas ${queuesData.length} filas para department_id ${userInfo.department_id}`, queuesData);
+            console.log(`[AdminPanel] Carregadas ${queuesData.length} filas para department_id ${userInfo.department_id}`);
 
             if (queuesData.length === 0) {
                 const emptyRow = `<tr><td colspan="5">Nenhuma fila encontrada para seu departamento</td></tr>`;
@@ -386,23 +394,26 @@ class AdminPanel {
                 fullTableBody.innerHTML += row;
             });
         } catch (error) {
-            console.error('Erro ao carregar filas:', error);
+            console.error('[AdminPanel] Erro ao carregar filas:', error);
             this.showError('Erro ao carregar filas', error);
-            const errorRow = '<tr><td colspan="5">Erro ao carregar filas</td></tr>';
-            tableBody.innerHTML = errorRow;
-            fullTableBody.innerHTML = errorRow;
+            if (error.message.includes('Sessão expirada')) {
+                AuthManager.logout('session_expired');
+            }
         }
     }
 
     async callNextTicket(service) {
         try {
-            console.log('Chamando próximo ticket');
+            console.log('[AdminPanel] Chamando próximo ticket');
             const data = await ApiService.callNextTicket(service);
             this.showSuccess(`Senha ${data.ticket_number} chamada para o guichê ${data.counter}`);
             await this.loadInitialData();
         } catch (error) {
-            console.error('Erro ao chamar próximo ticket:', error);
+            console.error('[AdminPanel] Erro ao chamar próximo ticket:', error);
             this.showError('Erro ao chamar próximo ticket', error);
+            if (error.message.includes('Sessão expirada')) {
+                AuthManager.logout('session_expired');
+            }
         }
     }
 
@@ -411,7 +422,7 @@ class AdminPanel {
         if (!tableBody) return;
 
         try {
-            console.log('Carregando tickets');
+            console.log('[AdminPanel] Carregando tickets');
             const ticketsData = tickets || await ApiService.getTickets();
             const filter = document.getElementById('ticket-status-filter')?.value;
             const validStatuses = ['Pendente', 'Chamado', 'attended', 'Cancelado'];
@@ -423,7 +434,7 @@ class AdminPanel {
     
             tableBody.innerHTML = '';
     
-            console.log(`Carregados ${filteredTickets.length} tickets (filtro: ${filter || 'todos'})`, ticketsData);
+            console.log(`[AdminPanel] Carregados ${filteredTickets.length} tickets (filtro: ${filter || 'todos'})`);
     
             if (filteredTickets.length === 0) {
                 tableBody.innerHTML = '<tr><td colspan="5">Nenhum ticket encontrado para seu departamento</td></tr>';
@@ -442,22 +453,24 @@ class AdminPanel {
                 tableBody.appendChild(row);
             });
         } catch (error) {
-            console.error('Erro ao carregar tickets:', error);
+            console.error('[AdminPanel] Erro ao carregar tickets:', error);
             this.showError('Erro ao carregar tickets', error);
-            tableBody.innerHTML = '<tr><td colspan="5">Erro ao carregar tickets</td></tr>';
+            if (error.message.includes('Sessão expirada')) {
+                AuthManager.logout('session_expired');
+            }
         }
     }
 
     async generateReport() {
         if (this.isLoading) {
-            console.log('Relatório já está sendo gerado');
+            console.log('[AdminPanel] Relatório já está sendo gerado');
             return;
         }
         this.isLoading = true;
         this.showLoading();
 
         try {
-            console.log('Gerando relatório');
+            console.log('[AdminPanel] Gerando relatório');
             const date = document.getElementById('report-date').value;
             const reportType = document.getElementById('report-type').value;
             const tickets = await ApiService.getTickets();
@@ -519,10 +532,13 @@ class AdminPanel {
                     }
                 });
             }
-            console.log('Relatório gerado com sucesso');
+            console.log('[AdminPanel] Relatório gerado com sucesso');
         } catch (error) {
-            console.error('Erro ao gerar relatório:', error);
+            console.error('[AdminPanel] Erro ao gerar relatório:', error);
             this.showError('Erro ao gerar relatório', error);
+            if (error.message.includes('Sessão expirada')) {
+                AuthManager.logout('session_expired');
+            }
         } finally {
             this.isLoading = false;
             this.hideLoading();
@@ -530,18 +546,18 @@ class AdminPanel {
     }
 
     async updateSettings() {
-        console.log('Atualizando configurações');
+        console.log('[AdminPanel] Atualizando configurações');
         const password = document.getElementById('settings-password').value.trim();
         const confirmPassword = document.getElementById('settings-confirm-password').value.trim();
         
         if (!password) {
-            console.warn('Senha vazia detectada');
+            console.warn('[AdminPanel] Senha vazia detectada');
             this.showError('As senhas não podem estar vazias');
             return;
         }
         
         if (password !== confirmPassword) {
-            console.warn('Senhas não coincidem');
+            console.warn('[AdminPanel] Senhas não coincidem');
             this.showError('As senhas não coincidem');
             return;
         }
@@ -551,15 +567,15 @@ class AdminPanel {
             this.showSuccess('Senha atualizada com sucesso');
             document.getElementById('settings-password').value = '';
             document.getElementById('settings-confirm-password').value = '';
-            console.log('Senha atualizada com sucesso');
+            console.log('[AdminPanel] Senha atualizada com sucesso');
         } catch (error) {
-            console.error('Erro ao atualizar senha:', error);
+            console.error('[AdminPanel] Erro ao atualizar senha:', error);
             this.showError('Erro ao atualizar senha', error);
         }
     }
 
     showError(message, error = null) {
-        if (error) console.error(message, error);
+        if (error) console.error('[AdminPanel] Erro:', message, error);
         const errorDiv = document.getElementById('error-message');
         errorDiv.textContent = message;
         errorDiv.style.display = 'block';
@@ -610,16 +626,35 @@ class LoginManager {
     static init() {
         const form = document.getElementById('login-form');
         if (form) {
-            console.log('Inicializando LoginManager');
+            console.log('[LoginManager] Inicializando');
             form.addEventListener('submit', (e) => this.handleLogin(e));
+            
+            // Verificar motivo de redirecionamento
+            const urlParams = new URLSearchParams(window.location.search);
+            const reason = urlParams.get('reason');
+            if (reason === 'session_expired') {
+                const errorMessage = document.getElementById('error-message');
+                errorMessage.textContent = 'Sua sessão expirou. Faça login novamente.';
+                errorMessage.style.display = 'block';
+                setTimeout(() => {
+                    errorMessage.style.display = 'none';
+                }, 5000);
+            } else if (reason === 'not_authenticated') {
+                const errorMessage = document.getElementById('error-message');
+                errorMessage.textContent = 'Você precisa estar autenticado para acessar o painel.';
+                errorMessage.style.display = 'block';
+                setTimeout(() => {
+                    errorMessage.style.display = 'none';
+                }, 5000);
+            }
         } else {
-            console.error('Formulário de login não encontrado');
+            console.error('[LoginManager] Formulário de login não encontrado');
         }
     }
 
     static async handleLogin(event) {
         event.preventDefault();
-        console.log('Tentativa de login iniciada');
+        console.log('[LoginManager] Tentativa de login iniciada');
         const form = event.target;
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value.trim();
@@ -627,6 +662,7 @@ class LoginManager {
         const submitBtn = form.querySelector('button[type="submit"]');
 
         errorMessage.textContent = '';
+        errorMessage.style.display = 'none';
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Entrando...';
 
@@ -642,16 +678,17 @@ class LoginManager {
             }
             
             if (AuthManager.saveUserSession(data)) {
-                console.log('Login bem-sucedido, redirecionando para index.html');
+                console.log('[LoginManager] Login bem-sucedido, redirecionando para index.html');
                 window.location.href = 'index.html';
             } else {
                 throw new Error('Erro ao salvar a sessão');
             }
         } catch (error) {
-            console.error('Erro no login:', error);
+            console.error('[LoginManager] Erro no login:', error);
             errorMessage.textContent = error.message.includes('Credenciais') 
                 ? 'Credenciais inválidas' 
                 : error.message;
+            errorMessage.style.display = 'block';
             
             document.getElementById('email').value = email;
             document.getElementById('password').value = '';
@@ -665,7 +702,7 @@ class LoginManager {
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
     const currentPage = window.location.pathname.split('/').pop();
-    console.log('Página carregada:', currentPage);
+    console.log('[Main] Página carregada:', currentPage);
     
     if (currentPage === 'login.html') {
         LoginManager.init();
@@ -677,7 +714,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Cleanup ao sair da página
 window.addEventListener('beforeunload', () => {
     if (window.adminPanel) {
-        console.log('Limpando AdminPanel antes de sair');
+        console.log('[Main] Limpando AdminPanel antes de sair');
         window.adminPanel.destroy();
     }
 });
