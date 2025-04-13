@@ -56,15 +56,15 @@ class ApiService {
     }
 
     static async getQueues() {
-        return await this.request('/api/admin/queues');
+        return await this.request('/api/queues');
     }
 
     static async getTickets() {
         return await this.request('/api/tickets/admin');
     }
 
-    static async callNextTicket(queueId) {
-        return await this.request(`/api/admin/queue/${queueId}/call`, 'POST');
+    static async callNextTicket(service) {
+        return await this.request(`/api/queue/${service}/call`, 'POST');
     }
 }
 
@@ -84,9 +84,8 @@ class AuthManager {
         localStorage.setItem('token', token);
         localStorage.setItem('userInfo', JSON.stringify({
             user_id: data.user_id,
-            user_tipo: data.user_tipo,
-            institution_id: data.institution_id,
-            department: data.department,
+            user_role: data.user_role,
+            department_id: data.department_id,
             email: data.email,
         }));
         userInfo = JSON.parse(localStorage.getItem('userInfo'));
@@ -95,7 +94,7 @@ class AuthManager {
     }
 
     static isAuthenticated() {
-        return !!token && !!userInfo.user_id;
+        return !!token && !!userInfo.user_id && !!userInfo.department_id;
     }
 
     static logout() {
@@ -129,10 +128,13 @@ class AdminPanel {
 
     initComponents() {
         document.getElementById('user-name').textContent = userInfo.email || 'Usuário';
-        document.getElementById('user-department').textContent = userInfo.department || 'Sem Departamento';
+        document.getElementById('user-department').textContent = 'Carregando departamento...';
         document.getElementById('page-title').textContent = 'Dashboard';
         document.getElementById('settings-email').value = userInfo.email || '';
         
+        // Carregar nome do departamento dinamicamente
+        this.loadDepartmentName();
+
         // Adicionar container para mensagens de erro
         const mainContent = document.querySelector('.main-content');
         const errorDiv = document.createElement('div');
@@ -140,6 +142,20 @@ class AdminPanel {
         errorDiv.className = 'error-message';
         errorDiv.style.display = 'none';
         mainContent.insertBefore(errorDiv, mainContent.firstChild);
+    }
+
+    async loadDepartmentName() {
+        try {
+            // Assumindo que existe um endpoint para obter detalhes do departamento
+            const queuesData = await ApiService.getQueues();
+            const department = queuesData
+                .flatMap(inst => inst.queues)
+                .find(q => q.department_id === userInfo.department_id);
+            document.getElementById('user-department').textContent = department?.department || 'Sem Departamento';
+        } catch (error) {
+            console.error('Erro ao carregar nome do departamento:', error);
+            document.getElementById('user-department').textContent = 'Erro ao carregar';
+        }
     }
 
     attachEventListeners() {
@@ -226,13 +242,18 @@ class AdminPanel {
                 ApiService.getTickets()
             ]);
 
+            // Filtrar filas pelo department_id do usuário
+            const filteredQueues = queues
+                .flatMap(inst => inst.queues)
+                .filter(queue => queue.department_id === userInfo.department_id);
+
             await Promise.all([
-                this.loadDashboard(queues, tickets),
-                this.loadQueues(queues),
+                this.loadDashboard(filteredQueues, tickets),
+                this.loadQueues(filteredQueues),
                 this.loadTickets(tickets)
             ]);
 
-            console.log("Dados iniciais carregados com sucesso", { queues, tickets });
+            console.log("Dados iniciais carregados com sucesso", { filteredQueues, tickets });
         } catch (error) {
             this.showError('Erro ao carregar dados iniciais', error);
         } finally {
@@ -247,9 +268,19 @@ class AdminPanel {
         this.showLoading();
 
         try {
-            const [queuesData, ticketsData] = queues && tickets ? 
-                [queues, tickets] : 
-                await Promise.all([ApiService.getQueues(), ApiService.getTickets()]);
+            let queuesData = queues;
+            let ticketsData = tickets;
+
+            if (!queuesData || !ticketsData) {
+                const [queuesResponse, ticketsResponse] = await Promise.all([
+                    ApiService.getQueues(),
+                    ApiService.getTickets()
+                ]);
+                queuesData = queuesResponse
+                    .flatMap(inst => inst.queues)
+                    .filter(queue => queue.department_id === userInfo.department_id);
+                ticketsData = ticketsResponse;
+            }
             
             const today = new Date().toISOString().split('T')[0];
     
@@ -292,12 +323,18 @@ class AdminPanel {
         if (!tableBody && !fullTableBody) return;
 
         try {
-            const queuesData = queues || await ApiService.getQueues();
+            let queuesData = queues;
+            if (!queuesData) {
+                const queuesResponse = await ApiService.getQueues();
+                queuesData = queuesResponse
+                    .flatMap(inst => inst.queues)
+                    .filter(queue => queue.department_id === userInfo.department_id);
+            }
             
             tableBody.innerHTML = '';
             fullTableBody.innerHTML = '';
 
-            console.log(`Carregadas ${queuesData.length} filas para o departamento ${userInfo.department || 'N/A'}`, queuesData);
+            console.log(`Carregadas ${queuesData.length} filas para o department_id ${userInfo.department_id}`, queuesData);
 
             if (queuesData.length === 0) {
                 const emptyRow = `<tr><td colspan="5">Nenhuma fila encontrada para seu departamento</td></tr>`;
@@ -313,7 +350,7 @@ class AdminPanel {
                         <td>${queue.active_tickets}</td>
                         <td>${queue.current_ticket ? `${queue.prefix}${queue.current_ticket.toString().padStart(3, '0')}` : 'N/A'}</td>
                         <td><span class="status-${queue.status ? queue.status.toLowerCase() : 'ativo'}">${queue.status || 'Ativo'}</span></td>
-                        <td><button class="btn secondary-btn" onclick="adminPanel.callNextTicket('${queue.id}')" aria-label="Chamar próximo ticket para ${queue.service}">Chamar Próximo</button></td>
+                        <td><button class="btn secondary-btn" onclick="adminPanel.callNextTicket('${queue.service}')" aria-label="Chamar próximo ticket para ${queue.service}">Chamar Próximo</button></td>
                     </tr>
                 `;
                 
@@ -328,9 +365,9 @@ class AdminPanel {
         }
     }
 
-    async callNextTicket(queueId) {
+    async callNextTicket(service) {
         try {
-            const data = await ApiService.callNextTicket(queueId);
+            const data = await ApiService.callNextTicket(service);
             this.showSuccess(`Senha ${data.ticket_number} chamada para o guichê ${data.counter}`);
             await this.loadInitialData();
         } catch (error) {
@@ -469,7 +506,8 @@ class AdminPanel {
         }
         
         try {
-            // Implementar chamada real para atualizar senha
+            // Implementar chamada para atualizar senha (endpoint fictício, ajustar conforme backend)
+            await ApiService.request('/api/update_password', 'POST', { password });
             this.showSuccess('Senha atualizada com sucesso');
             document.getElementById('settings-password').value = '';
             document.getElementById('settings-confirm-password').value = '';
