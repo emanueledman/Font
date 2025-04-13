@@ -27,20 +27,23 @@ class ApiService {
             config.body = JSON.stringify(body);
         }
 
-        console.log(`Enviando requisição para: ${API_BASE_URL}${endpoint}`, { method, headers: {...headers, Authorization: token ? '[PROTECTED]' : undefined}, body });
+        console.log(`Enviando requisição para: ${API_BASE_URL}${endpoint}`, {
+            method,
+            headers: { ...headers, Authorization: token ? '[PROTECTED]' : undefined },
+            body
+        });
 
         try {
             const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
             
             if (response.status === 401) {
-                console.error('Erro de autenticação. Token pode estar inválido ou expirado.');
-                AuthManager.logout();
+                console.warn(`Erro 401 na requisição ${endpoint}. Possível token inválido.`);
                 throw new Error('Sessão expirada');
             }
             
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error(`Erro ${response.status}: ${errorText}`);
+                console.error(`Erro ${response.status} na requisição ${endpoint}: ${errorText}`);
                 throw new Error(errorText || response.statusText);
             }
             
@@ -52,18 +55,22 @@ class ApiService {
     }
 
     static async login(email, password) {
+        console.log('Tentando login com:', { email });
         return await this.request('/api/admin/login', 'POST', { email, password });
     }
 
     static async getQueues() {
+        console.log('Buscando filas');
         return await this.request('/api/queues');
     }
 
     static async getTickets() {
+        console.log('Buscando tickets');
         return await this.request('/api/tickets/admin');
     }
 
     static async callNextTicket(service) {
+        console.log(`Chamando próximo ticket para serviço: ${service}`);
         return await this.request(`/api/queue/${service}/call`, 'POST');
     }
 }
@@ -71,8 +78,9 @@ class ApiService {
 // Classe para gerenciamento da autenticação
 class AuthManager {
     static saveUserSession(data) {
-        if (!data.token) {
-            console.error('Token não fornecido na resposta de login');
+        console.log('Salvando sessão do usuário:', data);
+        if (!data.token || !data.user_id || !data.department_id) {
+            console.error('Dados insuficientes para salvar sessão:', data);
             return false;
         }
         
@@ -89,15 +97,19 @@ class AuthManager {
             email: data.email,
         }));
         userInfo = JSON.parse(localStorage.getItem('userInfo'));
+        console.log('Sessão salva com sucesso:', userInfo);
         
         return true;
     }
 
     static isAuthenticated() {
-        return !!token && !!userInfo.user_id && !!userInfo.department_id;
+        const isValid = !!token && !!userInfo.user_id && !!userInfo.department_id;
+        console.log('Verificando autenticação:', { isValid, token: !!token, userInfo });
+        return isValid;
     }
 
     static logout() {
+        console.log('Executando logout');
         localStorage.removeItem('token');
         localStorage.removeItem('userInfo');
         token = null;
@@ -107,6 +119,7 @@ class AuthManager {
 
     static redirectIfNotAuthenticated() {
         if (!this.isAuthenticated()) {
+            console.warn('Usuário não autenticado, redirecionando para login');
             window.location.href = 'login.html';
             return false;
         }
@@ -117,6 +130,7 @@ class AuthManager {
 // Classe para o painel de administração
 class AdminPanel {
     constructor() {
+        console.log('Inicializando AdminPanel');
         if (!AuthManager.redirectIfNotAuthenticated()) return;
         
         this.isLoading = false;
@@ -127,6 +141,7 @@ class AdminPanel {
     }
 
     initComponents() {
+        console.log('Inicializando componentes do painel');
         document.getElementById('user-name').textContent = userInfo.email || 'Usuário';
         document.getElementById('user-department').textContent = 'Carregando departamento...';
         document.getElementById('page-title').textContent = 'Dashboard';
@@ -146,12 +161,13 @@ class AdminPanel {
 
     async loadDepartmentName() {
         try {
-            // Assumindo que existe um endpoint para obter detalhes do departamento
+            console.log('Carregando nome do departamento para department_id:', userInfo.department_id);
             const queuesData = await ApiService.getQueues();
             const department = queuesData
                 .flatMap(inst => inst.queues)
                 .find(q => q.department_id === userInfo.department_id);
             document.getElementById('user-department').textContent = department?.department || 'Sem Departamento';
+            console.log('Nome do departamento carregado:', department?.department);
         } catch (error) {
             console.error('Erro ao carregar nome do departamento:', error);
             document.getElementById('user-department').textContent = 'Erro ao carregar';
@@ -159,12 +175,13 @@ class AdminPanel {
     }
 
     attachEventListeners() {
-        // Navegação da sidebar
+        console.log('Anexando event listeners');
         document.querySelectorAll('.sidebar nav a').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const sectionId = link.getAttribute('data-section');
                 if (sectionId) {
+                    console.log('Navegando para seção:', sectionId);
                     document.querySelectorAll('.section').forEach(section => section.classList.remove('active'));
                     document.getElementById(sectionId).classList.add('active');
                     document.querySelectorAll('.sidebar nav a').forEach(l => l.classList.remove('active'));
@@ -182,31 +199,31 @@ class AdminPanel {
             });
         });
 
-        // Botão de logout
         document.getElementById('logout').addEventListener('click', () => {
+            console.log('Botão de logout clicado');
             AuthManager.logout();
         });
 
-        // Filtro de tickets
         document.getElementById('ticket-status-filter')?.addEventListener('change', () => {
+            console.log('Filtro de tickets alterado');
             this.loadTickets();
         });
 
-        // Formulário de relatório
         document.getElementById('report-form')?.addEventListener('submit', (e) => {
             e.preventDefault();
+            console.log('Formulário de relatório enviado');
             this.generateReport();
         });
 
-        // Formulário de configurações
         document.getElementById('settings-form')?.addEventListener('submit', (e) => {
             e.preventDefault();
+            console.log('Formulário de configurações enviado');
             this.updateSettings();
         });
 
-        // Limpar mensagens de erro ao mudar de aba
         document.querySelectorAll('.sidebar nav a').forEach(link => {
             link.addEventListener('click', () => {
+                console.log('Limpando mensagens de erro ao mudar de aba');
                 this.hideError();
             });
         });
@@ -217,12 +234,14 @@ class AdminPanel {
         const update = () => {
             const now = new Date();
             document.getElementById('current-date').textContent = now.toLocaleDateString('pt-BR', options);
+            console.log('Data e hora atualizadas:', now);
         };
         update();
         return setInterval(update, 60000);
     }
 
     destroy() {
+        console.log('Destruindo AdminPanel');
         if (this.intervalId) {
             clearInterval(this.intervalId);
         }
@@ -232,17 +251,20 @@ class AdminPanel {
     }
 
     async loadInitialData() {
-        if (this.isLoading) return;
+        if (this.isLoading) {
+            console.log('Carregamento inicial já em andamento');
+            return;
+        }
         this.isLoading = true;
         this.showLoading();
 
         try {
+            console.log('Carregando dados iniciais');
             const [queues, tickets] = await Promise.all([
                 ApiService.getQueues(),
                 ApiService.getTickets()
             ]);
 
-            // Filtrar filas pelo department_id do usuário
             const filteredQueues = queues
                 .flatMap(inst => inst.queues)
                 .filter(queue => queue.department_id === userInfo.department_id);
@@ -253,9 +275,11 @@ class AdminPanel {
                 this.loadTickets(tickets)
             ]);
 
-            console.log("Dados iniciais carregados com sucesso", { filteredQueues, tickets });
+            console.log('Dados iniciais carregados com sucesso:', { filteredQueues, tickets });
         } catch (error) {
+            console.error('Erro ao carregar dados iniciais:', error);
             this.showError('Erro ao carregar dados iniciais', error);
+            // Não chamar logout aqui, apenas exibir erro
         } finally {
             this.isLoading = false;
             this.hideLoading();
@@ -263,11 +287,15 @@ class AdminPanel {
     }
 
     async loadDashboard(queues = null, tickets = null) {
-        if (this.isLoading) return;
+        if (this.isLoading) {
+            console.log('Dashboard já está sendo carregado');
+            return;
+        }
         this.isLoading = true;
         this.showLoading();
 
         try {
+            console.log('Carregando dashboard');
             let queuesData = queues;
             let ticketsData = tickets;
 
@@ -300,15 +328,14 @@ class AdminPanel {
             document.getElementById('avg-wait-time').textContent = `${avgWaitTime} min`;
             document.getElementById('attended-tickets').textContent = attendedToday;
             
-            console.log("Dados do dashboard carregados:", {
+            console.log('Dados do dashboard carregados:', {
                 filas_ativas: activeQueues,
                 tickets_pendentes: pendingTickets,
                 tempo_medio: avgWaitTime,
-                atendimentos_hoje: attendedToday,
-                tickets: ticketsData,
-                queues: queuesData
+                atendimentos_hoje: attendedToday
             });
         } catch (error) {
+            console.error('Erro ao carregar dashboard:', error);
             this.showError('Erro ao carregar dashboard', error);
         } finally {
             this.isLoading = false;
@@ -323,6 +350,7 @@ class AdminPanel {
         if (!tableBody && !fullTableBody) return;
 
         try {
+            console.log('Carregando filas');
             let queuesData = queues;
             if (!queuesData) {
                 const queuesResponse = await ApiService.getQueues();
@@ -334,7 +362,7 @@ class AdminPanel {
             tableBody.innerHTML = '';
             fullTableBody.innerHTML = '';
 
-            console.log(`Carregadas ${queuesData.length} filas para o department_id ${userInfo.department_id}`, queuesData);
+            console.log(`Carregadas ${queuesData.length} filas para department_id ${userInfo.department_id}`, queuesData);
 
             if (queuesData.length === 0) {
                 const emptyRow = `<tr><td colspan="5">Nenhuma fila encontrada para seu departamento</td></tr>`;
@@ -358,6 +386,7 @@ class AdminPanel {
                 fullTableBody.innerHTML += row;
             });
         } catch (error) {
+            console.error('Erro ao carregar filas:', error);
             this.showError('Erro ao carregar filas', error);
             const errorRow = '<tr><td colspan="5">Erro ao carregar filas</td></tr>';
             tableBody.innerHTML = errorRow;
@@ -367,10 +396,12 @@ class AdminPanel {
 
     async callNextTicket(service) {
         try {
+            console.log('Chamando próximo ticket');
             const data = await ApiService.callNextTicket(service);
             this.showSuccess(`Senha ${data.ticket_number} chamada para o guichê ${data.counter}`);
             await this.loadInitialData();
         } catch (error) {
+            console.error('Erro ao chamar próximo ticket:', error);
             this.showError('Erro ao chamar próximo ticket', error);
         }
     }
@@ -380,6 +411,7 @@ class AdminPanel {
         if (!tableBody) return;
 
         try {
+            console.log('Carregando tickets');
             const ticketsData = tickets || await ApiService.getTickets();
             const filter = document.getElementById('ticket-status-filter')?.value;
             const validStatuses = ['Pendente', 'Chamado', 'attended', 'Cancelado'];
@@ -391,8 +423,7 @@ class AdminPanel {
     
             tableBody.innerHTML = '';
     
-            console.log(`Response de /api/tickets/admin:`, ticketsData);
-            console.log(`Carregados ${filteredTickets.length} tickets (filtro: ${filter || 'todos'})`);
+            console.log(`Carregados ${filteredTickets.length} tickets (filtro: ${filter || 'todos'})`, ticketsData);
     
             if (filteredTickets.length === 0) {
                 tableBody.innerHTML = '<tr><td colspan="5">Nenhum ticket encontrado para seu departamento</td></tr>';
@@ -411,17 +442,22 @@ class AdminPanel {
                 tableBody.appendChild(row);
             });
         } catch (error) {
+            console.error('Erro ao carregar tickets:', error);
             this.showError('Erro ao carregar tickets', error);
             tableBody.innerHTML = '<tr><td colspan="5">Erro ao carregar tickets</td></tr>';
         }
     }
 
     async generateReport() {
-        if (this.isLoading) return;
+        if (this.isLoading) {
+            console.log('Relatório já está sendo gerado');
+            return;
+        }
         this.isLoading = true;
         this.showLoading();
 
         try {
+            console.log('Gerando relatório');
             const date = document.getElementById('report-date').value;
             const reportType = document.getElementById('report-type').value;
             const tickets = await ApiService.getTickets();
@@ -483,7 +519,9 @@ class AdminPanel {
                     }
                 });
             }
+            console.log('Relatório gerado com sucesso');
         } catch (error) {
+            console.error('Erro ao gerar relatório:', error);
             this.showError('Erro ao gerar relatório', error);
         } finally {
             this.isLoading = false;
@@ -492,26 +530,30 @@ class AdminPanel {
     }
 
     async updateSettings() {
+        console.log('Atualizando configurações');
         const password = document.getElementById('settings-password').value.trim();
         const confirmPassword = document.getElementById('settings-confirm-password').value.trim();
         
         if (!password) {
+            console.warn('Senha vazia detectada');
             this.showError('As senhas não podem estar vazias');
             return;
         }
         
         if (password !== confirmPassword) {
+            console.warn('Senhas não coincidem');
             this.showError('As senhas não coincidem');
             return;
         }
         
         try {
-            // Implementar chamada para atualizar senha (endpoint fictício, ajustar conforme backend)
             await ApiService.request('/api/update_password', 'POST', { password });
             this.showSuccess('Senha atualizada com sucesso');
             document.getElementById('settings-password').value = '';
             document.getElementById('settings-confirm-password').value = '';
+            console.log('Senha atualizada com sucesso');
         } catch (error) {
+            console.error('Erro ao atualizar senha:', error);
             this.showError('Erro ao atualizar senha', error);
         }
     }
@@ -568,12 +610,16 @@ class LoginManager {
     static init() {
         const form = document.getElementById('login-form');
         if (form) {
+            console.log('Inicializando LoginManager');
             form.addEventListener('submit', (e) => this.handleLogin(e));
+        } else {
+            console.error('Formulário de login não encontrado');
         }
     }
 
     static async handleLogin(event) {
         event.preventDefault();
+        console.log('Tentativa de login iniciada');
         const form = event.target;
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value.trim();
@@ -596,21 +642,22 @@ class LoginManager {
             }
             
             if (AuthManager.saveUserSession(data)) {
+                console.log('Login bem-sucedido, redirecionando para index.html');
                 window.location.href = 'index.html';
             } else {
                 throw new Error('Erro ao salvar a sessão');
             }
         } catch (error) {
+            console.error('Erro no login:', error);
             errorMessage.textContent = error.message.includes('Credenciais') 
                 ? 'Credenciais inválidas' 
                 : error.message;
-            console.error('Erro no login:', error);
             
             document.getElementById('email').value = email;
             document.getElementById('password').value = '';
         } finally {
             submitBtn.disabled = false;
-            submitBtn.textContent = 'Entrar';
+            submitBtn.innerHTML = 'Entrar';
         }
     }
 }
@@ -618,6 +665,7 @@ class LoginManager {
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
     const currentPage = window.location.pathname.split('/').pop();
+    console.log('Página carregada:', currentPage);
     
     if (currentPage === 'login.html') {
         LoginManager.init();
@@ -629,6 +677,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Cleanup ao sair da página
 window.addEventListener('beforeunload', () => {
     if (window.adminPanel) {
+        console.log('Limpando AdminPanel antes de sair');
         window.adminPanel.destroy();
     }
 });
