@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <!-- Sidebar -->
@@ -18,7 +18,6 @@
             <li><a href="#" data-section="queues"><i class="fas fa-list"></i> Filas</a></li>
             <li><a href="#" data-section="tickets"><i class="fas fa-ticket-alt"></i> Tickets</a></li>
             <li><a href="#" data-section="reports"><i class="fas fa-chart-bar"></i> Relatórios</a></li>
-            <li><a href="#" data-section="settings"><i class="fas fa-cog"></i> Configurações</a></li>
         </ul>
     </div>
 
@@ -84,7 +83,6 @@
                 <div class="controls">
                     <input type="text" id="queue-filter" placeholder="Filtrar por serviço..." aria-label="Filtrar filas">
                     <button onclick="loadQueues()"><i class="fas fa-sync"></i> Atualizar</button>
-                    <button onclick="openCreateQueueModal()"><i class="fas fa-plus"></i> Nova Fila</button>
                 </div>
             </div>
             <table class="table" id="queues-table">
@@ -108,7 +106,6 @@
                 <div class="controls">
                     <input type="text" id="ticket-filter" placeholder="Filtrar por senha..." aria-label="Filtrar tickets">
                     <button onclick="loadTickets()"><i class="fas fa-sync"></i> Atualizar</button>
-                    <button onclick="openValidatePresenceModal()"><i class="fas fa-qrcode"></i> Validar Presença</button>
                 </div>
             </div>
             <table class="table" id="tickets-table">
@@ -118,7 +115,6 @@
                         <th>Serviço</th>
                         <th>Status</th>
                         <th>Guichê</th>
-                        <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody id="ticket-content"></tbody>
@@ -130,11 +126,7 @@
             <div class="section-header">
                 <h2>Relatório de Atendimento</h2>
                 <div class="controls">
-                    <input type="date" id="report-start-date" aria-label="Data inicial">
-                    <input type="date" id="report-end-date" aria-label="Data final">
-                    <select id="report-service" aria-label="Filtrar por serviço">
-                        <option value="">Todos os serviços</option>
-                    </select>
+                    <input type="date" id="report-date" aria-label="Data do relatório">
                     <button onclick="loadReport()"><i class="fas fa-sync"></i> Atualizar</button>
                     <button onclick="exportReport()"><i class="fas fa-download"></i> Exportar CSV</button>
                 </div>
@@ -144,155 +136,14 @@
             </div>
         </div>
 
-        <!-- Settings Section -->
-        <div class="content-section" id="settings-section">
-            <div class="section-header">
-                <h2>Configurações</h2>
-            </div>
-            <div class="form-group">
-                <label for="new-password">Alterar Senha</label>
-                <input type="password" id="new-password" placeholder="Nova senha" aria-label="Nova senha">
-            </div>
-            <button onclick="changePassword()"><i class="fas fa-save"></i> Salvar Senha</button>
-            <div class="form-group">
-                <label for="notification-preference">Preferências de Notificação</label>
-                <select id="notification-preference" aria-label="Preferências de notificação">
-                    <option value="all">Todas as notificações</option>
-                    <option value="important">Apenas importantes</option>
-                    <option value="none">Nenhuma</option>
-                </select>
-            </div>
-            <button onclick="savePreferences()"><i class="fas fa-save"></i> Salvar Preferências</button>
-        </div>
-
         <!-- Loader -->
         <div class="loader" id="loader"></div>
-
-        <!-- Modals -->
-        <div class="modal" id="ticket-modal">
-            <div class="modal-content">
-                <h3>Detalhes do Ticket</h3>
-                <p id="modal-ticket-number"></p>
-                <p id="modal-ticket-service"></p>
-                <p id="modal-ticket-status"></p>
-                <p id="modal-ticket-counter"></p>
-                <p id="modal-ticket-issued"></p>
-                <button class="primary" onclick="closeModal()">Fechar</button>
-            </div>
-        </div>
-
-        <div class="modal" id="create-queue-modal">
-            <div class="modal-content">
-                <h3>Criar Nova Fila</h3>
-                <div class="form-group">
-                    <label for="queue-service">Serviço</label>
-                    <input type="text" id="queue-service" placeholder="Nome do serviço" aria-label="Nome do serviço">
-                </div>
-                <div class="form-group">
-                    <label for="queue-prefix">Prefixo</label>
-                    <input type="text" id="queue-prefix" placeholder="Ex.: A" aria-label="Prefixo da fila">
-                </div>
-                <div class="form-group">
-                    <label for="queue-open-time">Horário de Abertura</label>
-                    <input type="time" id="queue-open-time" aria-label="Horário de abertura">
-                </div>
-                <div class="form-group">
-                    <label for="queue-end-time">Horário de Fechamento</label>
-                    <input type="time" id="queue-end-time" aria-label="Horário de fechamento">
-                </div>
-                <div class="form-group">
-                    <label for="queue-daily-limit">Limite Diário</label>
-                    <input type="number" id="queue-daily-limit" placeholder="Ex.: 20" aria-label="Limite diário de tickets">
-                </div>
-                <div class="form-group">
-                    <label for="queue-num-counters">Número de Guichês</label>
-                    <input type="number" id="queue-num-counters" placeholder="Ex.: 3" aria-label="Número de guichês">
-                </div>
-                <button class="primary" onclick="createQueue()">Criar</button>
-                <button class="secondary" onclick="closeModal()">Cancelar</button>
-            </div>
-        </div>
-
-        <div class="modal" id="edit-queue-modal">
-            <div class="modal-content">
-                <h3>Editar Fila</h3>
-                <input type="hidden" id="edit-queue-id">
-                <div class="form-group">
-                    <label for="edit-queue-service">Serviço</label>
-                    <input type="text" id="edit-queue-service" aria-label="Nome do serviço">
-                </div>
-                <div class="form-group">
-                    <label for="edit-queue-prefix">Prefixo</label>
-                    <input type="text" id="edit-queue-prefix" aria-label="Prefixo da fila">
-                </div>
-                <div class="form-group">
-                    <label for="edit-queue-open-time">Horário de Abertura</label>
-                    <input type="time" id="edit-queue-open-time" aria-label="Horário de abertura">
-                </div>
-                <div class="form-group">
-                    <label for="edit-queue-end-time">Horário de Fechamento</label>
-                    <input type="time" id="edit-queue-end-time" aria-label="Horário de fechamento">
-                </div>
-                <div class="form-group">
-                    <label for="edit-queue-daily-limit">Limite Diário</label>
-                    <input type="number" id="edit-queue-daily-limit" aria-label="Limite diário de tickets">
-                </div>
-                <div class="form-group">
-                    <label for="edit-queue-num-counters">Número de Guichês</label>
-                    <input type="number" id="edit-queue-num-counters" aria-label="Número de guichês">
-                </div>
-                <button class="primary" onclick="updateQueue()">Salvar</button>
-                <button class="secondary" onclick="closeModal()">Cancelar</button>
-            </div>
-        </div>
-
-        <div class="modal" id="delete-queue-modal">
-            <div class="modal-content">
-                <h3>Confirmar Exclusão</h3>
-                <p>Tem certeza que deseja excluir a fila <span id="delete-queue-name"></span>?</p>
-                <input type="hidden" id="delete-queue-id">
-                <button class="danger" onclick="deleteQueue()">Excluir</button>
-                <button class="secondary" onclick="closeModal()">Cancelar</button>
-            </div>
-        </div>
-
-        <div class="modal" id="cancel-ticket-modal">
-            <div class="modal-content">
-                <h3>Confirmar Cancelamento</h3>
-                <p>Tem certeza que deseja cancelar a senha <span id="cancel-ticket-number"></span>?</p>
-                <input type="hidden" id="cancel-ticket-id">
-                <button class="danger" onclick="cancelTicket()">Cancelar Senha</button>
-                <button class="secondary" onclick="closeModal()">Fechar</button>
-            </div>
-        </div>
-
-        <div class="modal" id="validate-presence-modal">
-            <div class="modal-content">
-                <h3>Validar Presença</h3>
-                <div class="form-group">
-                    <label for="qr-code">Código QR</label>
-                    <input type="text" id="qr-code" placeholder="Digite ou escaneie o QR code" aria-label="Código QR">
-                </div>
-                <button class="primary" onclick="validatePresence()">Validar</button>
-                <button class="secondary" onclick="closeModal()">Fechar</button>
-            </div>
-        </div>
-
-        <div class="modal" id="trade-ticket-modal">
-            <div class="modal-content">
-                <h3>Oferecer Troca de Senha</h3>
-                <p>Oferecer troca para a senha <span id="trade-ticket-number"></span>?</p>
-                <input type="hidden" id="trade-ticket-id">
-                <button class="primary" onclick="offerTrade()">Oferecer</button>
-                <button class="secondary" onclick="closeModal()">Fechar</button>
-            </div>
-        </div>
 
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
         <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
-        <script src="js/script.js"></script>
+        <script src="script.js"></script>
 </body>
 </html>

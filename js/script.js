@@ -80,35 +80,8 @@ class ApiService {
         return await this.request(`/api/admin/queue/${queueId}/call`, 'POST');
     }
 
-    static async createQueue(data) {
-        return await this.request('/api/queue/create', 'POST', data);
-    }
-
-    static async updateQueue(queueId, data) {
-        return await this.request(`/api/queue/${queueId}`, 'PUT', data);
-    }
-
-    static async deleteQueue(queueId) {
-        return await this.request(`/api/queue/${queueId}`, 'DELETE');
-    }
-
-    static async cancelTicket(ticketId) {
-        return await this.request(`/api/ticket/${ticketId}/cancel`, 'POST');
-    }
-
-    static async validatePresence(qrCode) {
-        return await this.request('/api/ticket/validate', 'POST', { qr_code: qrCode });
-    }
-
-    static async offerTrade(ticketId) {
-        return await this.request(`/api/ticket/${ticketId}/trade`, 'POST');
-    }
-
-    static async getReport(startDate, endDate, service) {
-        let url = `/api/admin/report?start_date=${startDate}`;
-        if (endDate) url += `&end_date=${endDate}`;
-        if (service) url += `&service=${encodeURIComponent(service)}`;
-        return await this.request(url);
+    static async getReport(date) {
+        return await this.request(`/api/admin/report?date=${date}`);
     }
 }
 
@@ -168,17 +141,27 @@ function handleLogout() {
 
 async function loadDashboard() {
     try {
-        const queues = await ApiService.getQueues();
-        const tickets = await ApiService.getTickets();
         const today = new Date().toISOString().split('T')[0];
-        const report = await ApiService.getReport(today, null, null);
+        const [queues, tickets, report] = await Promise.all([
+            ApiService.getQueues(),
+            ApiService.getTickets(),
+            ApiService.getReport(today)
+        ]);
 
-        // Atualizar cards
-        document.getElementById('active-queues').textContent = queues.length;
-        document.getElementById('pending-tickets').textContent = tickets.filter(t => t.status === 'Pendente').length;
-        document.getElementById('attended-tickets').textContent = tickets.filter(t => t.status === 'attended').length;
-        const avgWaitTimes = report.filter(r => r.avg_time).map(r => r.avg_time);
-        document.getElementById('avg-wait-time').textContent = avgWaitTimes.length ? `${Math.round(avgWaitTimes.reduce((a, b) => a + b, 0) / avgWaitTimes.length)} min` : 'N/A';
+        // Filas ativas: filas com active_tickets < daily_limit
+        const activeQueues = queues.filter(q => q.active_tickets < q.daily_limit).length;
+        // Tickets pendentes: status 'Pendente' ou 'Chamado'
+        const pendingTickets = tickets.filter(t => t.status === 'Pendente' || t.status === 'Chamado').length;
+        // Tickets atendidos: status 'attended'
+        const attendedTickets = tickets.filter(t => t.status === 'attended').length;
+        // Tempo médio: média dos avg_time do relatório
+        const avgTimes = report.filter(r => r.avg_time).map(r => r.avg_time);
+        const avgWaitTime = avgTimes.length ? Math.round(avgTimes.reduce((a, b) => a + b, 0) / avgTimes.length) : 0;
+
+        document.getElementById('active-queues').textContent = activeQueues;
+        document.getElementById('pending-tickets').textContent = pendingTickets;
+        document.getElementById('attended-tickets').textContent = attendedTickets;
+        document.getElementById('avg-wait-time').textContent = `${avgWaitTime} min`;
 
         // Gráfico
         if (dashboardChart) {
@@ -214,6 +197,7 @@ async function loadDashboard() {
             }
         });
     } catch (error) {
+        console.error('Erro ao carregar dashboard:', error);
         showError('Erro ao carregar dashboard: ' + (error.message || 'Falha ao carregar dados'));
     }
 }
@@ -240,9 +224,7 @@ async function loadQueues() {
                     <td>${queue.active_tickets}/${queue.daily_limit}</td>
                     <td><span class="badge ${queue.status === 'Aberto' ? 'open' : 'full'}">${queue.status}</span></td>
                     <td>
-                        <button class="primary" onclick="callNextTicket('${queue.id}')"><i class="fas fa-phone"></i> Chamar</button>
-                        <button class="secondary" onclick="openEditQueueModal('${queue.id}', '${queue.service}', '${queue.prefix}', '${queue.open_time}', '${queue.end_time}', '${queue.daily_limit}', '${queue.num_counters}')"><i class="fas fa-edit"></i> Editar</button>
-                        <button class="danger" onclick="openDeleteQueueModal('${queue.id}', '${queue.service}')"><i class="fas fa-trash"></i> Excluir</button>
+                        <button onclick="callNextTicket('${queue.id}')"><i class="fas fa-phone"></i> Chamar</button>
                     </td>
                 `;
                 queueContent.appendChild(row);
@@ -267,7 +249,7 @@ async function loadTickets() {
         ticketContent.innerHTML = '';
 
         if (tickets.length === 0) {
-            ticketContent.innerHTML = '<tr><td colspan="5">Nenhum ticket ativo encontrado.</td></tr>';
+            ticketContent.innerHTML = '<tr><td colspan="4">Nenhum ticket ativo encontrado.</td></tr>';
             return;
         }
 
@@ -281,11 +263,6 @@ async function loadTickets() {
                     <td>${ticket.service}</td>
                     <td>${ticket.status}</td>
                     <td>${ticket.counter || 'N/A'}</td>
-                    <td>
-                        <button class="primary" onclick="showTicketDetails('${ticket.id}', '${ticket.number}', '${ticket.service}', '${ticket.status}', '${ticket.counter}', '${ticket.issued_at}')"><i class="fas fa-info-circle"></i> Detalhes</button>
-                        ${ticket.status === 'Pendente' ? `<button class="danger" onclick="openCancelTicketModal('${ticket.id}', '${ticket.number}')"><i class="fas fa-times"></i> Cancelar</button>` : ''}
-                        ${ticket.status === 'Pendente' ? `<button class="secondary" onclick="openTradeTicketModal('${ticket.id}', '${ticket.number}')"><i class="fas fa-exchange-alt"></i> Trocar</button>` : ''}
-                    </td>
                 `;
                 ticketContent.appendChild(row);
             });
@@ -314,192 +291,10 @@ async function callNextTicket(queueId) {
     }
 }
 
-function openCreateQueueModal() {
-    document.getElementById('queue-service').value = '';
-    document.getElementById('queue-prefix').value = '';
-    document.getElementById('queue-open-time').value = '';
-    document.getElementById('queue-end-time').value = '';
-    document.getElementById('queue-daily-limit').value = '';
-    document.getElementById('queue-num-counters').value = '';
-    document.getElementById('create-queue-modal').style.display = 'flex';
-}
-
-async function createQueue() {
-    clearError();
-    const service = document.getElementById('queue-service').value;
-    const prefix = document.getElementById('queue-prefix').value;
-    const open_time = document.getElementById('queue-open-time').value;
-    const end_time = document.getElementById('queue-end-time').value;
-    const daily_limit = document.getElementById('queue-daily-limit').value;
-    const num_counters = document.getElementById('queue-num-counters').value;
-
-    if (!service || !prefix || !open_time || !daily_limit || !num_counters) {
-        showError('Preencha todos os campos obrigatórios.');
-        return;
-    }
-
-    try {
-        const response = await ApiService.createQueue({
-            service,
-            prefix,
-            department_id: userInfo.department_id || 'default',
-            open_time,
-            end_time: end_time || null,
-            daily_limit: parseInt(daily_limit),
-            num_counters: parseInt(num_counters)
-        });
-        toastr.success('Fila criada com sucesso!');
-        closeModal();
-        loadQueues();
-        loadDashboard();
-    } catch (error) {
-        showError('Erro ao criar fila: ' + (error.message || 'Falha ao criar fila'));
-    }
-}
-
-function openEditQueueModal(id, service, prefix, open_time, end_time, daily_limit, num_counters) {
-    document.getElementById('edit-queue-id').value = id;
-    document.getElementById('edit-queue-service').value = service;
-    document.getElementById('edit-queue-prefix').value = prefix;
-    document.getElementById('edit-queue-open-time').value = open_time;
-    document.getElementById('edit-queue-end-time').value = end_time || '';
-    document.getElementById('edit-queue-daily-limit').value = daily_limit;
-    document.getElementById('edit-queue-num-counters').value = num_counters;
-    document.getElementById('edit-queue-modal').style.display = 'flex';
-}
-
-async function updateQueue() {
-    clearError();
-    const id = document.getElementById('edit-queue-id').value;
-    const service = document.getElementById('edit-queue-service').value;
-    const prefix = document.getElementById('edit-queue-prefix').value;
-    const open_time = document.getElementById('edit-queue-open-time').value;
-    const end_time = document.getElementById('edit-queue-end-time').value;
-    const daily_limit = document.getElementById('edit-queue-daily-limit').value;
-    const num_counters = document.getElementById('edit-queue-num-counters').value;
-
-    if (!service || !prefix || !open_time || !daily_limit || !num_counters) {
-        showError('Preencha todos os campos obrigatórios.');
-        return;
-    }
-
-    try {
-        const response = await ApiService.updateQueue(id, {
-            service,
-            prefix,
-            open_time,
-            end_time: end_time || null,
-            daily_limit: parseInt(daily_limit),
-            num_counters: parseInt(num_counters)
-        });
-        toastr.success('Fila atualizada com sucesso!');
-        closeModal();
-        loadQueues();
-        loadDashboard();
-    } catch (error) {
-        showError('Erro ao atualizar fila: ' + (error.message || 'Falha ao atualizar fila'));
-    }
-}
-
-function openDeleteQueueModal(id, service) {
-    document.getElementById('delete-queue-id').value = id;
-    document.getElementById('delete-queue-name').textContent = service;
-    document.getElementById('delete-queue-modal').style.display = 'flex';
-}
-
-async function deleteQueue() {
-    clearError();
-    const id = document.getElementById('delete-queue-id').value;
-
-    try {
-        await ApiService.deleteQueue(id);
-        toastr.success('Fila excluída com sucesso!');
-        closeModal();
-        loadQueues();
-        loadDashboard();
-    } catch (error) {
-        showError('Erro ao excluir fila: ' + (error.message || 'Falha ao excluir fila'));
-    }
-}
-
-function openCancelTicketModal(id, number) {
-    document.getElementById('cancel-ticket-id').value = id;
-    document.getElementById('cancel-ticket-number').textContent = number;
-    document.getElementById('cancel-ticket-modal').style.display = 'flex';
-}
-
-async function cancelTicket() {
-    clearError();
-    const id = document.getElementById('cancel-ticket-id').value;
-
-    try {
-        await ApiService.cancelTicket(id);
-        toastr.success('Ticket cancelado com sucesso!');
-        closeModal();
-        loadTickets();
-        loadDashboard();
-    } catch (error) {
-        showError('Erro ao cancelar ticket: ' + (error.message || 'Falha ao cancelar ticket'));
-    }
-}
-
-function openValidatePresenceModal() {
-    document.getElementById('qr-code').value = '';
-    document.getElementById('validate-presence-modal').style.display = 'flex';
-}
-
-async function validatePresence() {
-    clearError();
-    const qrCode = document.getElementById('qr-code').value;
-
-    if (!qrCode) {
-        showError('Digite um código QR.');
-        return;
-    }
-
-    try {
-        const response = await ApiService.validatePresence(qrCode);
-        toastr.success('Presença validada com sucesso!');
-        closeModal();
-        loadTickets();
-        loadDashboard();
-    } catch (error) {
-        showError('Erro ao validar presença: ' + (error.message || 'Falha ao validar presença'));
-    }
-}
-
-function openTradeTicketModal(id, number) {
-    document.getElementById('trade-ticket-id').value = id;
-    document.getElementById('trade-ticket-number').textContent = number;
-    document.getElementById('trade-ticket-modal').style.display = 'flex';
-}
-
-async function offerTrade() {
-    clearError();
-    const id = document.getElementById('trade-ticket-id').value;
-
-    try {
-        await ApiService.offerTrade(id);
-        toastr.success('Senha oferecida para troca!');
-        closeModal();
-        loadTickets();
-    } catch (error) {
-        showError('Erro ao oferecer troca: ' + (error.message || 'Falha ao oferecer troca'));
-    }
-}
-
 async function loadReport() {
     try {
-        const startDate = document.getElementById('report-start-date').value;
-        const endDate = document.getElementById('report-end-date').value;
-        const service = document.getElementById('report-service').value;
-        const report = await ApiService.getReport(startDate, endDate, service);
-
-        // Atualizar select de serviços
-        const services = [...new Set(report.map(r => r.service))];
-        const serviceSelect = document.getElementById('report-service');
-        serviceSelect.innerHTML = '<option value="">Todos os serviços</option>' + 
-            services.map(s => `<option value="${s}">${s}</option>`).join('');
+        const date = document.getElementById('report-date').value || new Date().toISOString().split('T')[0];
+        const report = await ApiService.getReport(date);
 
         // Gráfico
         if (chartInstance) {
@@ -522,24 +317,15 @@ async function loadReport() {
                     backgroundColor: '#10b981',
                     borderColor: '#059669',
                     borderWidth: 1
-                }, {
-                    label: 'Tempo Médio (min)',
-                    data: report.map(r => r.avg_time || 0),
-                    type: 'line',
-                    borderColor: '#f59e0b',
-                    backgroundColor: '#f59e0b',
-                    fill: false,
-                    yAxisID: 'y1'
                 }]
             },
             options: {
                 scales: {
-                    y: { beginAtZero: true, position: 'left' },
-                    y1: { beginAtZero: true, position: 'right' }
+                    y: { beginAtZero: true }
                 },
                 plugins: {
                     legend: { position: 'top' },
-                    title: { display: true, text: `Relatório de Atendimento (${startDate} - ${endDate || 'Hoje'})` }
+                    title: { display: true, text: `Relatório de Atendimento (${date})` }
                 }
             }
         });
@@ -549,63 +335,20 @@ async function loadReport() {
 }
 
 function exportReport() {
-    const startDate = document.getElementById('report-start-date').value;
-    const endDate = document.getElementById('report-end-date').value;
-    const service = document.getElementById('report-service').value;
+    const date = document.getElementById('report-date').value || new Date().toISOString().split('T')[0];
 
-    ApiService.getReport(startDate, endDate, service).then(report => {
+    ApiService.getReport(date).then(report => {
         const headers = ['Serviço', 'Tickets Emitidos', 'Tickets Atendidos', 'Tempo Médio (min)'];
-        const rows = report.map(r => [r.service, r.issued, r.attended, r.avg_time || 'N/A']);
+        const rows = report.map(r => [r.service, r.issued, r.attended, r.avg_time ? Math.round(r.avg_time) : 'N/A']);
         const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = `relatorio_${startDate}_${endDate || 'hoje'}.csv`;
+        link.download = `relatorio_${date}.csv`;
         link.click();
     }).catch(error => {
         showError('Erro ao exportar relatório: ' + (error.message || 'Falha ao exportar relatório'));
     });
-}
-
-function showTicketDetails(id, number, service, status, counter, issued_at) {
-    document.getElementById('modal-ticket-number').textContent = `Senha: ${number}`;
-    document.getElementById('modal-ticket-service').textContent = `Serviço: ${service}`;
-    document.getElementById('modal-ticket-status').textContent = `Status: ${status}`;
-    document.getElementById('modal-ticket-counter').textContent = `Guichê: ${counter || 'N/A'}`;
-    document.getElementById('modal-ticket-issued').textContent = `Emitido em: ${new Date(issued_at).toLocaleString('pt-BR')}`;
-    document.getElementById('ticket-modal').style.display = 'flex';
-}
-
-function closeModal() {
-    document.querySelectorAll('.modal').forEach(modal => modal.style.display = 'none');
-}
-
-async function changePassword() {
-    clearError();
-    const newPassword = document.getElementById('new-password').value;
-    if (!newPassword) {
-        showError('Digite uma nova senha.');
-        return;
-    }
-
-    try {
-        // Simulação: Backend não tem endpoint para alterar senha
-        toastr.success('Senha alterada com sucesso!');
-        document.getElementById('new-password').value = '';
-    } catch (error) {
-        showError('Erro ao alterar senha: ' + (error.message || 'Falha ao alterar senha'));
-    }
-}
-
-async function savePreferences() {
-    clearError();
-    const preference = document.getElementById('notification-preference').value;
-    try {
-        // Simulação: Backend não tem endpoint para preferências
-        toastr.success('Preferências salvas com sucesso!');
-    } catch (error) {
-        showError('Erro ao salvar preferências: ' + (error.message || 'Falha ao salvar preferências'));
-    }
 }
 
 function initWebSocket() {
@@ -622,19 +365,11 @@ function initWebSocket() {
         socket.emit('join', `department_${userInfo.department_id}`);
     });
 
-    socket.on('queue_update', data => {
+    socket.on('notification', data => {
         toastr.info(data.message);
         loadQueues();
         loadTickets();
         loadDashboard();
-    });
-
-    socket.on('notification', data => {
-        toastr.info(data.message);
-    });
-
-    socket.on('trade_available', data => {
-        toastr.info(`Nova oferta de troca: ${data.number} (${data.service})`);
     });
 
     socket.on('disconnect', () => {
@@ -680,7 +415,7 @@ function initApp() {
     // Filtros
     document.getElementById('queue-filter').addEventListener('input', loadQueues);
     document.getElementById('ticket-filter').addEventListener('input', loadTickets);
-
+    
     // Menu toggle
     document.getElementById('menu-toggle').addEventListener('click', () => {
         sidebar.classList.toggle('active');
@@ -704,8 +439,7 @@ function showSection(sectionId) {
         dashboard: 'Dashboard',
         queues: 'Filas',
         tickets: 'Tickets',
-        reports: 'Relatórios',
-        settings: 'Configurações'
+        reports: 'Relatórios'
     };
     document.getElementById('section-title').textContent = titles[sectionId];
 
