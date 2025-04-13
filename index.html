@@ -3,231 +3,306 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fila Facilita - Painel Administrativo</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <title>Gestão de Filas - Facilita 2.0</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .queue-list, .ticket-list {
+            margin-top: 20px;
+        }
+        .queue-item, .ticket-item {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .queue-item button, .ticket-item button {
+            padding: 8px 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .queue-item button:hover, .ticket-item button:hover {
+            background-color: #0056b3;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+        .login-form {
+            display: none;
+            margin-top: 20px;
+        }
+        .login-form input {
+            padding: 8px;
+            margin: 5px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .login-form button {
+            padding: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .login-form button:hover {
+            background-color: #218838;
+        }
+    </style>
 </head>
 <body>
-    <div class="admin-panel">
-        <div class="sidebar">
-            <div class="brand">
-                <i class="fas fa-ticket-alt"></i>
-                <h2>Fila Facilita</h2>
-            </div>
-            <div class="user-info">
-                <div class="avatar">
-                    <i class="fas fa-user"></i>
-                </div>
-                <div class="user-details">
-                    <h3 id="user-name">Nome do Usuário</h3>
-                    <p id="user-department">Carregando...</p>
-                </div>
-            </div>
-            <nav>
-                <a href="#" data-section="dashboard-section" class="active">
-                    <i class="fas fa-tachometer-alt"></i> Dashboard
-                </a>
-                <a href="#" data-section="queues-section">
-                    <i class="fas fa-list-ol"></i> Filas
-                </a>
-                <a href="#" data-section="tickets-section">
-                    <i class="fas fa-ticket-alt"></i> Tickets
-                </a>
-                <a href="#" data-section="reports-section">
-                    <i class="fas fa-chart-bar"></i> Relatórios
-                </a>
-                <a href="#" data-section="settings-section">
-                    <i class="fas fa-cog"></i> Configurações
-                </a>
-                <a href="#" id="logout" class="logout">
-                    <i class="fas fa-sign-out-alt"></i> Sair
-                </a>
-            </nav>
+    <div class="container">
+        <h1>Gestão de Filas - Facilita 2.0</h1>
+        <div id="user-info"></div>
+        <button id="logout-btn" style="display: none;">Sair</button>
+        
+        <div class="login-form" id="login-form">
+            <h2>Login</h2>
+            <input type="email" id="email" placeholder="Email" required>
+            <input type="password" id="password" placeholder="Senha" required>
+            <button onclick="handleLogin()">Entrar</button>
         </div>
-        <div class="main-content">
-            <header>
-                <h1 id="page-title">Dashboard</h1>
-                <div class="header-actions">
-                    <div class="date-time">
-                        <i class="far fa-calendar-alt"></i>
-                        <span id="current-date">13 de abril, 2025</span>
-                    </div>
-                </div>
-            </header>
-            
-            <!-- Dashboard Section -->
-            <section id="dashboard-section" class="section active">
-                <div class="stats-container">
-                    <div class="stat-card">
-                        <div class="stat-icon blue">
-                            <i class="fas fa-list-ol"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3 id="active-queues">0</h3>
-                            <p>Filas Ativas</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon orange">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3 id="pending-tickets">0</h3>
-                            <p>Tickets Pendentes</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon green">
-                            <div class="stat-info">
-                                <h3 id="avg-wait-time">0 min</h3>
-                                <p>Tempo Médio de Espera</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon purple">
-                            <i class="fas fa-check-circle"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3 id="attended-tickets">0</h3>
-                            <p>Atendimentos Hoje</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="recent-activity">
-                    <h2>Visão Geral das Filas</h2>
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Serviço</th>
-                                    <th>Tickets Ativos</th>
-                                    <th>Ticket Atual</th>
-                                    <th>Status</th>
-                                    <th>Ação</th>
-                                </tr>
-                            </thead>
-                            <tbody id="queues-table">
-                                <!-- Dados serão carregados dinamicamente -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-            
-            <!-- Queues Section -->
-            <section id="queues-section" class="section">
-                <div class="section-header">
-                    <h2>Gerenciamento de Filas</h2>
-                </div>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Serviço</th>
-                                <th>Tickets Ativos</th>
-                                <th>Ticket Atual</th>
-                                <th>Status</th>
-                                <th>Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody id="queues-table-full">
-                            <!-- Dados serão carregados dinamicamente -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-            
-            <!-- Tickets Section -->
-            <section id="tickets-section" class="section">
-                <div class="section-header">
-                    <h2>Gerenciamento de Tickets</h2>
-                    <div class="filter-container">
-                        <label for="ticket-status-filter">Filtrar por Status:</label>
-                        <select id="ticket-status-filter">
-                            <option value="">Todos</option>
-                            <option value="Pendente">Pendente</option>
-                            <option value="Chamado">Chamado</option>
-                            <option value="attended">Atendido</option>
-                            <option value="Cancelado">Cancelado</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Ticket</th>
-                                <th>Serviço</th>
-                                <th>Status</th>
-                                <th>Tempo de Espera</th>
-                                <th>Guichê</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tickets-table">
-                            <!-- Dados serão carregados dinamicamente -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-            
-            <!-- Reports Section -->
-            <section id="reports-section" class="section">
-                <div class="section-header">
-                    <h2>Relatórios e Estatísticas</h2>
-                </div>
-                <div class="report-container">
-                    <div class="report-filters">
-                        <form id="report-form">
-                            <div class="form-group">
-                                <label for="report-date">Data:</label>
-                                <input type="date" id="report-date" value="">
-                            </div>
-                            <div class="form-group">
-                                <label for="report-type">Tipo de Relatório:</label>
-                                <select id="report-type">
-                                    <option value="status">Tickets por Status</option>
-                                    <option value="wait-time">Tempo Médio de Espera</option>
-                                </select>
-                            </div>
-                            <button type="submit" class="btn primary-btn">Gerar Relatório</button>
-                        </form>
-                    </div>
-                    <div class="report-chart-container">
-                        <canvas id="report-chart"></canvas>
-                    </div>
-                </div>
-            </section>
-            
-            <!-- Settings Section -->
-            <section id="settings-section" class="section">
-                <div class="section-header">
-                    <h2>Configurações da Conta</h2>
-                </div>
-                <div class="settings-container">
-                    <form id="settings-form">
-                        <div class="form-group">
-                            <label for="settings-email">Email:</label>
-                            <input type="email" id="settings-email" disabled>
-                        </div>
-                        <div class="form-group">
-                            <label for="settings-password">Nova Senha:</label>
-                            <input type="password" id="settings-password">
-                        </div>
-                        <div class="form-group">
-                            <label for="settings-confirm-password">Confirmar Senha:</label>
-                            <input type="password" id="settings-confirm-password">
-                        </div>
-                        <button type="submit" class="btn primary-btn">Atualizar Senha</button>
-                    </form>
-                </div>
-            </section>
+
+        <div class="queue-list" id="queue-list">
+            <h2>Filas do Seu Departamento</h2>
+            <!-- Filas serão inseridas aqui -->
         </div>
+
+        <div class="ticket-list" id="ticket-list">
+            <h2>Tickets Ativos</h2>
+            <!-- Tickets serão inseridos aqui -->
+        </div>
+
+        <div class="error" id="error-message"></div>
     </div>
-    
-    <script src="admin.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Configurações e variáveis globais
+        const API_BASE_URL = 'https://fila-facilita2-0.onrender.com';
+        let token = localStorage.getItem('token');
+        let userInfo = JSON.parse(localStorage.getItem('userInfo')) || {};
+
+        // Classe principal para gerenciamento de autenticação e requisições
+        class ApiService {
+            static async request(endpoint, method = 'GET', body = null) {
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                };
+                
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
+                const config = { 
+                    method, 
+                    headers,
+                    mode: 'cors',
+                    credentials: 'omit',
+                };
+
+                if (body) {
+                    config.body = JSON.stringify(body);
+                }
+
+                console.log(`[ApiService] Enviando requisição para: ${API_BASE_URL}${endpoint}`, {
+                    method,
+                    headers: { ...headers, Authorization: token ? '[PROTECTED]' : undefined },
+                    body
+                });
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+                    
+                    if (response.status === 401) {
+                        console.warn(`[ApiService] Erro 401 na requisição ${endpoint}. Token pode estar inválido.`);
+                        handleLogout();
+                        throw new Error(`Sessão expirada na requisição ${endpoint}`);
+                    }
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error(`[ApiService] Erro ${response.status} na requisição ${endpoint}: ${errorText}`);
+                        throw new Error(errorText || response.statusText);
+                    }
+                    
+                    const data = await response.json();
+                    console.log(`[ApiService] Resposta recebida de ${endpoint}:`, data);
+                    return data;
+                } catch (error) {
+                    console.error(`[ApiService] Erro na requisição ${endpoint}:`, error);
+                    throw error;
+                }
+            }
+
+            static async login(email, password) {
+                console.log('[ApiService] Tentando login com:', { email });
+                return await this.request('/api/admin/login', 'POST', { email, password });
+            }
+
+            static async getQueues() {
+                console.log('[ApiService] Buscando filas');
+                return await this.request('/api/admin/queues');
+            }
+
+            static async getTickets() {
+                console.log('[ApiService] Buscando tickets');
+                return await this.request('/api/tickets/admin');
+            }
+
+            static async callNextTicket(queueId) {
+                console.log(`[ApiService] Chamando próximo ticket para queueId: ${queueId}`);
+                return await this.request(`/api/admin/queue/${queueId}/call`, 'POST');
+            }
+        }
+
+        // Funções de manipulação da interface
+        function showError(message) {
+            document.getElementById('error-message').textContent = message;
+        }
+
+        function clearError() {
+            document.getElementById('error-message').textContent = '';
+        }
+
+        async function handleLogin() {
+            clearError();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await ApiService.login(email, password);
+                token = response.token;
+                userInfo = {
+                    user_id: response.user_id,
+                    user_role: response.user_role,
+                    department: response.department,
+                    email: response.email
+                };
+                localStorage.setItem('token', token);
+                localStorage.setItem('userInfo', JSON.stringify(userInfo));
+                initApp();
+            } catch (error) {
+                showError('Erro ao fazer login: ' + error.message);
+            }
+        }
+
+        function handleLogout() {
+            token = null;
+            userInfo = {};
+            localStorage.removeItem('token');
+            localStorage.removeItem('userInfo');
+            initApp();
+        }
+
+        async function loadQueues() {
+            try {
+                const queues = await ApiService.getQueues();
+                const queueList = document.getElementById('queue-list');
+                queueList.innerHTML = '<h2>Filas do Seu Departamento</h2>';
+                
+                if (queues.length === 0) {
+                    queueList.innerHTML += '<p>Nenhuma fila encontrada para o seu departamento.</p>';
+                    return;
+                }
+
+                queues.forEach(queue => {
+                    const queueItem = document.createElement('div');
+                    queueItem.className = 'queue-item';
+                    queueItem.innerHTML = `
+                        <span>${queue.service} (${queue.department}) - ${queue.active_tickets}/${queue.daily_limit} tickets ativos</span>
+                        <button onclick="callNextTicket('${queue.id}')">Chamar Próximo</button>
+                    `;
+                    queueList.appendChild(queueItem);
+                });
+            } catch (error) {
+                showError('Erro ao carregar filas: ' + error.message);
+            }
+        }
+
+        async function loadTickets() {
+            try {
+                const tickets = await ApiService.getTickets();
+                const ticketList = document.getElementById('ticket-list');
+                ticketList.innerHTML = '<h2>Tickets Ativos</h2>';
+                
+                if (tickets.length === 0) {
+                    ticketList.innerHTML += '<p>Nenhum ticket ativo encontrado.</p>';
+                    return;
+                }
+
+                tickets.forEach(ticket => {
+                    const ticketItem = document.createElement('div');
+                    ticketItem.className = 'ticket-item';
+                    ticketItem.innerHTML = `
+                        <span>Senha: ${ticket.number} | Serviço: ${ticket.service} | Status: ${ticket.status}</span>
+                    `;
+                    ticketList.appendChild(ticketItem);
+                });
+            } catch (error) {
+                showError('Erro ao carregar tickets: ' + error.message);
+            }
+        }
+
+        async function callNextTicket(queueId) {
+            clearError();
+            try {
+                const response = await ApiService.callNextTicket(queueId);
+                alert(response.message);
+                loadTickets(); // Atualiza a lista de tickets após chamar
+            } catch (error) {
+                showError('Erro ao chamar próximo ticket: ' + error.message);
+            }
+        }
+
+        function initApp() {
+            const loginForm = document.getElementById('login-form');
+            const queueList = document.getElementById('queue-list');
+            const ticketList = document.getElementById('ticket-list');
+            const logoutBtn = document.getElementById('logout-btn');
+            const userInfoDiv = document.getElementById('user-info');
+
+            if (token && userInfo.email) {
+                loginForm.style.display = 'none';
+                queueList.style.display = 'block';
+                ticketList.style.display = 'block';
+                logoutBtn.style.display = 'block';
+                userInfoDiv.innerHTML = `Bem-vindo, ${userInfo.email} | Departamento: ${userInfo.department || 'N/A'}`;
+                loadQueues();
+                loadTickets();
+            } else {
+                loginForm.style.display = 'block';
+                queueList.style.display = 'none';
+                ticketList.style.display = 'none';
+                logoutBtn.style.display = 'none';
+                userInfoDiv.innerHTML = '';
+            }
+        }
+
+        // Inicializa a aplicação
+        document.getElementById('logout-btn').addEventListener('click', handleLogout);
+        initApp();
+    </script>
 </body>
 </html>
