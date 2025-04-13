@@ -215,8 +215,7 @@ class AdminPanel {
                 ApiService.getTickets()
             ]);
             const today = new Date().toISOString().split('T')[0];
-
-            // Calcular métricas com base nos dados filtrados do backend
+    
             const activeQueues = queues.length;
             const pendingTickets = tickets.filter(t => t.status === 'Pendente').length;
             const attendedToday = tickets.filter(t => t.status === 'attended' && t.issued_at.startsWith(today)).length;
@@ -227,7 +226,7 @@ class AdminPanel {
             
             const avgWaitTime = waitTimes.length ? 
                 (waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length).toFixed(1) : '0.0';
-
+    
             document.getElementById('active-queues').textContent = activeQueues;
             document.getElementById('pending-tickets').textContent = pendingTickets;
             document.getElementById('avg-wait-time').textContent = `${avgWaitTime} min`;
@@ -306,23 +305,22 @@ class AdminPanel {
             const tickets = await ApiService.getTickets();
             const filter = document.getElementById('ticket-status-filter')?.value;
             
-            // Confiar nos dados filtrados do backend
             let filteredTickets = tickets;
             if (filter) {
                 filteredTickets = tickets.filter(t => t.status === filter);
             }
-
+    
             const tableBody = document.getElementById('tickets-table');
-            tableBody.innerHTML = ''; // Limpar tabela antes de renderizar
-
+            tableBody.innerHTML = '';
+    
             console.log(`Response de /api/tickets/admin:`, tickets);
             console.log(`Carregados ${filteredTickets.length} tickets (filtro: ${filter || 'todos'})`);
-
+    
             if (filteredTickets.length === 0) {
                 tableBody.innerHTML = '<tr><td colspan="5">Nenhum ticket encontrado para seu departamento</td></tr>';
                 return;
             }
-
+    
             filteredTickets.forEach(ticket => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
