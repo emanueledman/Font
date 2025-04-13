@@ -207,46 +207,39 @@ class AdminPanel {
 
     async loadDashboard() {
         try {
-            const queues = await ApiService.getQueues();
-            const tickets = await ApiService.getTickets();
-            const today = new Date().toISOString().split('T')[0];
-    
-            // MODIFICAÇÃO: Filtrar apenas as filas do departamento do gestor
-            const userQueues = queues.filter(q => 
-                q.institution_id === userInfo.institution_id && 
-                q.department === userInfo.department
-            );
-            
-            // MODIFICAÇÃO: Filtrar tickets apenas do departamento do gestor
-            const userTickets = tickets.filter(t => 
-                userQueues.some(q => q.id === t.queue_id)
-            );
-    
-            const activeQueues = userQueues.length;
-            const pendingTickets = userTickets.filter(t => t.status === 'Pendente').length;
-            const attendedToday = userTickets.filter(t => t.status === 'attended' && t.issued_at.startsWith(today)).length;
-            
-            const waitTimes = userTickets.filter(t => t.wait_time && t.wait_time !== 'N/A')
-                .map(t => parseFloat(t.wait_time.split(' ')[0]) || 0;
-            
-            const avgWaitTime = waitTimes.length ? 
-                (waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length).toFixed(1) : 0;
-    
-            document.getElementById('active-queues').textContent = activeQueues;
-            document.getElementById('pending-tickets').textContent = pendingTickets;
-            document.getElementById('avg-wait-time').textContent = `${avgWaitTime} min`;
-            document.getElementById('attended-tickets').textContent = attendedToday;
-            
-            console.log("Dados do dashboard carregados:", {
-                filas_ativas: activeQueues,
-                tickets_pendentes: pendingTickets,
-                tempo_medio: avgWaitTime,
-                atendimentos_hoje: attendedToday
-            });
+          const queues = await ApiService.getQueues();
+          const tickets = await ApiService.getTickets();
+          const today = new Date().toISOString().split('T')[0];
+          // MODIFICAÇÃO: Filtrar apenas as filas do departamento do gestor
+          const userQueues = queues.filter(q =>
+            q.institution_id === userInfo.institution_id &&
+            q.department === userInfo.department
+          );
+          // MODIFICAÇÃO: Filtrar tickets apenas do departamento do gestor
+          const userTickets = tickets.filter(t =>
+            userQueues.some(q => q.id === t.queue_id)
+          );
+          const activeQueues = userQueues.length;
+          const pendingTickets = userTickets.filter(t => t.status === 'Pendente').length;
+          const attendedToday = userTickets.filter(t => t.status === 'attended' && t.issued_at.startsWith(today)).length;
+          const waitTimes = userTickets.filter(t => t.wait_time && t.wait_time !== 'N/A')
+            .map(t => parseFloat(t.wait_time.split(' ')[0]) || 0);
+          const avgWaitTime = waitTimes.length ?
+            (waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length).toFixed(1) : 0;
+          document.getElementById('active-queues').textContent = activeQueues;
+          document.getElementById('pending-tickets').textContent = pendingTickets;
+          document.getElementById('avg-wait-time').textContent = `${avgWaitTime} min`;
+          document.getElementById('attended-tickets').textContent = attendedToday;
+          console.log("Dados do dashboard carregados:", {
+            filas_ativas: activeQueues,
+            tickets_pendentes: pendingTickets,
+            tempo_medio: avgWaitTime,
+            atendimentos_hoje: attendedToday
+          });
         } catch (error) {
-            this.showError('Erro ao carregar dashboard', error);
+          this.showError('Erro ao carregar dashboard', error);
         }
-    }
+      }
 
     async loadQueues() {
         try {
