@@ -193,7 +193,7 @@ class AdminPanel {
 
     async loadInitialData() {
         try {
-            // Limpar qualquer estado anterior
+            // Limpar tabelas para evitar dados residuais
             document.getElementById('queues-table').innerHTML = '';
             document.getElementById('queues-table-full').innerHTML = '';
             document.getElementById('tickets-table').innerHTML = '';
@@ -216,14 +216,16 @@ class AdminPanel {
             ]);
             const today = new Date().toISOString().split('T')[0];
 
-            // Verificar filas (backend já filtra, mas reforçamos)
+            // Filtrar filas por segurança
             const userQueues = queues.filter(q => 
                 q.institution_id === userInfo.institution_id && 
                 q.department === userInfo.department
             );
             
-            // Tickets já vêm filtrados pelo backend
-            const userTickets = tickets;
+            // Filtrar tickets com base nas filas do departamento
+            const userTickets = tickets.filter(t => 
+                userQueues.some(q => q.id === t.queue_id)
+            );
 
             const activeQueues = userQueues.length;
             const pendingTickets = userTickets.filter(t => t.status === 'Pendente').length;
@@ -261,7 +263,7 @@ class AdminPanel {
             if (tableBody) tableBody.innerHTML = '';
             if (fullTableBody) fullTableBody.innerHTML = '';
 
-            // Verificar filas (backend já filtra, mas reforçamos)
+            // Filtrar filas por segurança
             const userQueues = queues.filter(q => 
                 q.institution_id === userInfo.institution_id && 
                 q.department === userInfo.department
@@ -314,11 +316,23 @@ class AdminPanel {
 
     async loadTickets() {
         try {
-            const tickets = await ApiService.getTickets();
+            const [queues, tickets] = await Promise.all([
+                ApiService.getQueues(),
+                ApiService.getTickets()
+            ]);
             const filter = document.getElementById('ticket-status-filter')?.value;
             
-            // Tickets já vêm filtrados pelo backend, aplicamos apenas o filtro de status
-            let filteredTickets = tickets;
+            // Filtrar filas por segurança
+            const userQueues = queues.filter(q => 
+                q.institution_id === userInfo.institution_id && 
+                q.department === userInfo.department
+            );
+            
+            // Filtrar tickets com base nas filas do departamento
+            let filteredTickets = tickets.filter(t => 
+                userQueues.some(q => q.id === t.queue_id)
+            );
+            
             if (filter) {
                 filteredTickets = filteredTickets.filter(t => t.status === filter);
             }
@@ -329,7 +343,7 @@ class AdminPanel {
             console.log(`Carregados ${filteredTickets.length} tickets (filtro: ${filter || 'todos'})`);
 
             if (filteredTickets.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="5">Nenhum ticket encontrado</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="5">Nenhum ticket encontrado para seu departamento</td></tr>';
                 return;
             }
 
@@ -354,10 +368,22 @@ class AdminPanel {
         try {
             const date = document.getElementById('report-date').value;
             const reportType = document.getElementById('report-type').value;
-            const tickets = await ApiService.getTickets();
+            const [queues, tickets] = await Promise.all([
+                ApiService.getQueues(),
+                ApiService.getTickets()
+            ]);
             
-            // Tickets já vêm filtrados pelo backend, aplicamos apenas filtros adicionais
-            let filteredTickets = tickets;
+            // Filtrar filas por segurança
+            const userQueues = queues.filter(q => 
+                q.institution_id === userInfo.institution_id && 
+                q.department === userInfo.department
+            );
+            
+            // Filtrar tickets com base nas filas do departamento
+            let filteredTickets = tickets.filter(t => 
+                userQueues.some(q => q.id === t.queue_id)
+            );
+            
             if (date) {
                 filteredTickets = filteredTickets.filter(t => t.issued_at.startsWith(date));
             }
