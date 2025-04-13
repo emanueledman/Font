@@ -13,7 +13,7 @@ class ApiService {
         };
         
         if (token) {
-            headers['Authorization'] = `${token}`;  // Garante que o token use o prefixo 'Bearer '
+            headers['Authorization'] = `${token}`;
         }
 
         const config = { 
@@ -27,17 +27,15 @@ class ApiService {
             config.body = JSON.stringify(body);
         }
 
-        console.log(`Enviando requisição para: ${API_BASE_URL}${endpoint}`, { method, headers: {...headers, Authorization: token ? 'Bearer [PROTECTED]' : undefined}, body });
+        console.log(`Enviando requisição para: ${API_BASE_URL}${endpoint}`, { method, headers: {...headers, Authorization: token ? '[PROTECTED]' : undefined}, body });
 
         try {
             const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
             
-            // Tratamento especial para erros de autenticação
             if (response.status === 401) {
                 console.error('Erro de autenticação. Token pode estar inválido ou expirado.');
-                // Opcionalmente, você pode redirecionar para login
-                // AuthManager.logout();
-                // return;
+                AuthManager.logout();
+                throw new Error('Sessão expirada');
             }
             
             if (!response.ok) {
@@ -78,10 +76,9 @@ class AuthManager {
             return false;
         }
         
-        // Garantir que estamos armazenando o token sem o prefixo
         token = data.token;
         if (token.startsWith('Bearer ')) {
-            token = token.substring(7);  // Remove o prefixo se existir
+            token = token.substring(7);
         }
         
         localStorage.setItem('token', token);
@@ -92,6 +89,7 @@ class AuthManager {
             department: data.department,
             email: data.email,
         }));
+        userInfo = JSON.parse(localStorage.getItem('userInfo'));
         
         return true;
     }
@@ -103,6 +101,8 @@ class AuthManager {
     static logout() {
         localStorage.removeItem('token');
         localStorage.removeItem('userInfo');
+        token = null;
+        userInfo = {};
         window.location.href = 'login.html';
     }
 
@@ -146,7 +146,6 @@ class AdminPanel {
                     link.classList.add('active');
                     document.getElementById('page-title').textContent = link.textContent;
                     
-                    // Carrega dados específicos da seção
                     if (sectionId === 'dashboard-section') {
                         this.loadDashboard();
                     } else if (sectionId === 'queues-section') {
@@ -186,7 +185,6 @@ class AdminPanel {
         const now = new Date();
         document.getElementById('current-date').textContent = now.toLocaleDateString('pt-BR', options);
         
-        // Atualiza a cada minuto
         setInterval(() => {
             const now = new Date();
             document.getElementById('current-date').textContent = now.toLocaleDateString('pt-BR', options);
@@ -207,39 +205,49 @@ class AdminPanel {
 
     async loadDashboard() {
         try {
-          const queues = await ApiService.getQueues();
-          const tickets = await ApiService.getTickets();
-          const today = new Date().toISOString().split('T')[0];
-          // MODIFICAÇÃO: Filtrar apenas as filas do departamento do gestor
-          const userQueues = queues.filter(q =>
-            q.institution_id === userInfo.institution_id &&
-            q.department === userInfo.department
-          );
-          // MODIFICAÇÃO: Filtrar tickets apenas do departamento do gestor
-          const userTickets = tickets.filter(t =>
-            userQueues.some(q => q.id === t.queue_id)
-          );
-          const activeQueues = userQueues.length;
-          const pendingTickets = userTickets.filter(t => t.status === 'Pendente').length;
-          const attendedToday = userTickets.filter(t => t.status === 'attended' && t.issued_at.startsWith(today)).length;
-          const waitTimes = userTickets.filter(t => t.wait_time && t.wait_time !== 'N/A')
-            .map(t => parseFloat(t.wait_time.split(' ')[0]) || 0);
-          const avgWaitTime = waitTimes.length ?
-            (waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length).toFixed(1) : 0;
-          document.getElementById('active-queues').textContent = activeQueues;
-          document.getElementById('pending-tickets').textContent = pendingTickets;
-          document.getElementById('avg-wait-time').textContent = `${avgWaitTime} min`;
-          document.getElementById('attended-tickets').textContent = attendedToday;
-          console.log("Dados do dashboard carregados:", {
-            filas_ativas: activeQueues,
-            tickets_pendentes: pendingTickets,
-            tempo_medio: avgWaitTime,
-            atendimentos_hoje: attendedToday
-          });
+            const [queues, tickets] = await Promise.all([
+                ApiService.getQueues(),
+                ApiService.getTickets()
+            ]);
+            const today = new Date().toISOString().split('T')[0];
+
+            // Filtrar filas do departamento do gestor
+            const userQueues = queues.filter(q => 
+                q.institution_id === userInfo.institution_id && 
+                q.department === userInfo.department
+            );
+            
+            // Filtrar tickets apenas das filas do departamento
+            const userTickets = tickets.filter(t => 
+                userQueues.some(q => q.id === t.queue_id)
+            );
+
+            const activeQueues = userQueues.length;
+            const pendingTickets = userTickets.filter(t => t.status === 'Pendente').length;
+            const attendedToday = userTickets.filter(t => t.status === 'attended' && t.issued_at.startsWith(today)).length;
+            
+            const waitTimes = userTickets
+                .filter(t => t.wait_time && t.wait_time !== 'N/A')
+                .map(t => parseFloat(t.wait_time.split(' ')[0]) || 0);
+            
+            const avgWaitTime = waitTimes.length ? 
+                (waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length).toFixed(1) : 0;
+
+            document.getElementById('active-queues').textContent = activeQueues;
+            document.getElementById('pending-tickets').textContent = pendingTickets;
+            document.getElementById('avg-wait-time').textContent = `${avgWaitTime} min`;
+            document.getElementById('attended-tickets').textContent = attendedToday;
+            
+            console.log("Dados do dashboard carregados:", {
+                filas_ativas: activeQueues,
+                tickets_pendentes: pendingTickets,
+                tempo_medio: avgWaitTime,
+                atendimentos_hoje: attendedToday
+            });
         } catch (error) {
-          this.showError('Erro ao carregar dashboard', error);
+            this.showError('Erro ao carregar dashboard', error);
         }
-      }
+    }
 
     async loadQueues() {
         try {
@@ -249,22 +257,22 @@ class AdminPanel {
             
             if (tableBody) tableBody.innerHTML = '';
             if (fullTableBody) fullTableBody.innerHTML = '';
-    
-            // MODIFICAÇÃO: Filtrar apenas as filas do departamento do gestor
+
+            // Filtrar filas do departamento do gestor
             const userQueues = queues.filter(q => 
                 q.institution_id === userInfo.institution_id && 
                 q.department === userInfo.department
             );
             
             console.log(`Carregadas ${userQueues.length} filas para o departamento ${userInfo.department}`);
-    
+
             if (userQueues.length === 0) {
                 const emptyRow = `<tr><td colspan="5">Nenhuma fila encontrada para seu departamento</td></tr>`;
                 if (tableBody) tableBody.innerHTML = emptyRow;
                 if (fullTableBody) fullTableBody.innerHTML = emptyRow;
                 return;
             }
-    
+
             userQueues.forEach(queue => {
                 const row = `
                     <tr>
@@ -301,11 +309,22 @@ class AdminPanel {
 
     async loadTickets() {
         try {
-            const tickets = await ApiService.getTickets();
+            const [tickets, queues] = await Promise.all([
+                ApiService.getTickets(),
+                ApiService.getQueues()
+            ]);
             const filter = document.getElementById('ticket-status-filter')?.value;
             
-            // MODIFICAÇÃO: Removido filtro por departamento para mostrar TODOS os tickets
-            let filteredTickets = tickets;
+            // Filtrar filas do departamento do gestor
+            const departmentQueues = queues.filter(q => 
+                q.institution_id === userInfo.institution_id && 
+                q.department === userInfo.department
+            );
+            
+            // Filtrar tickets apenas das filas do departamento
+            let filteredTickets = tickets.filter(t => 
+                departmentQueues.some(q => q.id === t.queue_id)
+            );
             
             if (filter) {
                 filteredTickets = filteredTickets.filter(t => t.status === filter);
@@ -342,10 +361,21 @@ class AdminPanel {
         try {
             const date = document.getElementById('report-date').value;
             const reportType = document.getElementById('report-type').value;
-            const tickets = await ApiService.getTickets();
+            const [tickets, queues] = await Promise.all([
+                ApiService.getTickets(),
+                ApiService.getQueues()
+            ]);
             
-            // MODIFICAÇÃO: Não filtrar por departamento
-            let filteredTickets = tickets;
+            // Filtrar filas do departamento do gestor
+            const departmentQueues = queues.filter(q => 
+                q.institution_id === userInfo.institution_id && 
+                q.department === userInfo.department
+            );
+            
+            // Filtrar tickets apenas das filas do departamento
+            let filteredTickets = tickets.filter(t => 
+                departmentQueues.some(q => q.id === t.queue_id)
+            );
             
             if (date) {
                 filteredTickets = filteredTickets.filter(t => t.issued_at.startsWith(date));
@@ -485,7 +515,6 @@ class LoginManager {
                 : error.message;
             console.error('Erro no login:', error);
             
-            // Mantém os valores dos campos
             document.getElementById('email').value = email;
             document.getElementById('password').value = password;
         } finally {
