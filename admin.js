@@ -216,15 +216,11 @@ class AdminPanel {
             ]);
             const today = new Date().toISOString().split('T')[0];
 
-            // Filtrar filas por segurança
+            // Confiar nos tickets filtrados pelo backend
+            const userTickets = tickets;
             const userQueues = queues.filter(q => 
                 q.institution_id === userInfo.institution_id && 
                 q.department === userInfo.department
-            );
-            
-            // Filtrar tickets com base nas filas do departamento
-            const userTickets = tickets.filter(t => 
-                userQueues.some(q => q.id === t.queue_id)
             );
 
             const activeQueues = userQueues.length;
@@ -316,23 +312,11 @@ class AdminPanel {
 
     async loadTickets() {
         try {
-            const [queues, tickets] = await Promise.all([
-                ApiService.getQueues(),
-                ApiService.getTickets()
-            ]);
+            const tickets = await ApiService.getTickets();
             const filter = document.getElementById('ticket-status-filter')?.value;
             
-            // Filtrar filas por segurança
-            const userQueues = queues.filter(q => 
-                q.institution_id === userInfo.institution_id && 
-                q.department === userInfo.department
-            );
-            
-            // Filtrar tickets com base nas filas do departamento
-            let filteredTickets = tickets.filter(t => 
-                userQueues.some(q => q.id === t.queue_id)
-            );
-            
+            // Confiar nos tickets filtrados pelo backend
+            let filteredTickets = tickets;
             if (filter) {
                 filteredTickets = filteredTickets.filter(t => t.status === filter);
             }
@@ -368,22 +352,10 @@ class AdminPanel {
         try {
             const date = document.getElementById('report-date').value;
             const reportType = document.getElementById('report-type').value;
-            const [queues, tickets] = await Promise.all([
-                ApiService.getQueues(),
-                ApiService.getTickets()
-            ]);
+            const tickets = await ApiService.getTickets();
             
-            // Filtrar filas por segurança
-            const userQueues = queues.filter(q => 
-                q.institution_id === userInfo.institution_id && 
-                q.department === userInfo.department
-            );
-            
-            // Filtrar tickets com base nas filas do departamento
-            let filteredTickets = tickets.filter(t => 
-                userQueues.some(q => q.id === t.queue_id)
-            );
-            
+            // Confiar nos tickets filtrados pelo backend
+            let filteredTickets = tickets;
             if (date) {
                 filteredTickets = filteredTickets.filter(t => t.issued_at.startsWith(date));
             }
