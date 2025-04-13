@@ -2,7 +2,6 @@
 const API_BASE_URL = 'https://fila-facilita2-0.onrender.com';
 let token = localStorage.getItem('token');
 let userInfo = JSON.parse(localStorage.getItem('userInfo')) || {};
-let chartInstance = null;
 
 // Classe principal para gerenciamento de autenticação e requisições
 class ApiService {
@@ -31,7 +30,6 @@ class ApiService {
 
         try {
             const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-            console.log(`Resposta recebida: Status ${response.status}`);
             
             if (!response.ok) {
                 const errorText = await response.text();
@@ -39,9 +37,7 @@ class ApiService {
                 throw new Error(errorText || response.statusText);
             }
             
-            const data = await response.json();
-            console.log('Dados recebidos:', data);
-            return data;
+            return await response.json();
         } catch (error) {
             console.error(`Erro na requisição ${endpoint}:`, error);
             throw error;
@@ -49,20 +45,7 @@ class ApiService {
     }
 
     static async login(email, password) {
-        const data = await this.request('/api/admin/login', 'POST', { email, password });
-        return data;
-    }
-
-    static async getQueues() {
-        return await this.request('/api/admin/queues');
-    }
-
-    static async getTickets() {
-        return await this.request('/api/tickets/admin');
-    }
-
-    static async callNextTicket(queueId) {
-        return await this.request(`/api/admin/queue/${queueId}/call`, 'POST');
+        return await this.request('/api/admin/login', 'POST', { email, password });
     }
 }
 
@@ -89,260 +72,6 @@ class AuthManager {
         localStorage.removeItem('userInfo');
         window.location.href = 'login.html';
     }
-
-    static redirectIfNotAuthenticated() {
-        if (!this.isAuthenticated()) {
-            window.location.href = 'login.html';
-            return false;
-        }
-        return true;
-    }
-}
-
-// Classe para o painel de administração
-class AdminPanel {
-    constructor() {
-        this.initComponents();
-        this.attachEventListeners();
-        this.loadInitialData();
-    }
-
-    initComponents() {
-        if (!AuthManager.redirectIfNotAuthenticated()) return;
-
-        document.getElementById('user-name').textContent = userInfo.email;
-        document.getElementById('user-department').textContent = userInfo.department || 'Gestor';
-        document.getElementById('page-title').textContent = 'Dashboard';
-    }
-
-    attachEventListeners() {
-        // Navegação da sidebar
-        document.querySelectorAll('.sidebar nav a').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const sectionId = link.getAttribute('data-section');
-                if (sectionId) {
-                    document.querySelectorAll('.section').forEach(section => section.classList.remove('active'));
-                    document.getElementById(sectionId).classList.add('active');
-                    document.querySelectorAll('.sidebar nav a').forEach(l => l.classList.remove('active'));
-                    link.classList.add('active');
-                    document.getElementById('page-title').textContent = link.textContent;
-                }
-            });
-        });
-
-        // Botão de logout
-        document.getElementById('logout').addEventListener('click', () => {
-            AuthManager.logout();
-        });
-
-        // Filtro de tickets
-        document.getElementById('ticket-status-filter')?.addEventListener('change', () => {
-            this.loadTickets();
-        });
-
-        // Formulário de relatório
-        document.getElementById('report-form')?.addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.generateReport();
-        });
-
-        // Formulário de configurações
-        document.getElementById('settings-form')?.addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.updateSettings();
-        });
-    }
-
-    loadInitialData() {
-        this.loadDashboard();
-        this.loadQueues();
-        this.loadTickets();
-        this.setupSettings();
-    }
-
-    async loadDashboard() {
-        try {
-            const queues = await ApiService.getQueues();
-            const tickets = await ApiService.getTickets();
-            const today = new Date().toISOString().split('T')[0];
-
-            const activeQueues = queues.length;
-            const pendingTickets = tickets.filter(t => t.status === 'Pendente').length;
-            const attendedToday = tickets.filter(t => t.status === 'attended' && t.issued_at.startsWith(today)).length;
-            const waitTimes = tickets.filter(t => t.wait_time).map(t => parseFloat(t.wait_time.split(' ')[0]) || 0);
-            const avgWaitTime = waitTimes.length ? (waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length).toFixed(1) : 0;
-
-            document.getElementById('active-queues').textContent = activeQueues;
-            document.getElementById('pending-tickets').textContent = pendingTickets;
-            document.getElementById('avg-wait-time').textContent = `${avgWaitTime} min`;
-            document.getElementById('attended-tickets').textContent = attendedToday;
-        } catch (error) {
-            this.showError('Erro ao carregar dashboard', error);
-        }
-    }
-
-    async loadQueues() {
-        try {
-            const queues = await ApiService.getQueues();
-            const tableBody = document.getElementById('queues-table');
-            tableBody.innerHTML = '';
-
-            queues.forEach(queue => {
-                if (queue.department === userInfo.department) {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${queue.service}</td>
-                        <td>${queue.active_tickets}</td>
-                        <td>${queue.current_ticket ? `${queue.prefix}${queue.current_ticket.toString().padStart(3, '0')}` : 'N/A'}</td>
-                        <td><span class="status-${queue.status.toLowerCase()}">${queue.status}</span></td>
-                        <td><button class="btn secondary-btn" onclick="adminPanel.callNextTicket('${queue.id}')">Chamar Próximo</button></td>
-                    `;
-                    tableBody.appendChild(row);
-                }
-            });
-        } catch (error) {
-            this.showError('Erro ao carregar filas', error);
-            document.getElementById('queues-table').innerHTML = '<tr><td colspan="5">Erro ao carregar filas.</td></tr>';
-        }
-    }
-
-    async callNextTicket(queueId) {
-        try {
-            const data = await ApiService.callNextTicket(queueId);
-            this.showSuccess(`Senha ${data.ticket_number} chamada para o guichê ${data.counter}`);
-            this.loadQueues();
-            this.loadTickets();
-            this.loadDashboard();
-        } catch (error) {
-            this.showError('Erro ao chamar próximo ticket', error);
-        }
-    }
-
-    async loadTickets() {
-        try {
-            const tickets = await ApiService.getTickets();
-            const filter = document.getElementById('ticket-status-filter')?.value;
-            const filteredTickets = filter ? tickets.filter(t => t.status === filter) : tickets;
-            const tableBody = document.getElementById('tickets-table');
-            tableBody.innerHTML = '';
-
-            filteredTickets.forEach(ticket => {
-                if (!userInfo.department || ticket.service === userInfo.department) {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${ticket.number}</td>
-                        <td>${ticket.service}</td>
-                        <td><span class="status-${ticket.status.toLowerCase()}">${ticket.status}</span></td>
-                        <td>${ticket.wait_time || 'N/A'}</td>
-                        <td>${ticket.counter || 'N/A'}</td>
-                    `;
-                    tableBody.appendChild(row);
-                }
-            });
-        } catch (error) {
-            this.showError('Erro ao carregar tickets', error);
-            document.getElementById('tickets-table').innerHTML = '<tr><td colspan="5">Erro ao carregar tickets.</td></tr>';
-        }
-    }
-
-    async generateReport() {
-        try {
-            const date = document.getElementById('report-date').value;
-            const reportType = document.getElementById('report-type').value;
-            const tickets = await ApiService.getTickets();
-            const filteredTickets = date ? tickets.filter(t => t.issued_at.startsWith(date)) : tickets;
-
-            const ctx = document.getElementById('report-chart').getContext('2d');
-            if (chartInstance) chartInstance.destroy();
-
-            if (reportType === 'status') {
-                const statuses = ['Pendente', 'Chamado', 'attended', 'Cancelado'];
-                const counts = statuses.map(status => filteredTickets.filter(t => t.status === status).length);
-
-                chartInstance = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: statuses,
-                        datasets: [{
-                            label: 'Tickets por Status',
-                            data: counts,
-                            backgroundColor: ['#007bff', '#ffc107', '#28a745', '#dc3545'],
-                        }]
-                    },
-                    options: {
-                        scales: { y: { beginAtZero: true } },
-                        plugins: { legend: { display: false } }
-                    }
-                });
-            } else if (reportType === 'wait-time') {
-                const services = [...new Set(filteredTickets.map(t => t.service))];
-                const avgWaitTimes = services.map(service => {
-                    const times = filteredTickets.filter(t => t.service === service && t.wait_time)
-                        .map(t => parseFloat(t.wait_time.split(' ')[0]) || 0);
-                    return times.length ? times.reduce((a, b) => a + b, 0) / times.length : 0;
-                });
-
-                chartInstance = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: services,
-                        datasets: [{
-                            label: 'Tempo Médio de Espera (min)',
-                            data: avgWaitTimes,
-                            borderColor: '#007bff',
-                            fill: false,
-                        }]
-                    },
-                    options: {
-                        scales: { y: { beginAtZero: true } }
-                    }
-                });
-            }
-        } catch (error) {
-            this.showError('Erro ao gerar relatório', error);
-        }
-    }
-
-    setupSettings() {
-        const form = document.getElementById('settings-form');
-        if (form) {
-            document.getElementById('settings-email').value = userInfo.email || '';
-        }
-    }
-
-    async updateSettings() {
-        const password = document.getElementById('settings-password').value.trim();
-        const confirmPassword = document.getElementById('settings-confirm-password').value.trim();
-        
-        if (!password) {
-            this.showError('As senhas não podem estar vazias');
-            return;
-        }
-        
-        if (password !== confirmPassword) {
-            this.showError('As senhas não coincidem');
-            return;
-        }
-        
-        try {
-            // Aqui você implementaria a chamada para atualização de senha
-            this.showSuccess('Senha atualizada com sucesso');
-            document.getElementById('settings-password').value = '';
-            document.getElementById('settings-confirm-password').value = '';
-        } catch (error) {
-            this.showError('Erro ao atualizar senha', error);
-        }
-    }
-
-    showError(message, error = null) {
-        if (error) console.error(message, error);
-        alert(message);
-    }
-
-    showSuccess(message) {
-        alert(message);
-    }
 }
 
 // Classe de Login
@@ -350,48 +79,71 @@ class LoginManager {
     static init() {
         const form = document.getElementById('login-form');
         if (form) {
-            form.addEventListener('submit', this.handleLogin);
+            form.addEventListener('submit', (e) => this.handleLogin(e));
         }
     }
 
     static async handleLogin(event) {
         event.preventDefault();
+        const form = event.target;
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value.trim();
         const errorMessage = document.getElementById('error-message');
+        const submitBtn = form.querySelector('button[type="submit"]');
 
+        // Reset states
         errorMessage.textContent = '';
-        
-        if (!email || !password) {
-            errorMessage.textContent = 'Email e senha são obrigatórios';
-            return;
-        }
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Entrando...';
 
         try {
+            if (!email || !password) {
+                throw new Error('Email e senha são obrigatórios');
+            }
+
             const data = await ApiService.login(email, password);
+            
             if (data.error) {
-                errorMessage.textContent = data.error;
-                return;
+                throw new Error(data.error);
             }
             
             AuthManager.saveUserSession(data);
             window.location.href = 'index.html';
         } catch (error) {
-            errorMessage.textContent = error.message.includes('Credenciais') 
-                ? 'Credenciais inválidas' 
-                : `Erro ao fazer login: ${error.message}`;
-            console.error('Erro detalhado:', error);
+            errorMessage.textContent = this.getErrorMessage(error);
+            console.error('Erro no login:', error);
+            
+            // Mantém os valores dos campos em caso de erro
+            document.getElementById('email').value = email;
+            document.getElementById('password').value = password;
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Entrar';
+        }
+    }
+
+    static getErrorMessage(error) {
+        if (error.message.includes('Credenciais')) {
+            return 'Credenciais inválidas';
+        } else if (error.message.includes('Acesso restrito')) {
+            return 'Acesso restrito a gestores';
+        } else if (error.message.includes('Corpo da requisição')) {
+            return 'Dados de login inválidos';
+        } else if (error.message.includes('Email e senha')) {
+            return error.message;
+        } else {
+            return 'Erro ao fazer login. Tente novamente.';
         }
     }
 }
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
-    const currentPage = window.location.pathname.split('/').pop();
-    
-    if (currentPage === 'login.html') {
+    if (window.location.pathname.endsWith('login.html')) {
         LoginManager.init();
+    } else if (AuthManager.isAuthenticated()) {
+        // Carrega o painel administrativo
     } else {
-        window.adminPanel = new AdminPanel();
+        window.location.href = 'login.html';
     }
 });
