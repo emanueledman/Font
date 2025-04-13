@@ -22,6 +22,7 @@
             <li><a href="#" data-section="tickets">Tickets</a></li>
             <li><a href="#" data-section="start-service">Iniciar Atendimento</a></li>
             <li><a href="#" data-section="reports">Relatórios</a></li>
+            <li><a href="#" data-section="settings">Configurações</a></li>
         </ul>
     </div>
 
@@ -39,10 +40,12 @@
         <div class="login-section" id="login-section">
             <h2>Login</h2>
             <div class="form-group">
-                <input type="email" id="email" placeholder="Email" required aria-label="Email">
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="Digite seu email" required aria-label="Email">
             </div>
             <div class="form-group">
-                <input type="password" id="password" placeholder="Senha" required aria-label="Senha">
+                <label for="password">Senha</label>
+                <input type="password" id="password" placeholder="Digite sua senha" required aria-label="Senha">
             </div>
             <button onclick="handleLogin()">Entrar</button>
             <div class="error" id="error-message"></div>
@@ -52,28 +55,46 @@
         <div class="content-section active" id="dashboard-section">
             <div class="section-header">
                 <h2>Visão Geral</h2>
-                <button onclick="loadDashboard()">Atualizar</button>
+                <div class="controls">
+                    <button onclick="loadDashboard()">Atualizar</button>
+                    <button onclick="exportDashboard()" title="Exportar dados do dashboard como CSV"><i class="fas fa-download"></i> Exportar</button>
+                </div>
             </div>
             <div class="dashboard-grid">
                 <div class="dashboard-card card-orange">
                     <h3>Filas Ativas</h3>
                     <p id="active-queues">0</p>
+                    <div class="tooltip"><i class="fas fa-info-circle"></i><span>Filas atualmente abertas para atendimento.</span></div>
                 </div>
                 <div class="dashboard-card card-red">
                     <h3>Tickets Pendentes</h3>
                     <p id="pending-tickets">0</p>
+                    <div class="tooltip"><i class="fas fa-info-circle"></i><span>Tickets aguardando atendimento.</span></div>
                 </div>
                 <div class="dashboard-card card-green">
                     <h3>Tickets Atendidos Hoje</h3>
                     <p id="attended-tickets">0</p>
+                    <div class="tooltip"><i class="fas fa-info-circle"></i><span>Tickets atendidos no dia atual.</span></div>
                 </div>
                 <div class="dashboard-card card-purple">
                     <h3>Tempo Médio de Espera</h3>
                     <p id="avg-wait-time">0 min</p>
+                    <div class="tooltip"><i class="fas fa-info-circle"></i><span>Tempo médio de espera para atendimento.</span></div>
                 </div>
                 <div class="dashboard-card card-blue">
                     <h3>Taxa de Atendimento/Hora</h3>
                     <p id="attendance-rate">0</p>
+                    <div class="tooltip"><i class="fas fa-info-circle"></i><span>Tickets atendidos por hora.</span></div>
+                </div>
+                <div class="dashboard-card card-orange">
+                    <h3>Tickets Cancelados Hoje</h3>
+                    <p id="cancelled-tickets">0</p>
+                    <div class="tooltip"><i class="fas fa-info-circle"></i><span>Tickets cancelados no dia atual.</span></div>
+                </div>
+                <div class="dashboard-card card-red">
+                    <h3>Filas Pausadas</h3>
+                    <p id="paused-queues">0</p>
+                    <div class="tooltip"><i class="fas fa-info-circle"></i><span>Filas temporariamente pausadas.</span></div>
                 </div>
             </div>
             <div class="charts-container">
@@ -83,6 +104,24 @@
                 <div class="chart-container">
                     <canvas id="status-chart"></canvas>
                 </div>
+                <div class="chart-container">
+                    <canvas id="history-chart"></canvas>
+                </div>
+            </div>
+            <div class="recent-tickets">
+                <h3>Últimos Tickets Chamados</h3>
+                <table class="table" id="recent-tickets-table">
+                    <thead>
+                        <tr>
+                            <th>Senha</th>
+                            <th>Serviço</th>
+                            <th>Guichê</th>
+                            <th>Chamado às</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recent-tickets-content"></tbody>
+                </table>
             </div>
         </div>
 
@@ -93,6 +132,7 @@
                 <div class="controls">
                     <input type="text" id="queue-filter" placeholder="Filtrar por serviço..." aria-label="Filtrar filas">
                     <button onclick="loadQueues()">Atualizar</button>
+                    <button onclick="openCreateQueueModal()" title="Criar uma nova fila"><i class="fas fa-plus"></i> Nova Fila</button>
                 </div>
             </div>
             <table class="table" id="queues-table">
@@ -100,6 +140,7 @@
                     <tr>
                         <th>Serviço</th>
                         <th>Departamento</th>
+                        <th>Prefixo</th>
                         <th>Tickets Ativos</th>
                         <th>Último Ticket Chamado</th>
                         <th>Tempo Médio (min)</th>
@@ -109,6 +150,21 @@
                 </thead>
                 <tbody id="queue-content"></tbody>
             </table>
+            <div class="queue-history">
+                <h3>Histórico de Tickets por Fila</h3>
+                <table class="table" id="queue-history-table">
+                    <thead>
+                        <tr>
+                            <th>Serviço</th>
+                            <th>Total Emitidos</th>
+                            <th>Total Atendidos</th>
+                            <th>Total Cancelados</th>
+                            <th>Última Atualização</th>
+                        </tr>
+                    </thead>
+                    <tbody id="queue-history-content"></tbody>
+                </table>
+            </div>
         </div>
 
         <!-- Tickets Section -->
@@ -117,11 +173,32 @@
                 <h2>Tickets Ativos</h2>
                 <div class="controls">
                     <input type="text" id="ticket-filter" placeholder="Filtrar por senha..." aria-label="Filtrar tickets">
+                    <select id="ticket-status-filter" aria-label="Filtrar por status">
+                        <option value="">Todos os Status</option>
+                        <option value="Pendente">Pendente</option>
+                        <option value="Chamado">Chamado</option>
+                        <option value="attended">Atendido</option>
+                    </select>
+                    <input type="date" id="ticket-date-filter" aria-label="Filtrar por data">
                     <button onclick="loadTickets()">Atualizar</button>
                 </div>
             </div>
             <div class="tickets-grid" id="ticket-content">
                 <!-- Cards de tickets serão inseridos aqui via JavaScript -->
+            </div>
+            <div class="ticket-history">
+                <h3>Histórico de Ações nos Tickets</h3>
+                <table class="table" id="ticket-history-table">
+                    <thead>
+                        <tr>
+                            <th>Senha</th>
+                            <th>Ação</th>
+                            <th>Data/Hora</th>
+                            <th>Usuário</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ticket-history-content"></tbody>
+                </table>
             </div>
         </div>
 
@@ -136,6 +213,34 @@
             <div class="start-service-grid" id="start-service-content">
                 <!-- Cards de filas para iniciar atendimento serão inseridos aqui -->
             </div>
+            <div class="service-history">
+                <h3>Atendimentos do Dia</h3>
+                <table class="table" id="service-history-table">
+                    <thead>
+                        <tr>
+                            <th>Serviço</th>
+                            <th>Tickets Atendidos</th>
+                            <th>Tempo Médio (min)</th>
+                            <th>Último Atendimento</th>
+                        </tr>
+                    </thead>
+                    <tbody id="service-history-content"></tbody>
+                </table>
+            </div>
+            <div class="next-tickets">
+                <h3>Próximos Tickets a Serem Chamados</h3>
+                <table class="table" id="next-tickets-table">
+                    <thead>
+                        <tr>
+                            <th>Senha</th>
+                            <th>Serviço</th>
+                            <th>Posição</th>
+                            <th>Tempo Estimado (min)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="next-tickets-content"></tbody>
+                </table>
+            </div>
         </div>
 
         <!-- Reports Section -->
@@ -143,13 +248,20 @@
             <div class="section-header">
                 <h2>Relatório de Atendimento</h2>
                 <div class="controls">
-                    <input type="date" id="report-date" aria-label="Data do relatório">
+                    <input type="date" id="report-start-date" aria-label="Data inicial">
+                    <input type="date" id="report-end-date" aria-label="Data final">
                     <button onclick="loadReport()">Atualizar</button>
                     <button onclick="exportReport()">Exportar CSV</button>
+                    <button onclick="exportReportPDF()" title="Exportar relatório como PDF"><i class="fas fa-file-pdf"></i> Exportar PDF</button>
                 </div>
             </div>
-            <div class="chart-container">
-                <canvas id="report-chart"></canvas>
+            <div class="charts-container">
+                <div class="chart-container">
+                    <canvas id="report-chart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <canvas id="timeline-chart"></canvas>
+                </div>
             </div>
             <div class="report-details">
                 <h3>Detalhes do Relatório</h3>
@@ -168,6 +280,156 @@
             </div>
         </div>
 
+        <!-- Settings Section -->
+        <div class="content-section" id="settings-section">
+            <div class="section-header">
+                <h2>Configurações</h2>
+                <div class="controls">
+                    <button onclick="loadSettings()">Atualizar</button>
+                </div>
+            </div>
+            <div class="settings-container">
+                <!-- Usuários -->
+                <div class="settings-section">
+                    <h3>Gerenciamento de Usuários</h3>
+                    <div class="controls">
+                        <button onclick="openCreateUserModal()" title="Adicionar novo usuário"><i class="fas fa-user-plus"></i> Novo Usuário</button>
+                    </div>
+                    <table class="table" id="users-table">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Email</th>
+                                <th>Função</th>
+                                <th>Departamento</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-content"></tbody>
+                    </table>
+                </div>
+                <!-- Configurações de Filas -->
+                <div class="settings-section">
+                    <h3>Configurações de Filas</h3>
+                    <form id="queue-settings-form" onsubmit="saveQueueSettings(event)">
+                        <div class="form-group">
+                            <label for="default-daily-limit">Limite Diário Padrão</label>
+                            <input type="number" id="default-daily-limit" value="20" min="1" required aria-label="Limite diário padrão">
+                        </div>
+                        <div class="form-group">
+                            <label for="ticket-expiration">Tempo de Expiração de Tickets (min)</label>
+                            <input type="number" id="ticket-expiration" value="30" min="1" required aria-label="Tempo de expiração de tickets">
+                        </div>
+                        <div class="form-group">
+                            <label for="call-timeout">Tempo Limite para Chamada (min)</label>
+                            <input type="number" id="call-timeout" value="5" min="1" required aria-label="Tempo limite para chamada">
+                        </div>
+                        <button type="submit">Salvar</button>
+                    </form>
+                </div>
+                <!-- Notificações -->
+                <div class="settings-section">
+                    <h3>Configurações de Notificações</h3>
+                    <form id="notification-settings-form" onsubmit="saveNotificationSettings(event)">
+                        <div class="form-group">
+                            <label for="enable-websocket">Ativar Notificações WebSocket</label>
+                            <input type="checkbox" id="enable-websocket" checked aria-label="Ativar notificações WebSocket">
+                        </div>
+                        <div class="form-group">
+                            <label for="default-message">Mensagem Padrão de Notificação</label>
+                            <textarea id="default-message" rows="3" required aria-label="Mensagem padrão de notificação">Dirija-se ao guichê {counter}! Senha {number} chamada.</textarea>
+                        </div>
+                        <button type="submit">Salvar</button>
+                    </form>
+                </div>
+                <!-- Logs do Sistema -->
+                <div class="settings-section">
+                    <h3>Logs do Sistema</h3>
+                    <table class="table" id="logs-table">
+                        <thead>
+                            <tr>
+                                <th>Ação</th>
+                                <th>Usuário</th>
+                                <th>Data/Hora</th>
+                                <th>Detalhes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logs-content"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para Criar Fila -->
+        <div class="modal" id="create-queue-modal">
+            <div class="modal-content">
+                <h2>Criar Nova Fila</h2>
+                <form id="create-queue-form" onsubmit="createQueue(event)">
+                    <div class="form-group">
+                        <label for="queue-service">Serviço</label>
+                        <input type="text" id="queue-service" required aria-label="Nome do serviço">
+                    </div>
+                    <div class="form-group">
+                        <label for="queue-prefix">Prefixo</label>
+                        <input type="text" id="queue-prefix" maxlength="2" required aria-label="Prefixo da fila">
+                    </div>
+                    <div class="form-group">
+                        <label for="queue-open-time">Horário de Abertura</label>
+                        <input type="time" id="queue-open-time" required aria-label="Horário de abertura">
+                    </div>
+                    <div class="form-group">
+                        <label for="queue-end-time">Horário de Fechamento</label>
+                        <input type="time" id="queue-end-time" aria-label="Horário de fechamento">
+                    </div>
+                    <div class="form-group">
+                        <label for="queue-daily-limit">Limite Diário</label>
+                        <input type="number" id="queue-daily-limit" min="1" required aria-label="Limite diário">
+                    </div>
+                    <div class="form-group">
+                        <label for="queue-num-counters">Número de Guichês</label>
+                        <input type="number" id="queue-num-counters" min="1" required aria-label="Número de guichês">
+                    </div>
+                    <div class="modal-actions">
+                        <button type="submit">Criar</button>
+                        <button type="button" onclick="closeCreateQueueModal()">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal para Criar Usuário -->
+        <div class="modal" id="create-user-modal">
+            <div class="modal-content">
+                <h2>Adicionar Novo Usuário</h2>
+                <form id="create-user-form" onsubmit="createUser(event)">
+                    <div class="form-group">
+                        <label for="user-name">Nome</label>
+                        <input type="text" id="user-name" required aria-label="Nome do usuário">
+                    </div>
+                    <div class="form-group">
+                        <label for="user-email">Email</label>
+                        <input type="email" id="user-email" required aria-label="Email do usuário">
+                    </div>
+                    <div class="form-group">
+                        <label for="user-password">Senha</label>
+                        <input type="password" id="user-password" required aria-label="Senha do usuário">
+                    </div>
+                    <div class="form-group">
+                        <label for="user-role">Função</label>
+                        <select id="user-role" required aria-label="Função do usuário">
+                            <option value="USER">Usuário</option>
+                            <option value="DEPARTMENT_ADMIN">Administrador de Departamento</option>
+                        </select>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="submit">Adicionar</button>
+                        <button type="button" onclick="closeCreateUserModal()">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <!-- Loader -->
         <div class="loader" id="loader">
             <div class="spinner"></div>
@@ -179,6 +441,7 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="js/script.js"></script>
 </body>
 </html>
