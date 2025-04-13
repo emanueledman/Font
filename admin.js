@@ -80,9 +80,14 @@ class ApiService {
 // Classe para gerenciamento da autenticação
 class AuthManager {
     static saveUserSession(data) {
-        console.log('[AuthManager] Salvando sessão do usuário:', data);
-        if (!data.token || !data.user_id || !data.department_id) {
-            console.error('[AuthManager] Dados insuficientes para salvar sessão:', data);
+        console.log('[AuthManager] Resposta recebida do login:', data);
+        
+        // Mapear campos alternativos, caso o backend use nomes diferentes
+        const userId = data.user_id || data.id;
+        const departmentId = data.department_id || data.department;
+        
+        if (!data.token || !userId) {
+            console.error('[AuthManager] Dados obrigatórios faltando:', { token: data.token, userId });
             return false;
         }
         
@@ -91,21 +96,23 @@ class AuthManager {
             token = token.substring(7);
         }
         
+        const sessionData = {
+            user_id: userId,
+            user_role: data.user_role || 'unknown',
+            department_id: departmentId || null, // Permitir null para department_id
+            email: data.email || 'unknown'
+        };
+        
         localStorage.setItem('token', token);
-        localStorage.setItem('userInfo', JSON.stringify({
-            user_id: data.user_id,
-            user_role: data.user_role,
-            department_id: data.department_id,
-            email: data.email,
-        }));
-        userInfo = JSON.parse(localStorage.getItem('userInfo'));
+        localStorage.setItem('userInfo', JSON.stringify(sessionData));
+        userInfo = sessionData;
         console.log('[AuthManager] Sessão salva com sucesso:', userInfo);
         
         return true;
     }
 
     static isAuthenticated() {
-        const isValid = !!token && !!userInfo.user_id && !!userInfo.department_id;
+        const isValid = !!token && !!userInfo.user_id;
         console.log('[AuthManager] Verificando autenticação:', { isValid, token: !!token, userInfo });
         return isValid;
     }
@@ -147,11 +154,13 @@ class AdminPanel {
     initComponents() {
         console.log('[AdminPanel] Inicializando componentes');
         document.getElementById('user-name').textContent = userInfo.email || 'Usuário';
-        document.getElementById('user-department').textContent = 'Carregando departamento...';
+        document.getElementById('user-department').textContent = userInfo.department_id ? 'Carregando departamento...' : 'Sem Departamento';
         document.getElementById('page-title').textContent = 'Dashboard';
         document.getElementById('settings-email').value = userInfo.email || '';
         
-        this.loadDepartmentName();
+        if (userInfo.department_id) {
+            this.loadDepartmentName();
+        }
 
         const mainContent = document.querySelector('.main-content');
         const errorDiv = document.createElement('div');
@@ -270,7 +279,7 @@ class AdminPanel {
 
             const filteredQueues = queues
                 .flatMap(inst => inst.queues)
-                .filter(queue => queue.department_id === userInfo.department_id);
+                .filter(queue => !userInfo.department_id || queue.department_id === userInfo.department_id);
 
             await Promise.all([
                 this.loadDashboard(filteredQueues, tickets),
@@ -311,7 +320,7 @@ class AdminPanel {
                 ]);
                 queuesData = queuesResponse
                     .flatMap(inst => inst.queues)
-                    .filter(queue => queue.department_id === userInfo.department_id);
+                    .filter(queue => !userInfo.department_id || queue.department_id === userInfo.department_id);
                 ticketsData = ticketsResponse;
             }
             
@@ -364,16 +373,16 @@ class AdminPanel {
                 const queuesResponse = await ApiService.getQueues();
                 queuesData = queuesResponse
                     .flatMap(inst => inst.queues)
-                    .filter(queue => queue.department_id === userInfo.department_id);
+                    .filter(queue => !userInfo.department_id || queue.department_id === userInfo.department_id);
             }
             
             tableBody.innerHTML = '';
             fullTableBody.innerHTML = '';
 
-            console.log(`[AdminPanel] Carregadas ${queuesData.length} filas para department_id ${userInfo.department_id}`);
+            console.log(`[AdminPanel] Carregadas ${queuesData.length} filas`);
 
             if (queuesData.length === 0) {
-                const emptyRow = `<tr><td colspan="5">Nenhuma fila encontrada para seu departamento</td></tr>`;
+                const emptyRow = `<tr><td colspan="5">Nenhuma fila encontrada</td></tr>`;
                 tableBody.innerHTML = emptyRow;
                 fullTableBody.innerHTML = emptyRow;
                 return;
@@ -437,7 +446,7 @@ class AdminPanel {
             console.log(`[AdminPanel] Carregados ${filteredTickets.length} tickets (filtro: ${filter || 'todos'})`);
     
             if (filteredTickets.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="5">Nenhum ticket encontrado para seu departamento</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="5">Nenhum ticket encontrado</td></tr>';
                 return;
             }
     
@@ -629,7 +638,6 @@ class LoginManager {
             console.log('[LoginManager] Inicializando');
             form.addEventListener('submit', (e) => this.handleLogin(e));
             
-            // Verificar motivo de redirecionamento
             const urlParams = new URLSearchParams(window.location.search);
             const reason = urlParams.get('reason');
             if (reason === 'session_expired') {
@@ -681,10 +689,11 @@ class LoginManager {
                 console.log('[LoginManager] Login bem-sucedido, redirecionando para index.html');
                 window.location.href = 'index.html';
             } else {
-                throw new Error('Erro ao salvar a sessão');
+                console.error('[LoginManager] Falha ao salvar sessão:', data);
+                throw new Error('Erro ao salvar a sessão. Verifique os dados retornados pelo servidor.');
             }
         } catch (error) {
-            console.error('[LoginManager] Erro no login:', error);
+            console.error('[LoginManager] Erro no login:', error, { response: error });
             errorMessage.textContent = error.message.includes('Credenciais') 
                 ? 'Credenciais inválidas' 
                 : error.message;
