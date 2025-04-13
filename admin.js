@@ -13,7 +13,7 @@ class ApiService {
         };
         
         if (token) {
-            headers['Authorization'] = `${token}`;
+            headers['Authorization'] = `Bearer ${token}`;
         }
 
         const config = { 
