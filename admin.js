@@ -216,17 +216,17 @@ class AdminPanel {
             ]);
             const today = new Date().toISOString().split('T')[0];
 
-            // Confiar nos dados filtrados do backend
+            // Calcular métricas com base nos dados filtrados do backend
             const activeQueues = queues.length;
             const pendingTickets = tickets.filter(t => t.status === 'Pendente').length;
             const attendedToday = tickets.filter(t => t.status === 'attended' && t.issued_at.startsWith(today)).length;
             
             const waitTimes = tickets
-                .filter(t => t.wait_time && t.wait_time !== 'N/A')
-                .map(t => parseFloat(t.wait_time) || 0);
+                .filter(t => t.wait_time && t.wait_time !== 'N/A' && !isNaN(parseFloat(t.wait_time)))
+                .map(t => parseFloat(t.wait_time));
             
             const avgWaitTime = waitTimes.length ? 
-                (waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length).toFixed(1) : 0;
+                (waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length).toFixed(1) : '0.0';
 
             document.getElementById('active-queues').textContent = activeQueues;
             document.getElementById('pending-tickets').textContent = pendingTickets;
@@ -237,10 +237,13 @@ class AdminPanel {
                 filas_ativas: activeQueues,
                 tickets_pendentes: pendingTickets,
                 tempo_medio: avgWaitTime,
-                atendimentos_hoje: attendedToday
+                atendimentos_hoje: attendedToday,
+                tickets,
+                queues
             });
         } catch (error) {
             this.showError('Erro ao carregar dashboard', error);
+            console.error('Detalhes do erro no dashboard:', error);
         }
     }
 
@@ -253,7 +256,7 @@ class AdminPanel {
             if (tableBody) tableBody.innerHTML = '';
             if (fullTableBody) fullTableBody.innerHTML = '';
 
-            console.log(`Carregadas ${queues.length} filas para o departamento ${userInfo.department}`);
+            console.log(`Carregadas ${queues.length} filas para o departamento ${userInfo.department}`, queues);
 
             if (queues.length === 0) {
                 const emptyRow = `<tr><td colspan="5">Nenhuma fila encontrada para seu departamento</td></tr>`;
@@ -306,13 +309,13 @@ class AdminPanel {
             // Confiar nos dados filtrados do backend
             let filteredTickets = tickets;
             if (filter) {
-                filteredTickets = filteredTickets.filter(t => t.status === filter);
+                filteredTickets = tickets.filter(t => t.status === filter);
             }
 
             const tableBody = document.getElementById('tickets-table');
             tableBody.innerHTML = ''; // Limpar tabela antes de renderizar
 
-            console.log(`Response de /api/tickets/admin:`, tickets); // Log para debug
+            console.log(`Response de /api/tickets/admin:`, tickets);
             console.log(`Carregados ${filteredTickets.length} tickets (filtro: ${filter || 'todos'})`);
 
             if (filteredTickets.length === 0) {
@@ -333,6 +336,7 @@ class AdminPanel {
             });
         } catch (error) {
             this.showError('Erro ao carregar tickets', error);
+            console.error('Detalhes do erro em loadTickets:', error);
             document.getElementById('tickets-table').innerHTML = '<tr><td colspan="5">Erro ao carregar tickets</td></tr>';
         }
     }
@@ -343,10 +347,9 @@ class AdminPanel {
             const reportType = document.getElementById('report-type').value;
             const tickets = await ApiService.getTickets();
             
-            // Confiar nos dados filtrados do backend
             let filteredTickets = tickets;
             if (date) {
-                filteredTickets = filteredTickets.filter(t => t.issued_at.startsWith(date));
+                filteredTickets = tickets.filter(t => t.issued_at.startsWith(date));
             }
 
             const ctx = document.getElementById('report-chart').getContext('2d');
@@ -379,10 +382,10 @@ class AdminPanel {
                 const services = [...new Set(filteredTickets.map(t => t.service))];
                 const avgWaitTimes = services.map(service => {
                     const times = filteredTickets
-                        .filter(t => t.service === service && t.wait_time && t.wait_time !== 'N/A')
-                        .map(t => parseFloat(t.wait_time) || 0);
+                        .filter(t => t.service === service && t.wait_time && t.wait_time !== 'N/A' && !isNaN(parseFloat(t.wait_time)))
+                        .map(t => parseFloat(t.wait_time));
                     return times.length ? 
-                        (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : 0;
+                        (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : '0.0';
                 });
 
                 chartInstance = new Chart(ctx, {
@@ -403,6 +406,7 @@ class AdminPanel {
             }
         } catch (error) {
             this.showError('Erro ao gerar relatório', error);
+            console.error('Detalhes do erro em generateReport:', error);
         }
     }
 
@@ -427,6 +431,7 @@ class AdminPanel {
             document.getElementById('settings-confirm-password').value = '';
         } catch (error) {
             this.showError('Erro ao atualizar senha', error);
+            console.error('Detalhes do erro em updateSettings:', error);
         }
     }
 
