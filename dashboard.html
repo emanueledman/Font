@@ -55,4 +55,264 @@
     <script src="/js/toast.js"></script>
     <script src="/js/dashboard.js"></script>
 </body>
-</html>
+</html><!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FilaFacilita - Painel do Gestor</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+ 
+</head>
+<body>
+    <!-- Tela de Login -->
+    <div id="login-screen" class="login-container">
+        <div class="login-card">
+            <h1 style="text-align: center; margin-bottom: 1rem; color: var(--primary-dark);">FilaFacilita</h1>
+            <h2 style="text-align: center; margin-bottom: 2rem; color: var(--secondary);">Painel do Gestor</h2>
+            
+            <div id="login-error" class="alert alert-danger hidden">
+                <i class="fas fa-exclamation-circle"></i>
+                <span></span>
+            </div>
+            
+            <div id="login-message" class="alert alert-success hidden">
+                <i class="fas fa-info-circle"></i>
+                <span></span>
+            </div>
+            
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" id="email" name="email" class="form-control" placeholder="Seu email institucional" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password" class="form-label">Senha</label>
+                    <input type="password" id="password" name="password" class="form-control" placeholder="Sua senha" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem;">
+                    <span id="login-button-text">Entrar</span>
+                    <span id="login-spinner" class="loading-spinner hidden"></span>
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Aplicação Principal -->
+    <div id="app-screen" class="app-container hidden">
+        <!-- Sidebar -->
+        <div id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <h1>FilaFacilita</h1>
+                <i id="toggle-sidebar" class="fas fa-bars" style="cursor: pointer;"></i>
+            </div>
+            
+            <div class="menu-items">
+                <div class="menu-item active" data-page="dashboard">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </div>
+                
+                <div class="menu-item" data-page="queues">
+                    <i class="fas fa-list-ul"></i>
+                    <span>Filas</span>
+                </div>
+                
+                <div class="menu-item" data-page="tickets">
+                    <i class="fas fa-ticket-alt"></i>
+                    <span>Senhas</span>
+                </div>
+                
+                <div class="menu-item" id="logout-button" style="margin-top: auto;">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Sair</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Conteúdo principal -->
+        <div class="content">
+            <div class="header">
+                <h1 id="page-title">Dashboard</h1>
+                
+                <div class="user-info">
+                    <div class="user-avatar" id="user-avatar">G</div>
+                    <div>
+                        <div id="user-name">Gestor</div>
+                        <div id="user-department" style="font-size: 0.875rem; color: var(--secondary);"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Página Dashboard -->
+            <div id="page-dashboard" class="page">
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <div class="stat-title"><i class="fas fa-list-ul"></i> Total de Filas</div>
+                        <div class="stat-value" id="total-queues">0</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-title"><i class="fas fa-clock"></i> Senhas Pendentes</div>
+                        <div class="stat-value" id="pending-tickets">0</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-title"><i class="fas fa-check-circle"></i> Senhas Atendidas</div>
+                        <div class="stat-value" id="attended-tickets">0</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-title"><i class="fas fa-times-circle"></i> Senhas Canceladas</div>
+                        <div class="stat-value" id="cancelled-tickets">0</div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-list-ul"></i> Resumo de Filas</h2>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="queues-summary-table">
+                            <thead>
+                                <tr>
+                                    <th>Serviço</th>
+                                    <th>Prefixo</th>
+                                    <th>Senhas Ativas</th>
+                                    <th>Limite Diário</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="queues-summary-body">
+                                <!-- Dados serão inseridos via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-ticket-alt"></i> Últimas Senhas</h2>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="recent-tickets-table">
+                            <thead>
+                                <tr>
+                                    <th>Senha</th>
+                                    <th>Serviço</th>
+                                    <th>Status</th>
+                                    <th>Emitida em</th>
+                                    <th>Atendida em</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recent-tickets-body">
+                                <!-- Dados serão inseridos via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Página Filas -->
+            <div id="page-queues" class="page hidden">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-list-ul"></i> Filas do Departamento</h2>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="queues-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Serviço</th>
+                                    <th>Prefixo</th>
+                                    <th>Senhas Ativas</th>
+                                    <th>Limite Diário</th>
+                                    <th>Senha Atual</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="queues-table-body">
+                                <!-- Dados serão inseridos via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Página Senhas -->
+            <div id="page-tickets" class="page hidden">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-ticket-alt"></i> Senhas do Departamento</h2>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="tickets-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Número</th>
+                                    <th>Serviço</th>
+                                    <th>Status</th>
+                                    <th>Emitida em</th>
+                                    <th>Atendida em</th>
+                                    <th>Guichê</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tickets-table-body">
+                                <!-- Dados serão inseridos via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para chamar próxima senha -->
+    <div id="call-next-modal" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Chamar Próxima Senha</h3>
+                <button id="close-call-modal" class="modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- Informações da chamada -->
+                <div id="call-next-info">
+                    <p style="text-align: center; margin-bottom: 1.5rem;">
+                        Você está prestes a chamar a próxima senha para:
+                    </p>
+                    <h3 id="call-next-service" style="text-align: center; margin-bottom: 2rem; color: var(--primary-dark);">
+                        Serviço
+                    </h3>
+                    <p style="text-align: center; color: var(--secondary);">
+                        Confirma a chamada da próxima senha na fila?
+                    </p>
+                </div>
+                
+                <!-- Resultado da chamada -->
+                <div id="call-next-result" class="hidden">
+                    <!-- Sucesso -->
+                    <div id="call-success" class="ticket-info hidden">
+                        <div class="icon-circle">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <h4>Senha chamada com sucesso!</h4>
+                        <div class="ticket-number" id="result-ticket-number">A123</div>
+                        <div class="counter-info">
+                            Guichê: <strong id="result-counter">1</strong>
+                        </div>
+                        <p>
+                            Senhas restantes na fila: <strong id="result-remaining">5</strong>
+                        </p>
+                    </div>
+                    
+                    <!-- Erro -->
+                    <div id="call-error" class="ticket-info hidden">
