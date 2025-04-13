@@ -120,17 +120,26 @@ class AdminPanel {
     constructor() {
         if (!AuthManager.redirectIfNotAuthenticated()) return;
         
+        this.isLoading = false;
         this.initComponents();
         this.attachEventListeners();
         this.loadInitialData();
-        this.updateDateTime();
+        this.intervalId = this.updateDateTime();
     }
 
     initComponents() {
         document.getElementById('user-name').textContent = userInfo.email || 'Usuário';
-        document.getElementById('user-department').textContent = userInfo.department || 'Gestor';
+        document.getElementById('user-department').textContent = userInfo.department || 'Sem Departamento';
         document.getElementById('page-title').textContent = 'Dashboard';
         document.getElementById('settings-email').value = userInfo.email || '';
+        
+        // Adicionar container para mensagens de erro
+        const mainContent = document.querySelector('.main-content');
+        const errorDiv = document.createElement('div');
+        errorDiv.id = 'error-message';
+        errorDiv.className = 'error-message';
+        errorDiv.style.display = 'none';
+        mainContent.insertBefore(errorDiv, mainContent.firstChild);
     }
 
     attachEventListeners() {
@@ -178,49 +187,77 @@ class AdminPanel {
             e.preventDefault();
             this.updateSettings();
         });
+
+        // Limpar mensagens de erro ao mudar de aba
+        document.querySelectorAll('.sidebar nav a').forEach(link => {
+            link.addEventListener('click', () => {
+                this.hideError();
+            });
+        });
     }
 
     updateDateTime() {
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        const now = new Date();
-        document.getElementById('current-date').textContent = now.toLocaleDateString('pt-BR', options);
-        
-        setInterval(() => {
+        const update = () => {
             const now = new Date();
             document.getElementById('current-date').textContent = now.toLocaleDateString('pt-BR', options);
-        }, 60000);
+        };
+        update();
+        return setInterval(update, 60000);
     }
 
-    async loadInitialData() {
-        try {
-            // Limpar todas as tabelas para evitar dados residuais
-            document.getElementById('queues-table').innerHTML = '';
-            document.getElementById('queues-table-full').innerHTML = '';
-            document.getElementById('tickets-table').innerHTML = '';
-            
-            await Promise.all([
-                this.loadDashboard(),
-                this.loadQueues(),
-                this.loadTickets()
-            ]);
-        } catch (error) {
-            this.showError('Erro ao carregar dados iniciais', error);
+    destroy() {
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+        }
+        if (chartInstance) {
+            chartInstance.destroy();
         }
     }
 
-    async loadDashboard() {
+    async loadInitialData() {
+        if (this.isLoading) return;
+        this.isLoading = true;
+        this.showLoading();
+
         try {
             const [queues, tickets] = await Promise.all([
                 ApiService.getQueues(),
                 ApiService.getTickets()
             ]);
+
+            await Promise.all([
+                this.loadDashboard(queues, tickets),
+                this.loadQueues(queues),
+                this.loadTickets(tickets)
+            ]);
+
+            console.log("Dados iniciais carregados com sucesso", { queues, tickets });
+        } catch (error) {
+            this.showError('Erro ao carregar dados iniciais', error);
+        } finally {
+            this.isLoading = false;
+            this.hideLoading();
+        }
+    }
+
+    async loadDashboard(queues = null, tickets = null) {
+        if (this.isLoading) return;
+        this.isLoading = true;
+        this.showLoading();
+
+        try {
+            const [queuesData, ticketsData] = queues && tickets ? 
+                [queues, tickets] : 
+                await Promise.all([ApiService.getQueues(), ApiService.getTickets()]);
+            
             const today = new Date().toISOString().split('T')[0];
     
-            const activeQueues = queues.length;
-            const pendingTickets = tickets.filter(t => t.status === 'Pendente').length;
-            const attendedToday = tickets.filter(t => t.status === 'attended' && t.issued_at.startsWith(today)).length;
+            const activeQueues = queuesData.length;
+            const pendingTickets = ticketsData.filter(t => t.status === 'Pendente').length;
+            const attendedToday = ticketsData.filter(t => t.status === 'attended' && t.issued_at.startsWith(today)).length;
             
-            const waitTimes = tickets
+            const waitTimes = ticketsData
                 .filter(t => t.wait_time && t.wait_time !== 'N/A' && !isNaN(parseFloat(t.wait_time)))
                 .map(t => parseFloat(t.wait_time));
             
@@ -237,52 +274,57 @@ class AdminPanel {
                 tickets_pendentes: pendingTickets,
                 tempo_medio: avgWaitTime,
                 atendimentos_hoje: attendedToday,
-                tickets,
-                queues
+                tickets: ticketsData,
+                queues: queuesData
             });
         } catch (error) {
             this.showError('Erro ao carregar dashboard', error);
-            console.error('Detalhes do erro no dashboard:', error);
+        } finally {
+            this.isLoading = false;
+            this.hideLoading();
         }
     }
 
-    async loadQueues() {
+    async loadQueues(queues = null) {
+        const tableBody = document.getElementById('queues-table');
+        const fullTableBody = document.getElementById('queues-table-full');
+        
+        if (!tableBody && !fullTableBody) return;
+
         try {
-            const queues = await ApiService.getQueues();
-            const tableBody = document.getElementById('queues-table');
-            const fullTableBody = document.getElementById('queues-table-full');
+            const queuesData = queues || await ApiService.getQueues();
             
-            if (tableBody) tableBody.innerHTML = '';
-            if (fullTableBody) fullTableBody.innerHTML = '';
+            tableBody.innerHTML = '';
+            fullTableBody.innerHTML = '';
 
-            console.log(`Carregadas ${queues.length} filas para o departamento ${userInfo.department}`, queues);
+            console.log(`Carregadas ${queuesData.length} filas para o departamento ${userInfo.department || 'N/A'}`, queuesData);
 
-            if (queues.length === 0) {
+            if (queuesData.length === 0) {
                 const emptyRow = `<tr><td colspan="5">Nenhuma fila encontrada para seu departamento</td></tr>`;
-                if (tableBody) tableBody.innerHTML = emptyRow;
-                if (fullTableBody) fullTableBody.innerHTML = emptyRow;
+                tableBody.innerHTML = emptyRow;
+                fullTableBody.innerHTML = emptyRow;
                 return;
             }
 
-            queues.forEach(queue => {
+            queuesData.forEach(queue => {
                 const row = `
                     <tr>
                         <td>${queue.service}</td>
                         <td>${queue.active_tickets}</td>
                         <td>${queue.current_ticket ? `${queue.prefix}${queue.current_ticket.toString().padStart(3, '0')}` : 'N/A'}</td>
                         <td><span class="status-${queue.status ? queue.status.toLowerCase() : 'ativo'}">${queue.status || 'Ativo'}</span></td>
-                        <td><button class="btn secondary-btn" onclick="adminPanel.callNextTicket('${queue.id}')">Chamar Próximo</button></td>
+                        <td><button class="btn secondary-btn" onclick="adminPanel.callNextTicket('${queue.id}')" aria-label="Chamar próximo ticket para ${queue.service}">Chamar Próximo</button></td>
                     </tr>
                 `;
                 
-                if (tableBody) tableBody.innerHTML += row;
-                if (fullTableBody) fullTableBody.innerHTML += row;
+                tableBody.innerHTML += row;
+                fullTableBody.innerHTML += row;
             });
         } catch (error) {
             this.showError('Erro ao carregar filas', error);
             const errorRow = '<tr><td colspan="5">Erro ao carregar filas</td></tr>';
-            document.getElementById('queues-table').innerHTML = errorRow;
-            document.getElementById('queues-table-full').innerHTML = errorRow;
+            tableBody.innerHTML = errorRow;
+            fullTableBody.innerHTML = errorRow;
         }
     }
 
@@ -290,30 +332,29 @@ class AdminPanel {
         try {
             const data = await ApiService.callNextTicket(queueId);
             this.showSuccess(`Senha ${data.ticket_number} chamada para o guichê ${data.counter}`);
-            await Promise.all([
-                this.loadQueues(),
-                this.loadTickets(),
-                this.loadDashboard()
-            ]);
+            await this.loadInitialData();
         } catch (error) {
             this.showError('Erro ao chamar próximo ticket', error);
         }
     }
 
-    async loadTickets() {
+    async loadTickets(tickets = null) {
+        const tableBody = document.getElementById('tickets-table');
+        if (!tableBody) return;
+
         try {
-            const tickets = await ApiService.getTickets();
+            const ticketsData = tickets || await ApiService.getTickets();
             const filter = document.getElementById('ticket-status-filter')?.value;
+            const validStatuses = ['Pendente', 'Chamado', 'attended', 'Cancelado'];
             
-            let filteredTickets = tickets;
-            if (filter) {
-                filteredTickets = tickets.filter(t => t.status === filter);
+            let filteredTickets = ticketsData;
+            if (filter && validStatuses.includes(filter)) {
+                filteredTickets = ticketsData.filter(t => t.status === filter);
             }
     
-            const tableBody = document.getElementById('tickets-table');
             tableBody.innerHTML = '';
     
-            console.log(`Response de /api/tickets/admin:`, tickets);
+            console.log(`Response de /api/tickets/admin:`, ticketsData);
             console.log(`Carregados ${filteredTickets.length} tickets (filtro: ${filter || 'todos'})`);
     
             if (filteredTickets.length === 0) {
@@ -324,7 +365,7 @@ class AdminPanel {
             filteredTickets.forEach(ticket => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${ticket.number || ticket.ticket_number}</td>
+                    <td>${ticket.number}</td>
                     <td>${ticket.service}</td>
                     <td><span class="status-${ticket.status.toLowerCase()}">${ticket.status}</span></td>
                     <td>${ticket.wait_time !== 'N/A' ? `${ticket.wait_time} min` : 'N/A'}</td>
@@ -334,12 +375,15 @@ class AdminPanel {
             });
         } catch (error) {
             this.showError('Erro ao carregar tickets', error);
-            console.error('Detalhes do erro em loadTickets:', error);
-            document.getElementById('tickets-table').innerHTML = '<tr><td colspan="5">Erro ao carregar tickets</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="5">Erro ao carregar tickets</td></tr>';
         }
     }
 
     async generateReport() {
+        if (this.isLoading) return;
+        this.isLoading = true;
+        this.showLoading();
+
         try {
             const date = document.getElementById('report-date').value;
             const reportType = document.getElementById('report-type').value;
@@ -404,7 +448,9 @@ class AdminPanel {
             }
         } catch (error) {
             this.showError('Erro ao gerar relatório', error);
-            console.error('Detalhes do erro em generateReport:', error);
+        } finally {
+            this.isLoading = false;
+            this.hideLoading();
         }
     }
 
@@ -423,23 +469,59 @@ class AdminPanel {
         }
         
         try {
-            // Aqui você implementaria a chamada para atualização de senha
+            // Implementar chamada real para atualizar senha
             this.showSuccess('Senha atualizada com sucesso');
             document.getElementById('settings-password').value = '';
             document.getElementById('settings-confirm-password').value = '';
         } catch (error) {
             this.showError('Erro ao atualizar senha', error);
-            console.error('Detalhes do erro em updateSettings:', error);
         }
     }
 
     showError(message, error = null) {
         if (error) console.error(message, error);
-        alert(message);
+        const errorDiv = document.getElementById('error-message');
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+        setTimeout(() => {
+            errorDiv.style.display = 'none';
+        }, 5000);
+    }
+
+    hideError() {
+        const errorDiv = document.getElementById('error-message');
+        errorDiv.style.display = 'none';
     }
 
     showSuccess(message) {
-        alert(message);
+        const errorDiv = document.getElementById('error-message');
+        errorDiv.textContent = message;
+        errorDiv.className = 'success-message';
+        errorDiv.style.display = 'block';
+        setTimeout(() => {
+            errorDiv.style.display = 'none';
+            errorDiv.className = 'error-message';
+        }, 3000);
+    }
+
+    showLoading() {
+        const mainContent = document.querySelector('.main-content');
+        let loadingDiv = document.getElementById('loading-indicator');
+        if (!loadingDiv) {
+            loadingDiv = document.createElement('div');
+            loadingDiv.id = 'loading-indicator';
+            loadingDiv.className = 'loading';
+            loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Carregando...';
+            mainContent.appendChild(loadingDiv);
+        }
+        loadingDiv.style.display = 'block';
+    }
+
+    hideLoading() {
+        const loadingDiv = document.getElementById('loading-indicator');
+        if (loadingDiv) {
+            loadingDiv.style.display = 'none';
+        }
     }
 }
 
@@ -503,5 +585,12 @@ document.addEventListener('DOMContentLoaded', () => {
         LoginManager.init();
     } else {
         window.adminPanel = new AdminPanel();
+    }
+});
+
+// Cleanup ao sair da página
+window.addEventListener('beforeunload', () => {
+    if (window.adminPanel) {
+        window.adminPanel.destroy();
     }
 });
