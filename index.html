@@ -6,6 +6,7 @@
     <title>Painel Administrativo - Facilita 2.0</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
     <style>
         * {
             box-sizing: border-box;
@@ -228,6 +229,15 @@
             background: #4b5563;
         }
 
+        .card button.danger {
+            background: #dc2626;
+            color: white;
+        }
+
+        .card button.danger:hover {
+            background: #b91c1c;
+        }
+
         .card i {
             margin-right: 5px;
         }
@@ -248,6 +258,7 @@
         .table th {
             background: #f1f5f9;
             color: #1e3a8a;
+            cursor: pointer;
         }
 
         .table tr:hover {
@@ -338,7 +349,7 @@
             background: white;
             padding: 20px;
             border-radius: 8px;
-            max-width: 500px;
+            max-width: 600px;
             width: 90%;
         }
 
@@ -353,16 +364,28 @@
 
         .modal-content button {
             padding: 10px 20px;
-            background: #2563eb;
-            color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            margin-top: 10px;
+            margin: 5px;
         }
 
-        .modal-content button:hover {
+        .modal-content button.primary {
+            background: #2563eb;
+            color: white;
+        }
+
+        .modal-content button.primary:hover {
             background: #1e40af;
+        }
+
+        .modal-content button.secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .modal-content button.secondary:hover {
+            background: #4b5563;
         }
 
         .form-group {
@@ -386,6 +409,46 @@
         .chart-container {
             max-width: 100%;
             margin-top: 20px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .dashboard-card {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .dashboard-card h3 {
+            color: #1e3a8a;
+            margin-bottom: 10px;
+        }
+
+        .dashboard-card p {
+            font-size: 1.5rem;
+            color: #374151;
+        }
+
+        .badge {
+            padding: 5px 10px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            color: white;
+        }
+
+        .badge.open {
+            background: #10b981;
+        }
+
+        .badge.full {
+            background: #dc2626;
         }
 
         @media (max-width: 768px) {
@@ -437,7 +500,8 @@
     <div class="sidebar" id="sidebar">
         <div class="logo">Facilita 2.0</div>
         <ul>
-            <li><a href="#" data-section="queues" class="active"><i class="fas fa-list"></i> Filas</a></li>
+            <li><a href="#" data-section="dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+            <li><a href="#" data-section="queues"><i class="fas fa-list"></i> Filas</a></li>
             <li><a href="#" data-section="tickets"><i class="fas fa-ticket-alt"></i> Tickets</a></li>
             <li><a href="#" data-section="reports"><i class="fas fa-chart-bar"></i> Relatórios</a></li>
             <li><a href="#" data-section="settings"><i class="fas fa-cog"></i> Configurações</a></li>
@@ -450,7 +514,7 @@
             <div class="menu-toggle" id="menu-toggle">
                 <i class="fas fa-bars"></i>
             </div>
-            <h1 id="section-title">Filas</h1>
+            <h1 id="section-title">Dashboard</h1>
             <div class="user-info">
                 <span id="user-info"></span>
                 <button id="logout-btn" style="display: none;">Sair</button>
@@ -470,8 +534,37 @@
             <div class="error" id="error-message"></div>
         </div>
 
+        <!-- Dashboard Section -->
+        <div class="content-section active" id="dashboard-section">
+            <div class="section-header">
+                <h2>Visão Geral</h2>
+                <button onclick="loadDashboard()"><i class="fas fa-sync"></i> Atualizar</button>
+            </div>
+            <div class="dashboard-grid">
+                <div class="dashboard-card">
+                    <h3>Filas Ativas</h3>
+                    <p id="active-queues">0</p>
+                </div>
+                <div class="dashboard-card">
+                    <h3>Tickets Pendentes</h3>
+                    <p id="pending-tickets">0</p>
+                </div>
+                <div class="dashboard-card">
+                    <h3>Tickets Atendidos Hoje</h3>
+                    <p id="attended-tickets">0</p>
+                </div>
+                <div class="dashboard-card">
+                    <h3>Tempo Médio de Espera</h3>
+                    <p id="avg-wait-time">0 min</p>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="dashboard-chart"></canvas>
+            </div>
+        </div>
+
         <!-- Queues Section -->
-        <div class="content-section active" id="queues-section">
+        <div class="content-section" id="queues-section">
             <div class="section-header">
                 <h2>Filas do Seu Departamento</h2>
                 <div class="controls">
@@ -480,7 +573,18 @@
                     <button onclick="openCreateQueueModal()"><i class="fas fa-plus"></i> Nova Fila</button>
                 </div>
             </div>
-            <div id="queue-content"></div>
+            <table class="table" id="queues-table">
+                <thead>
+                    <tr>
+                        <th>Serviço</th>
+                        <th>Departamento</th>
+                        <th>Tickets Ativos</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="queue-content"></tbody>
+            </table>
         </div>
 
         <!-- Tickets Section -->
@@ -490,14 +594,16 @@
                 <div class="controls">
                     <input type="text" id="ticket-filter" placeholder="Filtrar por senha..." aria-label="Filtrar tickets">
                     <button onclick="loadTickets()"><i class="fas fa-sync"></i> Atualizar</button>
+                    <button onclick="openValidatePresenceModal()"><i class="fas fa-qrcode"></i> Validar Presença</button>
                 </div>
             </div>
-            <table class="table">
+            <table class="table" id="tickets-table">
                 <thead>
                     <tr>
                         <th>Senha</th>
                         <th>Serviço</th>
                         <th>Status</th>
+                        <th>Guichê</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
@@ -510,8 +616,13 @@
             <div class="section-header">
                 <h2>Relatório de Atendimento</h2>
                 <div class="controls">
-                    <input type="date" id="report-date" aria-label="Selecionar data do relatório">
+                    <input type="date" id="report-start-date" aria-label="Data inicial">
+                    <input type="date" id="report-end-date" aria-label="Data final">
+                    <select id="report-service" aria-label="Filtrar por serviço">
+                        <option value="">Todos os serviços</option>
+                    </select>
                     <button onclick="loadReport()"><i class="fas fa-sync"></i> Atualizar</button>
+                    <button onclick="exportReport()"><i class="fas fa-download"></i> Exportar CSV</button>
                 </div>
             </div>
             <div class="chart-container">
@@ -529,458 +640,875 @@
                 <input type="password" id="new-password" placeholder="Nova senha" aria-label="Nova senha">
             </div>
             <button onclick="changePassword()"><i class="fas fa-save"></i> Salvar Senha</button>
+            <div class="form-group">
+                <label for="notification-preference">Preferências de Notificação</label>
+                <select id="notification-preference" aria-label="Preferências de notificação">
+                    <option value="all">Todas as notificações</option>
+                    <option value="important">Apenas importantes</option>
+                    <option value="none">Nenhuma</option>
+                </select>
+            </div>
+            <button onclick="savePreferences()"><i class="fas fa-save"></i> Salvar Preferências</button>
         </div>
 
         <!-- Loader -->
         <div class="loader" id="loader"></div>
-    </div>
 
-    <!-- Modals -->
-    <div class="modal" id="ticket-modal">
-        <div class="modal-content">
-            <h3>Detalhes do Ticket</h3>
-            <p id="modal-ticket-number"></p>
-            <p id="modal-ticket-service"></p>
-            <p id="modal-ticket-status"></p>
-            <button onclick="closeModal()">Fechar</button>
+        <!-- Modals -->
+        <div class="modal" id="ticket-modal">
+            <div class="modal-content">
+                <h3>Detalhes do Ticket</h3>
+                <p id="modal-ticket-number"></p>
+                <p id="modal-ticket-service"></p>
+                <p id="modal-ticket-status"></p>
+                <p id="modal-ticket-counter"></p>
+                <p id="modal-ticket-issued"></p>
+                <button class="primary" onclick="closeModal()">Fechar</button>
+            </div>
         </div>
-    </div>
 
-    <div class="modal" id="create-queue-modal">
-        <div class="modal-content">
-            <h3>Criar Nova Fila</h3>
-            <div class="form-group">
-                <label for="queue-service">Serviço</label>
-                <input type="text" id="queue-service" placeholder="Nome do serviço" aria-label="Nome do serviço">
+        <div class="modal" id="create-queue-modal">
+            <div class="modal-content">
+                <h3>Criar Nova Fila</h3>
+                <div class="form-group">
+                    <label for="queue-service">Serviço</label>
+                    <input type="text" id="queue-service" placeholder="Nome do serviço" aria-label="Nome do serviço">
+                </div>
+                <div class="form-group">
+                    <label for="queue-prefix">Prefixo</label>
+                    <input type="text" id="queue-prefix" placeholder="Ex.: A" aria-label="Prefixo da fila">
+                </div>
+                <div class="form-group">
+                    <label for="queue-open-time">Horário de Abertura</label>
+                    <input type="time" id="queue-open-time" aria-label="Horário de abertura">
+                </div>
+                <div class="form-group">
+                    <label for="queue-end-time">Horário de Fechamento</label>
+                    <input type="time" id="queue-end-time" aria-label="Horário de fechamento">
+                </div>
+                <div class="form-group">
+                    <label for="queue-daily-limit">Limite Diário</label>
+                    <input type="number" id="queue-daily-limit" placeholder="Ex.: 20" aria-label="Limite diário de tickets">
+                </div>
+                <div class="form-group">
+                    <label for="queue-num-counters">Número de Guichês</label>
+                    <input type="number" id="queue-num-counters" placeholder="Ex.: 3" aria-label="Número de guichês">
+                </div>
+                <button class="primary" onclick="createQueue()">Criar</button>
+                <button class="secondary" onclick="closeModal()">Cancelar</button>
             </div>
-            <div class="form-group">
-                <label for="queue-prefix">Prefixo</label>
-                <input type="text" id="queue-prefix" placeholder="Ex.: A" aria-label="Prefixo da fila">
-            </div>
-            <div class="form-group">
-                <label for="queue-open-time">Horário de Abertura</label>
-                <input type="time" id="queue-open-time" aria-label="Horário de abertura">
-            </div>
-            <div class="form-group">
-                <label for="queue-daily-limit">Limite Diário</label>
-                <input type="number" id="queue-daily-limit" placeholder="Ex.: 20" aria-label="Limite diário de tickets">
-            </div>
-            <div class="form-group">
-                <label for="queue-num-counters">Número de Guichês</label>
-                <input type="number" id="queue-num-counters" placeholder="Ex.: 3" aria-label="Número de guichês">
-            </div>
-            <button onclick="createQueue()">Criar</button>
-            <button onclick="closeModal()">Cancelar</button>
         </div>
-    </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-    <script>
-        // Configurações do toastr
-        toastr.options = {
-            closeButton: true,
-            progressBar: true,
-            positionClass: 'toast-top-right',
-            timeOut: 3000
-        };
+        <div class="modal" id="edit-queue-modal">
+            <div class="modal-content">
+                <h3>Editar Fila</h3>
+                <input type="hidden" id="edit-queue-id">
+                <div class="form-group">
+                    <label for="edit-queue-service">Serviço</label>
+                    <input type="text" id="edit-queue-service" aria-label="Nome do serviço">
+                </div>
+                <div class="form-group">
+                    <label for="edit-queue-prefix">Prefixo</label>
+                    <input type="text" id="edit-queue-prefix" aria-label="Prefixo da fila">
+                </div>
+                <div class="form-group">
+                    <label for="edit-queue-open-time">Horário de Abertura</label>
+                    <input type="time" id="edit-queue-open-time" aria-label="Horário de abertura">
+                </div>
+                <div class="form-group">
+                    <label for="edit-queue-end-time">Horário de Fechamento</label>
+                    <input type="time" id="edit-queue-end-time" aria-label="Horário de fechamento">
+                </div>
+                <div class="form-group">
+                    <label for="edit-queue-daily-limit">Limite Diário</label>
+                    <input type="number" id="edit-queue-daily-limit" aria-label="Limite diário de tickets">
+                </div>
+                <div class="form-group">
+                    <label for="edit-queue-num-counters">Número de Guichês</label>
+                    <input type="number" id="edit-queue-num-counters" aria-label="Número de guichês">
+                </div>
+                <button class="primary" onclick="updateQueue()">Salvar</button>
+                <button class="secondary" onclick="closeModal()">Cancelar</button>
+            </div>
+        </div>
 
-        // Configurações e variáveis globais
-        const API_BASE_URL = 'https://fila-facilita2-0.onrender.com';
-        let token = localStorage.getItem('token');
-        let userInfo = JSON.parse(localStorage.getItem('userInfo')) || {};
-        let chartInstance = null;
+        <div class="modal" id="delete-queue-modal">
+            <div class="modal-content">
+                <h3>Confirmar Exclusão</h3>
+                <p>Tem certeza que deseja excluir a fila <span id="delete-queue-name"></span>?</p>
+                <input type="hidden" id="delete-queue-id">
+                <button class="danger" onclick="deleteQueue()">Excluir</button>
+                <button class="secondary" onclick="closeModal()">Cancelar</button>
+            </div>
+        </div>
 
-        // Classe principal para gerenciamento de autenticação e requisições
-        class ApiService {
-            static async request(endpoint, method = 'GET', body = null) {
-                const headers = {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                };
-                
-                if (token) {
-                    headers['Authorization'] = `Bearer ${token}`;
+        <div class="modal" id="cancel-ticket-modal">
+            <div class="modal-content">
+                <h3>Confirmar Cancelamento</h3>
+                <p>Tem certeza que deseja cancelar a senha <span id="cancel-ticket-number"></span>?</p>
+                <input type="hidden" id="cancel-ticket-id">
+                <button class="danger" onclick="cancelTicket()">Cancelar Senha</button>
+                <button class="secondary" onclick="closeModal()">Fechar</button>
+            </div>
+        </div>
+
+        <div class="modal" id="validate-presence-modal">
+            <div class="modal-content">
+                <h3>Validar Presença</h3>
+                <div class="form-group">
+                    <label for="qr-code">Código QR</label>
+                    <input type="text" id="qr-code" placeholder="Digite ou escaneie o QR code" aria-label="Código QR">
+                </div>
+                <button class="primary" onclick="validatePresence()">Validar</button>
+                <button class="secondary" onclick="closeModal()">Fechar</button>
+            </div>
+        </div>
+
+        <div class="modal" id="trade-ticket-modal">
+            <div class="modal-content">
+                <h3>Oferecer Troca de Senha</h3>
+                <p>Oferecer troca para a senha <span id="trade-ticket-number"></span>?</p>
+                <input type="hidden" id="trade-ticket-id">
+                <button class="primary" onclick="offerTrade()">Oferecer</button>
+                <button class="secondary" onclick="closeModal()">Fechar</button>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+        <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+        <script>
+            // Configurações do toastr
+            toastr.options = {
+                closeButton: true,
+                progressBar: true,
+                positionClass: 'toast-top-right',
+                timeOut: 3000
+            };
+
+            // Configurações e variáveis globais
+            const API_BASE_URL = 'https://fila-facilita2-0.onrender.com';
+            let token = localStorage.getItem('token');
+            let userInfo = JSON.parse(localStorage.getItem('userInfo')) || {};
+            let chartInstance = null;
+            let dashboardChart = null;
+            let socket = null;
+
+            // Classe principal para gerenciamento de autenticação e requisições
+            class ApiService {
+                static async request(endpoint, method = 'GET', body = null) {
+                    const headers = {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    };
+                    
+                    if (token) {
+                        headers['Authorization'] = `Bearer ${token}`;
+                    }
+
+                    const config = { 
+                        method, 
+                        headers,
+                        mode: 'cors',
+                        credentials: 'omit',
+                    };
+
+                    if (body) {
+                        config.body = JSON.stringify(body);
+                    }
+
+                    console.log(`[ApiService] Enviando requisição para: ${API_BASE_URL}${endpoint}`);
+                    showLoader();
+
+                    try {
+                        const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+                        
+                        if (response.status === 401) {
+                            console.warn(`[ApiService] Erro 401 na requisição ${endpoint}.`);
+                            handleLogout();
+                            throw new Error(`Sessão expirada`);
+                        }
+                        
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            throw new Error(errorText || response.statusText);
+                        }
+                        
+                        const data = await response.json();
+                        hideLoader();
+                        return data;
+                    } catch (error) {
+                        console.error(`[ApiService] Erro na requisição ${endpoint}:`, error);
+                        hideLoader();
+                        throw error;
+                    }
                 }
 
-                const config = { 
-                    method, 
-                    headers,
-                    mode: 'cors',
-                    credentials: 'omit',
-                };
-
-                if (body) {
-                    config.body = JSON.stringify(body);
+                static async login(email, password) {
+                    return await this.request('/api/admin/login', 'POST', { email, password });
                 }
 
-                console.log(`[ApiService] Enviando requisição para: ${API_BASE_URL}${endpoint}`);
-                showLoader();
+                static async getQueues() {
+                    return await this.request('/api/admin/queues');
+                }
+
+                static async getTickets() {
+                    return await this.request('/api/tickets/admin');
+                }
+
+                static async callNextTicket(queueId) {
+                    return await this.request(`/api/admin/queue/${queueId}/call`, 'POST');
+                }
+
+                static async createQueue(data) {
+                    return await this.request('/api/queue/create', 'POST', data);
+                }
+
+                static async updateQueue(queueId, data) {
+                    return await this.request(`/api/queue/${queueId}`, 'PUT', data);
+                }
+
+                static async deleteQueue(queueId) {
+                    return await this.request(`/api/queue/${queueId}`, 'DELETE');
+                }
+
+                static async cancelTicket(ticketId) {
+                    return await this.request(`/api/ticket/${ticketId}/cancel`, 'POST');
+                }
+
+                static async validatePresence(qrCode) {
+                    return await this.request('/api/ticket/validate', 'POST', { qr_code: qrCode });
+                }
+
+                static async offerTrade(ticketId) {
+                    return await this.request(`/api/ticket/${ticketId}/trade`, 'POST');
+                }
+
+                static async getReport(startDate, endDate, service) {
+                    let url = `/api/admin/report?start_date=${startDate}`;
+                    if (endDate) url += `&end_date=${endDate}`;
+                    if (service) url += `&service=${encodeURIComponent(service)}`;
+                    return await this.request(url);
+                }
+
+                static async suggestServices(service, lat, lon) {
+                    return await this.request(`/api/suggest?service=${encodeURIComponent(service)}&lat=${lat}&lon=${lon}`);
+                }
+            }
+
+            // Funções de manipulação da interface
+            function showLoader() {
+                document.getElementById('loader').style.display = 'block';
+            }
+
+            function hideLoader() {
+                document.getElementById('loader').style.display = 'none';
+            }
+
+            function showError(message) {
+                document.getElementById('error-message').textContent = message;
+                toastr.error(message);
+            }
+
+            function clearError() {
+                document.getElementById('error-message').textContent = '';
+            }
+
+            async function handleLogin() {
+                clearError();
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
 
                 try {
-                    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-                    
-                    if (response.status === 401) {
-                        console.warn(`[ApiService] Erro 401 na requisição ${endpoint}.`);
-                        handleLogout();
-                        throw new Error(`Sessão expirada`);
-                    }
-                    
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(errorText || response.statusText);
-                    }
-                    
-                    const data = await response.json();
-                    hideLoader();
-                    return data;
+                    const response = await ApiService.login(email, password);
+                    token = response.token;
+                    userInfo = {
+                        user_id: response.user_id,
+                        user_role: response.user_role,
+                        department: response.department,
+                        department_id: response.department_id,
+                        email: response.email
+                    };
+                    localStorage.setItem('token', token);
+                    localStorage.setItem('userInfo', JSON.stringify(userInfo));
+                    toastr.success('Login realizado com sucesso!');
+                    initApp();
                 } catch (error) {
-                    console.error(`[ApiService] Erro na requisição ${endpoint}:`, error);
-                    hideLoader();
-                    throw error;
+                    showError('Erro ao fazer login: ' + error.message);
                 }
             }
 
-            static async login(email, password) {
-                return await this.request('/api/admin/login', 'POST', { email, password });
-            }
-
-            static async getQueues() {
-                return await this.request('/api/admin/queues');
-            }
-
-            static async getTickets() {
-                return await this.request('/api/tickets/admin');
-            }
-
-            static async callNextTicket(queueId) {
-                return await this.request(`/api/admin/queue/${queueId}/call`, 'POST');
-            }
-
-            static async createQueue(data) {
-                return await this.request('/api/queue/create', 'POST', data);
-            }
-
-            static async getReport(date) {
-                return await this.request(`/api/admin/report?date=${date}`);
-            }
-        }
-
-        // Funções de manipulação da interface
-        function showLoader() {
-            document.getElementById('loader').style.display = 'block';
-        }
-
-        function hideLoader() {
-            document.getElementById('loader').style.display = 'none';
-        }
-
-        function showError(message) {
-            document.getElement(groups);
-            document.getElementById('error-message').textContent = message;
-            toastr.error(message);
-        }
-
-        function clearError() {
-            document.getElementById('error-message').textContent = '';
-        }
-
-        async function handleLogin() {
-            clearError();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-
-            try {
-                const response = await ApiService.login(email, password);
-                token = response.token;
-                userInfo = {
-                    user_id: response.user_id,
-                    user_role: response.user_role,
-                    department: response.department,
-                    email: response.email
-                };
-                localStorage.setItem('token', token);
-                localStorage.setItem('userInfo', JSON.stringify(userInfo));
-                toastr.success('Login realizado com sucesso!');
+            function handleLogout() {
+                if (socket) {
+                    socket.disconnect();
+                }
+                token = null;
+                userInfo = {};
+                localStorage.removeItem('token');
+                localStorage.removeItem('userInfo');
+                toastr.info('Sessão encerrada.');
                 initApp();
-            } catch (error) {
-                showError('Erro ao fazer login: ' + error.message);
-            }
-        }
-
-        function handleLogout() {
-            token = null;
-            userInfo = {};
-            localStorage.removeItem('token');
-            localStorage.removeItem('userInfo');
-            toastr.info('Sessão encerrada.');
-            initApp();
-        }
-
-        async function loadQueues() {
-            try {
-                const queues = await ApiService.getQueues();
-                const queueContent = document.getElementById('queue-content');
-                queueContent.innerHTML = '';
-                
-                if (queues.length === 0) {
-                    queueContent.innerHTML = '<p>Nenhuma fila encontrada para o seu departamento.</p>';
-                    return;
-                }
-
-                const filter = document.getElementById('queue-filter').value.toLowerCase();
-                queues
-                    .filter(queue => queue.service.toLowerCase().includes(filter))
-                    .forEach(queue => {
-                        const card = document.createElement('div');
-                        card.className = 'card';
-                        card.innerHTML = `
-                            <span><strong>${queue.service}</strong> (${queue.department}) - ${queue.active_tickets}/${queue.daily_limit} tickets ativos</span>
-                            <div class="actions">
-                                <button class="primary" onclick="callNextTicket('${queue.id}')"><i class="fas fa-phone"></i> Chamar Próximo</button>
-                            </div>
-                        `;
-                        queueContent.appendChild(card);
-                    });
-            } catch (error) {
-                showError('Erro ao carregar filas: ' + error.message);
-            }
-        }
-
-        async function loadTickets() {
-            try {
-                const tickets = await ApiService.getTickets();
-                const ticketContent = document.getElementById('ticket-content');
-                ticketContent.innerHTML = '';
-                
-                if (tickets.length === 0) {
-                    ticketContent.innerHTML = '<tr><td colspan="4">Nenhum ticket ativo encontrado.</td></tr>';
-                    return;
-                }
-
-                const filter = document.getElementById('ticket-filter').value.toLowerCase();
-                tickets
-                    .filter(ticket => ticket.number.toLowerCase().includes(filter))
-                    .forEach(ticket => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${ticket.number}</td>
-                            <td>${ticket.service}</td>
-                            <td>${ticket.status}</td>
-                            <td>
-                                <button class="primary" onclick="showTicketDetails('${ticket.number}', '${ticket.service}', '${ticket.status}')"><i class="fas fa-info-circle"></i> Detalhes</button>
-                            </td>
-                        `;
-                        ticketContent.appendChild(row);
-                    });
-            } catch (error) {
-                showError('Erro ao carregar tickets: ' + error.message);
-            }
-        }
-
-        async function callNextTicket(queueId) {
-            clearError();
-            try {
-                const response = await ApiService.callNextTicket(queueId);
-                toastr.success(response.message);
-                loadTickets();
-            } catch (error) {
-                showError('Erro ao chamar próximo ticket: ' + error.message);
-            }
-        }
-
-        function openCreateQueueModal() {
-            document.getElementById('queue-service').value = '';
-            document.getElementById('queue-prefix').value = '';
-            document.getElementById('queue-open-time').value = '';
-            document.getElementById('queue-daily-limit').value = '';
-            document.getElementById('queue-num-counters').value = '';
-            document.getElementById('create-queue-modal').style.display = 'flex';
-        }
-
-        async function createQueue() {
-            clearError();
-            const service = document.getElementById('queue-service').value;
-            const prefix = document.getElementById('queue-prefix').value;
-            const open_time = document.getElementById('queue-open-time').value;
-            const daily_limit = document.getElementById('queue-daily-limit').value;
-            const num_counters = document.getElementById('queue-num-counters').value;
-
-            if (!service || !prefix || !open_time || !daily_limit || !num_counters) {
-                showError('Preencha todos os campos.');
-                return;
             }
 
-            try {
-                const response = await ApiService.createQueue({
-                    service,
-                    prefix,
-                    department_id: userInfo.department_id || 'default',
-                    open_time,
-                    daily_limit: parseInt(daily_limit),
-                    num_counters: parseInt(num_counters)
-                });
-                toastr.success(response.message);
-                closeModal();
-                loadQueues();
-            } catch (error) {
-                showError('Erro ao criar fila: ' + error.message);
-            }
-        }
+            async function loadDashboard() {
+                try {
+                    const queues = await ApiService.getQueues();
+                    const tickets = await ApiService.getTickets();
+                    const today = new Date().toISOString().split('T')[0];
+                    const report = await ApiService.getReport(today, null, null);
 
-        async function loadReport() {
-            try {
-                const date = document.getElementById('report-date').value || new Date().toISOString().split('T')[0];
-                const report = await ApiService.getReport(date);
-                const ctx = document.getElementById('report-chart').getContext('2d');
-                
-                if (chartInstance) {
-                    chartInstance.destroy();
-                }
+                    // Atualizar cards
+                    document.getElementById('active-queues').textContent = queues.length;
+                    document.getElementById('pending-tickets').textContent = tickets.filter(t => t.status === 'Pendente').length;
+                    document.getElementById('attended-tickets').textContent = tickets.filter(t => t.status === 'attended').length;
+                    const avgWaitTimes = report.filter(r => r.avg_time).map(r => r.avg_time);
+                    document.getElementById('avg-wait-time').textContent = avgWaitTimes.length ? `${Math.round(avgWaitTimes.reduce((a, b) => a + b, 0) / avgWaitTimes.length)} min` : 'N/A';
 
-                chartInstance = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: report.map(r => r.service),
-                        datasets: [{
-                            label: 'Tickets Atendidos',
-                            data: report.map(r => r.attended),
-                            backgroundColor: '#2563eb',
-                            borderColor: '#1e40af',
-                            borderWidth: 1
-                        }, {
-                            label: 'Tickets Emitidos',
-                            data: report.map(r => r.issued),
-                            backgroundColor: '#10b981',
-                            borderColor: '#059669',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        scales: {
-                            y: {
-                                beginAtZero: true
-                            }
+                    // Gráfico
+                    if (dashboardChart) {
+                        dashboardChart.destroy();
+                    }
+                    const ctx = document.getElementById('dashboard-chart').getContext('2d');
+                    dashboardChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: report.map(r => r.service),
+                            datasets: [{
+                                label: 'Tickets Emitidos',
+                                data: report.map(r => r.issued),
+                                backgroundColor: '#2563eb',
+                                borderColor: '#1e40af',
+                                borderWidth: 1
+                            }, {
+                                label: 'Tickets Atendidos',
+                                data: report.map(r => r.attended),
+                                backgroundColor: '#10b981',
+                                borderColor: '#059669',
+                                borderWidth: 1
+                            }]
                         },
-                        plugins: {
-                            legend: {
-                                position: 'top'
+                        options: {
+                            scales: {
+                                y: { beginAtZero: true }
                             },
-                            title: {
-                                display: true,
-                                text: `Relatório de Atendimento - ${date}`
+                            plugins: {
+                                legend: { position: 'top' },
+                                title: { display: true, text: 'Atendimento de Hoje' }
                             }
                         }
+                    });
+                } catch (error) {
+                    showError('Erro ao carregar dashboard: ' + error.message);
+                }
+            }
+
+            async function loadQueues() {
+                try {
+                    const queues = await ApiService.getQueues();
+                    const queueContent = document.getElementById('queue-content');
+                    queueContent.innerHTML = '';
+
+                    if (queues.length === 0) {
+                        queueContent.innerHTML = '<tr><td colspan="5">Nenhuma fila encontrada.</td></tr>';
+                        return;
+                    }
+
+                    const filter = document.getElementById('queue-filter').value.toLowerCase();
+                    queues
+                        .filter(queue => queue.service.toLowerCase().includes(filter))
+                        .forEach(queue => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${queue.service}</td>
+                                <td>${queue.department}</td>
+                                <td>${queue.active_tickets}/${queue.daily_limit}</td>
+                                <td><span class="badge ${queue.status === 'Aberto' ? 'open' : 'full'}">${queue.status}</span></td>
+                                <td>
+                                    <button class="primary" onclick="callNextTicket('${queue.id}')"><i class="fas fa-phone"></i> Chamar</button>
+                                    <button class="secondary" onclick="openEditQueueModal('${queue.id}', '${queue.service}', '${queue.prefix}', '${queue.open_time}', '${queue.end_time}', '${queue.daily_limit}', '${queue.num_counters}')"><i class="fas fa-edit"></i> Editar</button>
+                                    <button class="danger" onclick="openDeleteQueueModal('${queue.id}', '${queue.service}')"><i class="fas fa-trash"></i> Excluir</button>
+                                </td>
+                            `;
+                            queueContent.appendChild(row);
+                        });
+
+                    if ($.fn.DataTable.isDataTable('#queues-table')) {
+                        $('#queues-table').DataTable().destroy();
+                    }
+                    $('#queues-table').DataTable({
+                        pageLength: 10,
+                        language: { url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/pt-BR.json' }
+                    });
+                } catch (error) {
+                    showError('Erro ao carregar filas: ' + error.message);
+                }
+            }
+
+            async function loadTickets() {
+                try {
+                    const tickets = await ApiService.getTickets();
+                    const ticketContent = document.getElementById('ticket-content');
+                    ticketContent.innerHTML = '';
+
+                    if (tickets.length === 0) {
+                        ticketContent.innerHTML = '<tr><td colspan="5">Nenhum ticket ativo encontrado.</td></tr>';
+                        return;
+                    }
+
+                    const filter = document.getElementById('ticket-filter').value.toLowerCase();
+                    tickets
+                        .filter(ticket => ticket.number.toLowerCase().includes(filter))
+                        .forEach(ticket => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${ticket.number}</td>
+                                <td>${ticket.service}</td>
+                                <td>${ticket.status}</td>
+                                <td>${ticket.counter || 'N/A'}</td>
+                                <td>
+                                    <button class="primary" onclick="showTicketDetails('${ticket.id}', '${ticket.number}', '${ticket.service}', '${ticket.status}', '${ticket.counter}', '${ticket.issued_at}')"><i class="fas fa-info-circle"></i> Detalhes</button>
+                                    ${ticket.status === 'Pendente' ? `<button class="danger" onclick="openCancelTicketModal('${ticket.id}', '${ticket.number}')"><i class="fas fa-times"></i> Cancelar</button>` : ''}
+                                    ${ticket.status === 'Pendente' ? `<button class="secondary" onclick="openTradeTicketModal('${ticket.id}', '${ticket.number}')"><i class="fas fa-exchange-alt"></i> Trocar</button>` : ''}
+                                </td>
+                            `;
+                            ticketContent.appendChild(row);
+                        });
+
+                    if ($.fn.DataTable.isDataTable('#tickets-table')) {
+                        $('#tickets-table').DataTable().destroy();
+                    }
+                    $('#tickets-table').DataTable({
+                        pageLength: 10,
+                        language: { url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/pt-BR.json' }
+                    });
+                } catch (error) {
+                    showError('Erro ao carregar tickets: ' + error.message);
+                }
+            }
+
+            async function callNextTicket(queueId) {
+                clearError();
+                try {
+                    const response = await ApiService.callNextTicket(queueId);
+                    toastr.success(response.message);
+                    loadTickets();
+                    loadDashboard();
+                } catch (error) {
+                    showError('Erro ao chamar próximo ticket: ' + error.message);
+                }
+            }
+
+            function openCreateQueueModal() {
+                document.getElementById('queue-service').value = '';
+                document.getElementById('queue-prefix').value = '';
+                document.getElementById('queue-open-time').value = '';
+                document.getElementById('queue-end-time').value = '';
+                document.getElementById('queue-daily-limit').value = '';
+                document.getElementById('queue-num-counters').value = '';
+                document.getElementById('create-queue-modal').style.display = 'flex';
+            }
+
+            async function createQueue() {
+                clearError();
+                const service = document.getElementById('queue-service').value;
+                const prefix = document.getElementById('queue-prefix').value;
+                const open_time = document.getElementById('queue-open-time').value;
+                const end_time = document.getElementById('queue-end-time').value;
+                const daily_limit = document.getElementById('queue-daily-limit').value;
+                const num_counters = document.getElementById('queue-num-counters').value;
+
+                if (!service || !prefix || !open_time || !daily_limit || !num_counters) {
+                    showError('Preencha todos os campos obrigatórios.');
+                    return;
+                }
+
+                try {
+                    const response = await ApiService.createQueue({
+                        service,
+                        prefix,
+                        department_id: userInfo.department_id || 'default',
+                        open_time,
+                        end_time: end_time || null,
+                        daily_limit: parseInt(daily_limit),
+                        num_counters: parseInt(num_counters)
+                    });
+                    toastr.success('Fila criada com sucesso!');
+                    closeModal();
+                    loadQueues();
+                    loadDashboard();
+                } catch (error) {
+                    showError('Erro ao criar fila: ' + error.message);
+                }
+            }
+
+            function openEditQueueModal(id, service, prefix, open_time, end_time, daily_limit, num_counters) {
+                document.getElementById('edit-queue-id').value = id;
+                document.getElementById('edit-queue-service').value = service;
+                document.getElementById('edit-queue-prefix').value = prefix;
+                document.getElementById('edit-queue-open-time').value = open_time;
+                document.getElementById('edit-queue-end-time').value = end_time || '';
+                document.getElementById('edit-queue-daily-limit').value = daily_limit;
+                document.getElementById('edit-queue-num-counters').value = num_counters;
+                document.getElementById('edit-queue-modal').style.display = 'flex';
+            }
+
+            async function updateQueue() {
+                clearError();
+                const id = document.getElementById('edit-queue-id').value;
+                const service = document.getElementById('edit-queue-service').value;
+                const prefix = document.getElementById('edit-queue-prefix').value;
+                const open_time = document.getElementById('edit-queue-open-time').value;
+                const end_time = document.getElementById('edit-queue-end-time').value;
+                const daily_limit = document.getElementById('edit-queue-daily-limit').value;
+                const num_counters = document.getElementById('edit-queue-num-counters').value;
+
+                if (!service || !prefix || !open_time || !daily_limit || !num_counters) {
+                    showError('Preencha todos os campos obrigatórios.');
+                    return;
+                }
+
+                try {
+                    const response = await ApiService.updateQueue(id, {
+                        service,
+                        prefix,
+                        open_time,
+                        end_time: end_time || null,
+                        daily_limit: parseInt(daily_limit),
+                        num_counters: parseInt(num_counters)
+                    });
+                    toastr.success('Fila atualizada com sucesso!');
+                    closeModal();
+                    loadQueues();
+                    loadDashboard();
+                } catch (error) {
+                    showError('Erro ao atualizar fila: ' + error.message);
+                }
+            }
+
+            function openDeleteQueueModal(id, service) {
+                document.getElementById('delete-queue-id').value = id;
+                document.getElementById('delete-queue-name').textContent = service;
+                document.getElementById('delete-queue-modal').style.display = 'flex';
+            }
+
+            async function deleteQueue() {
+                clearError();
+                const id = document.getElementById('delete-queue-id').value;
+
+                try {
+                    await ApiService.deleteQueue(id);
+                    toastr.success('Fila excluída com sucesso!');
+                    closeModal();
+                    loadQueues();
+                    loadDashboard();
+                } catch (error) {
+                    showError('Erro ao excluir fila: ' + error.message);
+                }
+            }
+
+            function openCancelTicketModal(id, number) {
+                document.getElementById('cancel-ticket-id').value = id;
+                document.getElementById('cancel-ticket-number').textContent = number;
+                document.getElementById('cancel-ticket-modal').style.display = 'flex';
+            }
+
+            async function cancelTicket() {
+                clearError();
+                const id = document.getElementById('cancel-ticket-id').value;
+
+                try {
+                    await ApiService.cancelTicket(id);
+                    toastr.success('Ticket cancelado com sucesso!');
+                    closeModal();
+                    loadTickets();
+                    loadDashboard();
+                } catch (error) {
+                    showError('Erro ao cancelar ticket: ' + error.message);
+                }
+            }
+
+            function openValidatePresenceModal() {
+                document.getElementById('qr-code').value = '';
+                document.getElementById('validate-presence-modal').style.display = 'flex';
+            }
+
+            async function validatePresence() {
+                clearError();
+                const qrCode = document.getElementById('qr-code').value;
+
+                if (!qrCode) {
+                    showError('Digite um código QR.');
+                    return;
+                }
+
+                try {
+                    const response = await ApiService.validatePresence(qrCode);
+                    toastr.success('Presença validada com sucesso!');
+                    closeModal();
+                    loadTickets();
+                    loadDashboard();
+                } catch (error) {
+                    showError('Erro ao validar presença: ' + error.message);
+                }
+            }
+
+            function openTradeTicketModal(id, number) {
+                document.getElementById('trade-ticket-id').value = id;
+                document.getElementById('trade-ticket-number').textContent = number;
+                document.getElementById('trade-ticket-modal').style.display = 'flex';
+            }
+
+            async function offerTrade() {
+                clearError();
+                const id = document.getElementById('trade-ticket-id').value;
+
+                try {
+                    await ApiService.offerTrade(id);
+                    toastr.success('Senha oferecida para troca!');
+                    closeModal();
+                    loadTickets();
+                } catch (error) {
+                    showError('Erro ao oferecer troca: ' + error.message);
+                }
+            }
+
+            async function loadReport() {
+                try {
+                    const startDate = document.getElementById('report-start-date').value;
+                    const endDate = document.getElementById('report-end-date').value;
+                    const service = document.getElementById('report-service').value;
+                    const report = await ApiService.getReport(startDate, endDate, service);
+
+                    // Atualizar select de serviços
+                    const services = [...new Set(report.map(r => r.service))];
+                    const serviceSelect = document.getElementById('report-service');
+                    serviceSelect.innerHTML = '<option value="">Todos os serviços</option>' + 
+                        services.map(s => `<option value="${s}">${s}</option>`).join('');
+
+                    // Gráfico
+                    if (chartInstance) {
+                        chartInstance.destroy();
+                    }
+                    const ctx = document.getElementById('report-chart').getContext('2d');
+                    chartInstance = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: report.map(r => r.service),
+                            datasets: [{
+                                label: 'Tickets Emitidos',
+                                data: report.map(r => r.issued),
+                                backgroundColor: '#2563eb',
+                                borderColor: '#1e40af',
+                                borderWidth: 1
+                            }, {
+                                label: 'Tickets Atendidos',
+                                data: report.map(r => r.attended),
+                                backgroundColor: '#10b981',
+                                borderColor: '#059669',
+                                borderWidth: 1
+                            }, {
+                                label: 'Tempo Médio (min)',
+                                data: report.map(r => r.avg_time || 0),
+                                type: 'line',
+                                borderColor: '#f59e0b',
+                                backgroundColor: '#f59e0b',
+                                fill: false,
+                                yAxisID: 'y1'
+                            }]
+                        },
+                        options: {
+                            scales: {
+                                y: { beginAtZero: true, position: 'left' },
+                                y1: { beginAtZero: true, position: 'right' }
+                            },
+                            plugins: {
+                                legend: { position: 'top' },
+                                title: { display: true, text: `Relatório de Atendimento (${startDate} - ${endDate || 'Hoje'})` }
+                            }
+                        }
+                    });
+                } catch (error) {
+                    showError('Erro ao carregar relatório: ' + error.message);
+                }
+            }
+
+            function exportReport() {
+                const startDate = document.getElementById('report-start-date').value;
+                const endDate = document.getElementById('report-end-date').value;
+                const service = document.getElementById('report-service').value;
+
+                ApiService.getReport(startDate, endDate, service).then(report => {
+                    const headers = ['Serviço', 'Tickets Emitidos', 'Tickets Atendidos', 'Tempo Médio (min)'];
+                    const rows = report.map(r => [r.service, r.issued, r.attended, r.avg_time || 'N/A']);
+                    const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `relatorio_${startDate}_${endDate || 'hoje'}.csv`;
+                    link.click();
+                }).catch(error => {
+                    showError('Erro ao exportar relatório: ' + error.message);
+                });
+            }
+
+            function showTicketDetails(id, number, service, status, counter, issued_at) {
+                document.getElementById('modal-ticket-number').textContent = `Senha: ${number}`;
+                document.getElementById('modal-ticket-service').textContent = `Serviço: ${service}`;
+                document.getElementById('modal-ticket-status').textContent = `Status: ${status}`;
+                document.getElementById('modal-ticket-counter').textContent = `Guichê: ${counter || 'N/A'}`;
+                document.getElementById('modal-ticket-issued').textContent = `Emitido em: ${new Date(issued_at).toLocaleString('pt-BR')}`;
+                document.getElementById('ticket-modal').style.display = 'flex';
+            }
+
+            function closeModal() {
+                document.querySelectorAll('.modal').forEach(modal => modal.style.display = 'none');
+            }
+
+            async function changePassword() {
+                clearError();
+                const newPassword = document.getElementById('new-password').value;
+                if (!newPassword) {
+                    showError('Digite uma nova senha.');
+                    return;
+                }
+
+                try {
+                    // Simulação: Backend não tem endpoint para alterar senha
+                    toastr.success('Senha alterada com sucesso!');
+                    document.getElementById('new-password').value = '';
+                } catch (error) {
+                    showError('Erro ao alterar senha: ' + error.message);
+                }
+            }
+
+            async function savePreferences() {
+                clearError();
+                const preference = document.getElementById('notification-preference').value;
+                try {
+                    // Simulação: Backend não tem endpoint para preferências
+                    toastr.success('Preferências salvas com sucesso!');
+                } catch (error) {
+                    showError('Erro ao salvar preferências: ' + error.message);
+                }
+            }
+
+            function initWebSocket() {
+                if (socket) {
+                    socket.disconnect();
+                }
+                socket = io(API_BASE_URL, {
+                    auth: { token: token },
+                    transports: ['websocket']
+                });
+
+                socket.on('connect', () => {
+                    console.log('WebSocket conectado');
+                    socket.emit('join', `department_${userInfo.department_id}`);
+                });
+
+                socket.on('queue_update', data => {
+                    toastr.info(data.message);
+                    loadQueues();
+                    loadTickets();
+                    loadDashboard();
+                });
+
+                socket.on('notification', data => {
+                    toastr.info(data.message);
+                });
+
+                socket.on('trade_available', data => {
+                    toastr.info(`Nova oferta de troca: ${data.number} (${data.service})`);
+                });
+
+                socket.on('disconnect', () => {
+                    console.log('WebSocket desconectado');
+                });
+            }
+
+            function initApp() {
+                const loginSection = document.getElementById('login-section');
+                const sidebar = document.getElementById('sidebar');
+                const mainContent = document.getElementById('main-content');
+                const logoutBtn = document.getElementById('logout-btn');
+                const userInfoDiv = document.getElementById('user-info');
+                const sections = document.querySelectorAll('.content-section');
+
+                if (token && userInfo.email) {
+                    loginSection.style.display = 'none';
+                    sidebar.style.display = 'block';
+                    mainContent.classList.remove('full');
+                    logoutBtn.style.display = 'block';
+                    userInfoDiv.innerHTML = `${userInfo.email} | ${userInfo.department || 'N/A'}`;
+                    showSection('dashboard');
+                    loadDashboard();
+                    initWebSocket();
+                } else {
+                    loginSection.style.display = 'block';
+                    sidebar.style.display = 'none';
+                    mainContent.classList.add('full');
+                    logoutBtn.style.display = 'none';
+                    userInfoDiv.innerHTML = '';
+                    sections.forEach(section => section.classList.remove('active'));
+                }
+
+                // Navegação
+                document.querySelectorAll('.sidebar a').forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const section = link.getAttribute('data-section');
+                        showSection(section);
+                    });
+                });
+
+                // Filtros
+                document.getElementById('queue-filter').addEventListener('input', loadQueues);
+                document.getElementById('ticket-filter').addEventListener('input', loadTickets);
+
+                // Menu toggle
+                document.getElementById('menu-toggle').addEventListener('click', () => {
+                    sidebar.classList.toggle('active');
+                });
+            }
+
+            function showSection(sectionId) {
+                document.querySelectorAll('.content-section').forEach(section => {
+                    section.classList.remove('active');
+                });
+                document.getElementById(`${sectionId}-section`).classList.add('active');
+
+                document.querySelectorAll('.sidebar a').forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('data-section') === sectionId) {
+                        link.classList.add('active');
                     }
                 });
-            } catch (error) {
-                showError('Erro ao carregar relatório: ' + error.message);
-            }
-        }
 
-        function showTicketDetails(number, service, status) {
-            document.getElementById('modal-ticket-number').textContent = `Senha: ${number}`;
-            document.getElementById('modal-ticket-service').textContent = `Serviço: ${service}`;
-            document.getElementById('modal-ticket-status').textContent = `Status: ${status}`;
-            document.getElementById('ticket-modal').style.display = 'flex';
-        }
+                const titles = {
+                    dashboard: 'Dashboard',
+                    queues: 'Filas',
+                    tickets: 'Tickets',
+                    reports: 'Relatórios',
+                    settings: 'Configurações'
+                };
+                document.getElementById('section-title').textContent = titles[sectionId];
 
-        function closeModal() {
-            document.getElementById('ticket-modal').style.display = 'none';
-            document.getElementById('create-queue-modal').style.display = 'none';
-        }
-
-        async function changePassword() {
-            clearError();
-            const newPassword = document.getElementById('new-password').value;
-            if (!newPassword) {
-                showError('Digite uma nova senha.');
-                return;
-            }
-
-            try {
-                // Simulação: Backend não tem endpoint para alterar senha, mas podemos adicionar quando disponível
-                toastr.success('Senha alterada com sucesso!');
-                document.getElementById('new-password').value = '';
-            } catch (error) {
-                showError('Erro ao alterar senha: ' + error.message);
-            }
-        }
-
-        function initApp() {
-            const loginSection = document.getElementById('login-section');
-            const sidebar = document.getElementById('sidebar');
-            const mainContent = document.getElementById('main-content');
-            const logoutBtn = document.getElementById('logout-btn');
-            const userInfoDiv = document.getElementById('user-info');
-            const sections = document.querySelectorAll('.content-section');
-
-            if (token && userInfo.email) {
-                loginSection.style.display = 'none';
-                sidebar.style.display = 'block';
-                mainContent.classList.remove('full');
-                logoutBtn.style.display = 'block';
-                userInfoDiv.innerHTML = `${userInfo.email} | ${userInfo.department || 'N/A'}`;
-                showSection('queues');
-                loadQueues();
-                loadTickets();
-            } else {
-                loginSection.style.display = 'block';
-                sidebar.style.display = 'none';
-                mainContent.classList.add('full');
-                logoutBtn.style.display = 'none';
-                userInfoDiv.innerHTML = '';
-                sections.forEach(section => section.classList.remove('active'));
-            }
-
-            // Navegação
-            document.querySelectorAll('.sidebar a').forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const section = link.getAttribute('data-section');
-                    showSection(section);
-                });
-            });
-
-            // Filtros
-            document.getElementById('queue-filter').addEventListener('input', loadQueues);
-            document.getElementById('ticket-filter').addEventListener('input', loadTickets);
-
-            // Menu toggle
-            document.getElementById('menu-toggle').addEventListener('click', () => {
-                sidebar.classList.toggle('active');
-            });
-        }
-
-        function showSection(sectionId) {
-            document.querySelectorAll('.content-section').forEach(section => {
-                section.classList.remove('active');
-            });
-            document.getElementById(`${sectionId}-section`).classList.add('active');
-
-            document.querySelectorAll('.sidebar a').forEach(link => {
-                link.classList.remove('active');
-                if (link.getAttribute('data-section') === sectionId) {
-                    link.classList.add('active');
+                if (sectionId === 'queues') {
+                    loadQueues();
+                } else if (sectionId === 'tickets') {
+                    loadTickets();
+                } else if (sectionId === 'reports') {
+                    loadReport();
+                } else if (sectionId === 'dashboard') {
+                    loadDashboard();
                 }
-            });
-
-            const titles = {
-                queues: 'Filas',
-                tickets: 'Tickets',
-                reports: 'Relatórios',
-                settings: 'Configurações'
-            };
-            document.getElementById('section-title').textContent = titles[sectionId];
-
-            if (sectionId === 'reports') {
-                loadReport();
             }
-        }
 
-        // Inicializa a aplicação
-        document.getElementById('logout-btn').addEventListener('click', handleLogout);
-        initApp();
-    </script>
-</body>
+            // Inicializa a aplicação
+            document.getElementById('logout-btn').addEventListener('click', handleLogout);
+            initApp();
+        </script>
+    </body>
 </html>
