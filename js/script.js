@@ -87,7 +87,7 @@ class ApiService {
 
 // Funções de manipulação da interface
 function showLoader() {
-    document.getElementById('loader').style.display = 'block';
+    document.getElementById('loader').style.display = 'flex';
 }
 
 function hideLoader() {
@@ -148,13 +148,9 @@ async function loadDashboard() {
             ApiService.getReport(today)
         ]);
 
-        // Filas ativas: filas com active_tickets < daily_limit
         const activeQueues = queues.filter(q => q.active_tickets < q.daily_limit).length;
-        // Tickets pendentes: status 'Pendente' ou 'Chamado'
         const pendingTickets = tickets.filter(t => t.status === 'Pendente' || t.status === 'Chamado').length;
-        // Tickets atendidos: status 'attended'
         const attendedTickets = tickets.filter(t => t.status === 'attended').length;
-        // Tempo médio: média dos avg_time do relatório
         const avgTimes = report.filter(r => r.avg_time).map(r => r.avg_time);
         const avgWaitTime = avgTimes.length ? Math.round(avgTimes.reduce((a, b) => a + b, 0) / avgTimes.length) : 0;
 
@@ -163,7 +159,6 @@ async function loadDashboard() {
         document.getElementById('attended-tickets').textContent = attendedTickets;
         document.getElementById('avg-wait-time').textContent = `${avgWaitTime} min`;
 
-        // Gráfico
         if (dashboardChart) {
             dashboardChart.destroy();
         }
@@ -175,14 +170,14 @@ async function loadDashboard() {
                 datasets: [{
                     label: 'Tickets Emitidos',
                     data: report.map(r => r.issued),
-                    backgroundColor: '#2563eb',
-                    borderColor: '#1e40af',
+                    backgroundColor: '#1890ff',
+                    borderColor: '#40a9ff',
                     borderWidth: 1
                 }, {
                     label: 'Tickets Atendidos',
                     data: report.map(r => r.attended),
-                    backgroundColor: '#10b981',
-                    borderColor: '#059669',
+                    backgroundColor: '#52c41a',
+                    borderColor: '#73d13d',
                     borderWidth: 1
                 }]
             },
@@ -224,7 +219,7 @@ async function loadQueues() {
                     <td>${queue.active_tickets}/${queue.daily_limit}</td>
                     <td><span class="badge ${queue.status === 'Aberto' ? 'open' : 'full'}">${queue.status}</span></td>
                     <td>
-                        <button onclick="callNextTicket('${queue.id}')"><i class="fas fa-phone"></i> Chamar</button>
+                        <button onclick="callNextTicket('${queue.id}')">Chamar</button>
                     </td>
                 `;
                 queueContent.appendChild(row);
@@ -296,7 +291,6 @@ async function loadReport() {
         const date = document.getElementById('report-date').value || new Date().toISOString().split('T')[0];
         const report = await ApiService.getReport(date);
 
-        // Gráfico
         if (chartInstance) {
             chartInstance.destroy();
         }
@@ -308,14 +302,14 @@ async function loadReport() {
                 datasets: [{
                     label: 'Tickets Emitidos',
                     data: report.map(r => r.issued),
-                    backgroundColor: '#2563eb',
-                    borderColor: '#1e40af',
+                    backgroundColor: '#1890ff',
+                    borderColor: '#40a9ff',
                     borderWidth: 1
                 }, {
                     label: 'Tickets Atendidos',
                     data: report.map(r => r.attended),
-                    backgroundColor: '#10b981',
-                    borderColor: '#059669',
+                    backgroundColor: '#52c41a',
+                    borderColor: '#73d13d',
                     borderWidth: 1
                 }]
             },
@@ -403,8 +397,8 @@ function initApp() {
         sections.forEach(section => section.classList.remove('active'));
     }
 
-    // Navegação
-    document.querySelectorAll('.sidebar a').forEach(link => {
+    // Navegação Sidebar
+    document.querySelectorAll('.sidebar .menu a').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             const section = link.getAttribute('data-section');
@@ -415,11 +409,6 @@ function initApp() {
     // Filtros
     document.getElementById('queue-filter').addEventListener('input', loadQueues);
     document.getElementById('ticket-filter').addEventListener('input', loadTickets);
-    
-    // Menu toggle
-    document.getElementById('menu-toggle').addEventListener('click', () => {
-        sidebar.classList.toggle('active');
-    });
 }
 
 function showSection(sectionId) {
@@ -428,7 +417,8 @@ function showSection(sectionId) {
     });
     document.getElementById(`${sectionId}-section`).classList.add('active');
 
-    document.querySelectorAll('.sidebar a').forEach(link => {
+    // Atualizar links da sidebar
+    document.querySelectorAll('.sidebar .menu a').forEach(link => {
         link.classList.remove('active');
         if (link.getAttribute('data-section') === sectionId) {
             link.classList.add('active');
