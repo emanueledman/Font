@@ -420,10 +420,19 @@ async function generateReport() {
 
 // Função para abrir modal de chamar próxima senha
 function openCallNextModal(queueId, service) {
+    // Verifica autenticação
     if (!token || !userInfo.email) {
         logout('Acesso não autorizado. Por favor, faça login.');
         return;
     }
+
+    // Verifica se está na tela de login
+    const loginScreen = document.getElementById('login-screen');
+    if (!loginScreen.classList.contains('hidden')) {
+        console.warn('[Modal] Tentativa de abrir modal na tela de login. Ignorando.');
+        return;
+    }
+
     console.log('[Modal] Abrindo modal para:', { queueId, service });
     const modal = document.getElementById('call-next-modal');
     const serviceText = document.getElementById('call-next-service');
@@ -495,7 +504,12 @@ function openCallNextModal(queueId, service) {
 function closeCallNextModal() {
     console.log('[Modal] Fechando modal');
     const modal = document.getElementById('call-next-modal');
-    if (modal) modal.classList.add('hidden');
+    if (modal) {
+        modal.classList.add('hidden');
+        console.log('[Modal] Modal fechado com sucesso');
+    } else {
+        console.error('[Modal] Modal não encontrado ao tentar fechar');
+    }
 }
 
 // Função para login
@@ -551,6 +565,9 @@ function logout(message = null) {
     localStorage.removeItem('userInfo');
     if (socket) socket.disconnect();
     stopPolling();
+    // Garante que o modal seja fechado ao fazer logout
+    const modal = document.getElementById('call-next-modal');
+    if (modal) modal.classList.add('hidden');
     initApp(message);
 }
 
@@ -595,6 +612,13 @@ async function initApp(message = null) {
     const userName = document.getElementById('user-name');
     const userDepartment = document.getElementById('user-department');
     const messageDiv = document.getElementById('login-message');
+    const modal = document.getElementById('call-next-modal');
+
+    // Garante que o modal esteja escondido ao carregar a página
+    if (modal) {
+        modal.classList.add('hidden');
+        console.log('[App] Modal escondido durante inicialização');
+    }
 
     if (message && messageDiv) {
         messageDiv.textContent = message;
@@ -641,13 +665,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (toggleSidebarButton) toggleSidebarButton.addEventListener('click', toggleSidebar);
 
     const closeModalButton = document.getElementById('close-call-modal');
-    if (closeModalButton) closeModalButton.addEventListener('click', closeCallNextModal);
+    if (closeModalButton) {
+        closeModalButton.addEventListener('click', closeCallNextModal);
+        console.log('[Event] Evento de fechar modal configurado');
+    }
 
     const cancelModalButton = document.getElementById('cancel-call-next');
-    if (cancelModalButton) cancelModalButton.addEventListener('click', closeCallNextModal);
+    if (cancelModalButton) {
+        cancelModalButton.addEventListener('click', closeCallNextModal);
+        console.log('[Event] Evento de cancelar modal configurado');
+    }
 
     const finishModalButton = document.getElementById('finish-call-next');
-    if (finishModalButton) finishModalButton.addEventListener('click', closeCallNextModal);
+    if (finishModalButton) {
+        finishModalButton.addEventListener('click', closeCallNextModal);
+        console.log('[Event] Evento de finalizar modal configurado');
+    }
 
     const refreshButton = document.getElementById('refresh-btn');
     if (refreshButton) refreshButton.addEventListener('click', () => {
