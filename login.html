@@ -3,122 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Fila Vacinação</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background: #f0f2f5;
-        }
-        .login-box {
-            background: #fff;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-        }
-        h2 {
-            margin-bottom: 20px;
-            color: #1a73e8;
-        }
-        input {
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            background: #1a73e8;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        button:hover:not(:disabled) {
-            background: #1557b0;
-        }
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        .error {
-            color: #d93025;
-            background: #fce8e6;
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
-            display: none;
-        }
-    </style>
+    <title>Fila Facilita - Login</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
 </head>
 <body>
-    <div class="login-box">
-        <h2>Login</h2>
-        <div id="error" class="error"></div>
-        <form id="login-form">
-            <input type="email" id="email" placeholder="Email" required>
-            <input type="password" id="password" placeholder="Senha" required>
-            <button type="submit">Entrar</button>
-        </form>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <i class="fas fa-ticket-alt"></i>
+                <h1>Fila Facilita</h1>
+                <p>Painel Administrativo</p>
+            </div>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" id="email" placeholder="Seu email" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="password">Senha</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="password" placeholder="Sua senha" required>
+                    </div>
+                </div>
+                <div id="error-message" class="error-message"></div>
+                <button type="submit" class="btn primary-btn">Entrar</button>
+            </form>
+        </div>
     </div>
-    <script>
-        const API_BASE_URL = 'https://fila-facilita2-0.onrender.com';
-
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value.trim();
-            const errorDiv = document.getElementById('error');
-            const button = e.target.querySelector('button');
-
-            errorDiv.style.display = 'none';
-            button.disabled = true;
-            button.textContent = 'Entrando...';
-
-            try {
-                console.log('Enviando login:', { email });
-                const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                });
-
-                const data = await response.json();
-                if (!response.ok) {
-                    throw new Error(data.error || 'Falha no login');
-                }
-
-                console.log('Resposta do login:', data);
-                localStorage.setItem('token', data.token);
-                localStorage.setItem('userInfo', JSON.stringify({
-                    email: data.email,
-                    department: data.department,
-                    user_id: data.user_id
-                }));
-
-                window.location.href = 'index.html';
-            } catch (error) {
-                console.error('Erro no login:', error.message);
-                errorDiv.textContent = error.message.includes('Credenciais') ? 'Email ou senha incorretos' : error.message;
-                errorDiv.style.display = 'block';
-                document.getElementById('password').value = '';
-            } finally {
-                button.disabled = false;
-                button.textContent = 'Entrar';
-            }
-        });
-    </script>
+    
+    <script src="admin.js"></script>
 </body>
 </html>

@@ -3,487 +3,232 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão de Filas</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background: #f0f2f5;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-        h1, h2 {
-            color: #1a73e8;
-            margin-bottom: 15px;
-        }
-        .section {
-            margin-bottom: 20px;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 5px;
-        }
-        p {
-            margin: 5px 0;
-            color: #333;
-        }
-        .ticket {
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            background: #fff;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-            border-left: 5px solid #e0e0e0;
-            transition: all 0.2s ease;
-        }
-        .ticket:hover {
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-        .ticket-pendente { border-left-color: #1a73e8; }
-        .ticket-chamado { border-left-color: #f4b400; }
-        .ticket-atendido { border-left-color: #0d652d; }
-        .ticket-cancelado { border-left-color: #d93025; }
-        
-        .status-pendente { color: #1a73e8; font-weight: bold; }
-        .status-chamado { color: #f4b400; font-weight: bold; }
-        .status-atendido { color: #0d652d; font-weight: bold; }
-        .status-cancelado { color: #d93025; font-weight: bold; }
-        
-        .error {
-            color: #d93025;
-            background: #fce8e6;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-            display: none;
-        }
-        .success {
-            color: #0d652d;
-            background: #e6f4ea;
-        }
-        .loading {
-            text-align: center;
-            padding: 15px;
-            color: #555;
-            display: none;
-        }
-        button {
-            padding: 10px 20px;
-            background: #1a73e8;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        button:hover:not(:disabled) {
-            background: #1557b0;
-        }
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        .ticket-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 10px;
-        }
-        .btn-secondary {
-            background: #f8f9fa;
-            color: #333;
-            border: 1px solid #ddd;
-        }
-        .btn-secondary:hover {
-            background: #f1f3f4;
-        }
-        .ticket-time {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-        }
-        .tabs {
-            display: flex;
-            margin-bottom: 15px;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        .tab {
-            padding: 10px 20px;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-        }
-        .tab.active {
-            font-weight: bold;
-            border-bottom-color: #1a73e8;
-            color: #1a73e8;
-        }
-        .filter-bar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 15px;
-        }
-        .search-input {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            flex-grow: 1;
-            margin-right: 10px;
-        }
-        .refresh-button {
-            background: #f8f9fa;
-            color: #333;
-            border: 1px solid #ddd;
-            padding: 8px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .refresh-button:hover {
-            background: #f1f3f4;
-        }
-        @media (max-width: 600px) {
-            .container {
-                padding: 15px;
-            }
-            .tab {
-                padding: 8px 12px;
-                font-size: 14px;
-            }
-        }
-    </style>
+    <title>Fila Facilita - Painel Administrativo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <meta name="referrer" content="strict-origin-when-cross-origin">
 </head>
 <body>
-    <div class="container">
-        <h1>Gestão de Filas</h1>
-        <div id="error" class="error"></div>
-        <div id="loading" class="loading">Carregando...</div>
-
-        <div class="section" id="user-section">
-            <h2>Gestor</h2>
-            <p id="user-email">Email: Carregando...</p>
-            <p id="user-department">Departamento: Carregando...</p>
-            <button id="logout">Sair</button>
-        </div>
-
-        <div class="section" id="queue-section">
-            <h2>Fila</h2>
-            <p id="queue-service">Serviço: Carregando...</p>
-            <p id="queue-status">Status: Carregando...</p>
-            <p id="queue-tickets">Tickets Ativos: Carregando...</p>
-            <button id="call-next" disabled>Chamar Próximo</button>
-        </div>
-
-        <div class="section" id="tickets-section">
-            <h2>Tickets</h2>
-            <div class="tabs">
-                <div class="tab active" data-filter="all">Todos</div>
-                <div class="tab" data-filter="pendente">Pendentes</div>
-                <div class="tab" data-filter="chamado">Chamados</div>
-                <div class="tab" data-filter="atendido">Atendidos</div>
+    <div class="admin-panel">
+        <div class="sidebar">
+            <div class="brand">
+                <i class="fas fa-ticket-alt"></i>
+                <h2>Fila Facilita</h2>
             </div>
-            <div class="filter-bar">
-                <input type="text" class="search-input" id="search-ticket" placeholder="Buscar ticket...">
-                <button class="refresh-button" id="refresh-tickets">
-                    Atualizar
-                </button>
+            <div class="user-info">
+                <div class="avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="user-details">
+                    <h3 id="user-name">Nome do Usuário</h3>
+                    <p id="user-department">Departamento</p>
+                </div>
             </div>
-            <div id="tickets-container"></div>
+            <nav>
+                <a href="#" data-section="dashboard-section" class="active">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                <a href="#" data-section="queues-section">
+                    <i class="fas fa-list-ol"></i> Filas
+                </a>
+                <a href="#" data-section="tickets-section">
+                    <i class="fas fa-ticket-alt"></i> Tickets
+                </a>
+                <a href="#" data-section="reports-section">
+                    <i class="fas fa-chart-bar"></i> Relatórios
+                </a>
+                <a href="#" data-section="settings-section">
+                    <i class="fas fa-cog"></i> Configurações
+                </a>
+                <a href="#" id="logout" class="logout">
+                    <i class="fas fa-sign-out-alt"></i> Sair
+                </a>
+            </nav>
+        </div>
+        <div class="main-content">
+            <header>
+                <h1 id="page-title">Dashboard</h1>
+                <div class="header-actions">
+                    <div class="date-time">
+                        <i class="far fa-calendar-alt"></i>
+                        <span id="current-date">13 de abril, 2025</span>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Dashboard Section -->
+            <section id="dashboard-section" class="section active">
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <div class="stat-icon blue">
+                            <i class="fas fa-list-ol"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="active-queues">0</h3>
+                            <p>Filas Ativas</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon orange">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="pending-tickets">0</h3>
+                            <p>Tickets Pendentes</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="avg-wait-time">0 min</h3>
+                            <p>Tempo Médio de Espera</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon purple">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="attended-tickets">0</h3>
+                            <p>Atendimentos Hoje</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="recent-activity">
+                    <h2>Visão Geral das Filas</h2>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Serviço</th>
+                                    <th>Tickets Ativos</th>
+                                    <th>Ticket Atual</th>
+                                    <th>Status</th>
+                                    <th>Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="queues-table">
+                                <!-- Dados serão carregados dinamicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Queues Section -->
+            <section id="queues-section" class="section">
+                <div class="section-header">
+                    <h2>Gerenciamento de Filas</h2>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Serviço</th>
+                                <th>Tickets Ativos</th>
+                                <th>Ticket Atual</th>
+                                <th>Status</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="queues-table-full">
+                            <!-- Dados serão carregados dinamicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            
+            <!-- Tickets Section -->
+            <section id="tickets-section" class="section">
+                <div class="section-header">
+                    <h2>Gerenciamento de Tickets</h2>
+                    <div class="filter-container">
+                        <label for="ticket-status-filter">Filtrar por Status:</label>
+                        <select id="ticket-status-filter">
+                            <option value="">Todos</option>
+                            <option value="Pendente">Pendente</option>
+                            <option value="Chamado">Chamado</option>
+                            <option value="attended">Atendido</option>
+                            <option value="Cancelado">Cancelado</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Ticket</th>
+                                <th>Serviço</th>
+                                <th>Status</th>
+                                <th>Tempo de Espera</th>
+                                <th>Guichê</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tickets-table">
+                            <!-- Dados serão carregados dinamicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            
+            <!-- Reports Section -->
+            <section id="reports-section" class="section">
+                <div class="section-header">
+                    <h2>Relatórios e Estatísticas</h2>
+                </div>
+                <div class="report-container">
+                    <div class="report-filters">
+                        <form id="report-form">
+                            <div class="form-group">
+                                <label for="report-date">Data:</label>
+                                <input type="date" id="report-date" value="">
+                            </div>
+                            <div class="form-group">
+                                <label for="report-type">Tipo de Relatório:</label>
+                                <select id="report-type">
+                                    <option value="status">Tickets por Status</option>
+                                    <option value="wait-time">Tempo Médio de Espera</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn primary-btn">Gerar Relatório</button>
+                        </form>
+                    </div>
+                    <div class="report-chart-container">
+                        <canvas id="report-chart"></canvas>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Settings Section -->
+            <section id="settings-section" class="section">
+                <div class="section-header">
+                    <h2>Configurações da Conta</h2>
+                </div>
+                <div class="settings-container">
+                    <form id="settings-form">
+                        <div class="form-group">
+                            <label for="settings-email">Email:</label>
+                            <input type="email" id="settings-email" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label for="settings-password">Nova Senha:</label>
+                            <input type="password" id="settings-password">
+                        </div>
+                        <div class="form-group">
+                            <label for="settings-confirm-password">Confirmar Senha:</label>
+                            <input type="password" id="settings-confirm-password">
+                        </div>
+                        <button type="submit" class="btn primary-btn">Atualizar Senha</button>
+                    </form>
+                </div>
+            </section>
         </div>
     </div>
-    <script>
-        const API_BASE_URL = 'https://fila-facilita2-0.onrender.com';
-
-        class FilaApp {
-            constructor() {
-                this.token = localStorage.getItem('token');
-                this.user = JSON.parse(localStorage.getItem('userInfo')) || {};
-                this.queueId = null;
-                this.allTickets = [];
-                this.activeFilter = 'all';
-                this.init();
-            }
-
-            async init() {
-                console.log('Inicializando app...');
-                console.log('Token:', this.token ? 'Presente' : 'Ausente');
-                console.log('Usuário:', this.user);
-
-                if (!this.token || !this.user.email || !this.user.user_id) {
-                    console.error('Usuário não autenticado');
-                    this.showError('Faça login para continuar');
-                    setTimeout(() => window.location.href = 'login.html', 2000);
-                    return;
-                }
-
-                this.setupListeners();
-                await this.loadData();
-            }
-
-            setupListeners() {
-                console.log('Configurando listeners...');
-                document.getElementById('logout').addEventListener('click', () => {
-                    console.log('Logout acionado');
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('userInfo');
-                    window.location.href = 'login.html';
-                });
-
-                document.getElementById('call-next').addEventListener('click', async () => {
-                    console.log('Chamar próximo clicado, queueId:', this.queueId);
-                    if (!this.queueId) {
-                        this.showError('Nenhuma fila disponível');
-                        return;
-                    }
-                    try {
-                        document.getElementById('call-next').disabled = true;
-                        const data = await this.fetchData(`/api/admin/queue/${this.queueId}/call`, 'POST');
-                        console.log('Resposta de chamar próximo:', data);
-                        this.showSuccess(`Ticket ${data.ticket_number} chamado (guichê ${data.counter})`);
-                        await this.loadData();
-                    } catch (error) {
-                        console.error('Erro ao chamar próximo:', error);
-                        this.showError('Erro ao chamar ticket');
-                    } finally {
-                        document.getElementById('call-next').disabled = false;
-                    }
-                });
-
-                // Configurar filtros de abas
-                document.querySelectorAll('.tab').forEach(tab => {
-                    tab.addEventListener('click', () => {
-                        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                        tab.classList.add('active');
-                        this.activeFilter = tab.dataset.filter;
-                        this.filterTickets();
-                    });
-                });
-
-                // Configurar busca
-                document.getElementById('search-ticket').addEventListener('input', () => {
-                    this.filterTickets();
-                });
-
-                // Botão de atualizar
-                document.getElementById('refresh-tickets').addEventListener('click', async () => {
-                    await this.loadTickets();
-                });
-            }
-
-            async fetchData(endpoint, method = 'GET', body = null) {
-                const headers = {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.token}`
-                };
-                const config = { method, headers };
-                if (body) config.body = JSON.stringify(body);
-
-                console.log(`Requisição: ${API_BASE_URL}${endpoint}`, { method, headers: { ...headers, Authorization: '[PROTECTED]' }, body });
-
-                const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-                const data = await response.json();
-
-                if (!response.ok) {
-                    console.error(`Erro ${response.status}:`, data);
-                    throw new Error(data.error || 'Erro na requisição');
-                }
-
-                return data;
-            }
-
-            async loadData() {
-                this.showLoading(true);
-                try {
-                    console.log('Carregando dados do usuário:', this.user);
-                    document.getElementById('user-email').textContent = `Email: ${this.user.email || 'N/A'}`;
-                    document.getElementById('user-department').textContent = `Departamento: ${this.user.department || 'N/A'}`;
-
-                    console.log('Buscando filas...');
-                    const queues = await this.fetchData('/api/admin/queues');
-                    console.log('Resposta /api/admin/queues:', queues);
-
-                    const queueService = document.getElementById('queue-service');
-                    const queueStatus = document.getElementById('queue-status');
-                    const queueTickets = document.getElementById('queue-tickets');
-                    const callNextBtn = document.getElementById('call-next');
-
-                    if (!queues || queues.length === 0) {
-                        console.warn('Nenhuma fila encontrada');
-                        queueService.textContent = 'Serviço: Nenhuma fila';
-                        queueStatus.textContent = 'Status: N/A';
-                        queueTickets.textContent = 'Tickets Ativos: 0';
-                        callNextBtn.disabled = true;
-                    } else {
-                        const queue = queues[0];
-                        this.queueId = queue.id;
-                        queueService.textContent = `Serviço: ${queue.service || 'N/A'}`;
-                        queueStatus.textContent = `Status: ${queue.status || 'N/A'}`;
-                        queueTickets.textContent = `Tickets Ativos: ${queue.active_tickets || 0}`;
-                        callNextBtn.disabled = queue.status !== 'Aberto' || queue.active_tickets <= 0;
-                        console.log('Fila carregada:', queue);
-                    }
-
-                    await this.loadTickets();
-                } catch (error) {
-                    console.error('Erro ao carregar dados:', error);
-                    this.showError('Erro ao carregar informações');
-                } finally {
-                    this.showLoading(false);
-                }
-            }
-
-            async loadTickets() {
-                this.showLoading(true);
-                try {
-                    console.log('Buscando tickets...');
-                    const tickets = await this.fetchData('/api/tickets/admin');
-                    console.log('Resposta /api/tickets/admin:', tickets);
-                    this.allTickets = tickets || [];
-                    this.filterTickets();
-                } catch (error) {
-                    console.error('Erro ao carregar tickets:', error);
-                    this.showError('Erro ao carregar tickets');
-                } finally {
-                    this.showLoading(false);
-                }
-            }
-
-            filterTickets() {
-                const searchTerm = document.getElementById('search-ticket').value.toLowerCase();
-                
-                // Filtrar por status e busca
-                let filteredTickets = this.allTickets.filter(ticket => {
-                    // Filtro por status
-                    if (this.activeFilter !== 'all' && ticket.status.toLowerCase() !== this.activeFilter) {
-                        return false;
-                    }
-                    
-                    // Filtro por busca
-                    if (searchTerm) {
-                        const ticketStr = (ticket.number || '').toLowerCase();
-                        const serviceStr = (ticket.service || '').toLowerCase();
-                        return ticketStr.includes(searchTerm) || serviceStr.includes(searchTerm);
-                    }
-                    
-                    return true;
-                });
-                
-                this.renderTickets(filteredTickets);
-            }
-
-            renderTickets(tickets) {
-                const container = document.getElementById('tickets-container');
-                container.innerHTML = '';
-
-                if (!tickets || tickets.length === 0) {
-                    console.warn('Nenhum ticket encontrado');
-                    container.innerHTML = '<p>Nenhum ticket disponível</p>';
-                    return;
-                }
-
-                tickets.forEach(ticket => {
-                    console.log('Renderizando ticket:', ticket);
-                    const status = (ticket.status || '').toLowerCase();
-                    const ticketDiv = document.createElement('div');
-                    ticketDiv.className = `ticket ticket-${status}`;
-                    
-                    // Formatar data e hora
-                    let issuedTime = 'N/A';
-                    if (ticket.issued_at) {
-                        const date = new Date(ticket.issued_at);
-                        issuedTime = `${date.toLocaleDateString()} às ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
-                    }
-                    
-                    let attendedTime = '';
-                    if (ticket.attended_at) {
-                        const date = new Date(ticket.attended_at);
-                        attendedTime = `<p class="ticket-time"><strong>Atendido:</strong> ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>`;
-                    }
-                    
-                    ticketDiv.innerHTML = `
-                        <p><strong>Ticket:</strong> ${ticket.number || 'N/A'}</p>
-                        <p><strong>Serviço:</strong> ${ticket.service || 'N/A'}</p>
-                        <p><strong>Status:</strong> <span class="status-${status}">${ticket.status || 'N/A'}</span></p>
-                        <p><strong>Guichê:</strong> ${ticket.counter || 'N/A'}</p>
-                        <p class="ticket-time"><strong>Emitido:</strong> ${issuedTime}</p>
-                        ${attendedTime}
-                    `;
-                    
-                    // Adicionar ações conforme o status
-                    if (status === 'pendente') {
-                        const actionsDiv = document.createElement('div');
-                        actionsDiv.className = 'ticket-actions';
-                        actionsDiv.innerHTML = `
-                            <button class="btn-call" data-id="${ticket.id}">Chamar</button>
-                            <button class="btn-secondary btn-cancel" data-id="${ticket.id}">Cancelar</button>
-                        `;
-                        ticketDiv.appendChild(actionsDiv);
-                        
-                        // Adicionar eventos aos botões
-                        setTimeout(() => {
-                            const btnCall = actionsDiv.querySelector('.btn-call');
-                            btnCall.addEventListener('click', () => this.callTicket(ticket.id));
-                            
-                            const btnCancel = actionsDiv.querySelector('.btn-cancel');
-                            btnCancel.addEventListener('click', () => this.cancelTicket(ticket.id));
-                        }, 0);
-                    }
-                    
-                    container.appendChild(ticketDiv);
-                });
-
-                console.log(`Total de tickets renderizados: ${tickets.length}`);
-            }
-            
-            async callTicket(ticketId) {
-                console.log(`Chamando ticket: ${ticketId}`);
-                // Implementação da chamada específica por ID
-                // Aqui você precisaria implementar a rota no backend e fazer a chamada
-                this.showError('Funcionalidade "Chamar ticket específico" ainda não implementada');
-                // await this.loadData(); // Recarrega dados quando implementado
-            }
-            
-            async cancelTicket(ticketId) {
-                console.log(`Cancelando ticket: ${ticketId}`);
-                // Implementação do cancelamento
-                // Aqui você precisaria implementar a rota no backend e fazer a chamada
-                this.showError('Funcionalidade "Cancelar ticket" ainda não implementada');
-                // await this.loadData(); // Recarrega dados quando implementado
-            }
-
-            showError(message) {
-                console.log('Exibindo erro:', message);
-                const errorDiv = document.getElementById('error');
-                errorDiv.textContent = message;
-                errorDiv.className = 'error';
-                errorDiv.style.display = 'block';
-                setTimeout(() => errorDiv.style.display = 'none', 5000);
-            }
-
-            showSuccess(message) {
-                console.log('Exibindo sucesso:', message);
-                const errorDiv = document.getElementById('error');
-                errorDiv.textContent = message;
-                errorDiv.className = 'error success';
-                errorDiv.style.display = 'block';
-                setTimeout(() => {
-                    errorDiv.style.display = 'none';
-                    errorDiv.className = 'error';
-                }, 3000);
-            }
-
-            showLoading(show) {
-                console.log('Loading:', show);
-                document.getElementById('loading').style.display = show ? 'block' : 'none';
-            }
-        }
-
-        console.log('Carregando app...');
-        new FilaApp();
-    </script>
+    
+    <script src="admin.js"></script>
 </body>
 </html>
