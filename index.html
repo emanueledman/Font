@@ -4,105 +4,356 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão de Filas - Facilita 2.0</title>
-    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
     <style>
-        body {
-            font-family: Arial, sans-serif;
+        * {
+            box-sizing: border-box;
             margin: 0;
-            padding: 20px;
-            background-color: #f4f4f4;
+            padding: 0;
         }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #e0eafc, #cfdef3);
+            min-height: 100vh;
             padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .navbar {
+            width: 100%;
+            max-width: 1200px;
+            background: #ffffff;
+            padding: 15px 20px;
             border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        h1, h2 {
-            color: #333;
-        }
-        .queue-list, .ticket-list {
-            margin-top: 20px;
-        }
-        .queue-item, .ticket-item {
-            padding: 10px;
-            border-bottom: 1px solid #ddd;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 20px;
         }
-        .queue-item button, .ticket-item button {
-            padding: 8px 12px;
-            background-color: #007bff;
+
+        .navbar h1 {
+            color: #1e3a8a;
+            font-size: 1.8rem;
+        }
+
+        .navbar button {
+            padding: 10px 20px;
+            background: #dc2626;
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 5px;
             cursor: pointer;
+            transition: background 0.3s;
         }
-        .queue-item button:hover, .ticket-item button:hover {
-            background-color: #0056b3;
+
+        .navbar button:hover {
+            background: #b91c1c;
         }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .login-form {
+            max-width: 400px;
+            margin: 0 auto;
+            display: none;
+        }
+
+        .login-form h2 {
+            color: #1e3a8a;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .login-form input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #d1d5db;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        .login-form button {
+            width: 100%;
+            padding: 12px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .login-form button:hover {
+            background: #1e40af;
+        }
+
+        .queue-list, .ticket-list {
+            margin-top: 30px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-header h2 {
+            color: #1e3a8a;
+        }
+
+        .section-header .controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .section-header input {
+            padding: 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 5px;
+        }
+
+        .section-header button {
+            padding: 8px 15px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .section-header button:hover {
+            background: #059669;
+        }
+
+        .card {
+            background: #f9fafb;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .card span {
+            font-size: 1rem;
+            color: #374151;
+        }
+
+        .card button {
+            padding: 8px 15px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .card button:hover {
+            background: #1e40af;
+        }
+
+        .card i {
+            margin-right: 5px;
+        }
+
         .error {
-            color: red;
+            color: #dc2626;
+            text-align: center;
+            margin-top: 20px;
+            font-weight: 500;
+        }
+
+        .loader {
+            display: none;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #2563eb;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .modal-content h3 {
+            color: #1e3a8a;
+            margin-bottom: 15px;
+        }
+
+        .modal-content p {
+            margin: 10px 0;
+        }
+
+        .modal-content button {
+            padding: 10px 20px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
             margin-top: 10px;
         }
-        .login-form {
-            display: none;
+
+        .modal-content button:hover {
+            background: #1e40af;
+        }
+
+        .report-section {
+            margin-top: 30px;
+        }
+
+        .report-section canvas {
+            max-width: 100%;
             margin-top: 20px;
         }
-        .login-form input {
-            padding: 8px;
-            margin: 5px 0;
-            width: 100%;
-            box-sizing: border-box;
-        }
-        .login-form button {
-            padding: 10px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .login-form button:hover {
-            background-color: #218838;
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .navbar h1 {
+                font-size: 1.5rem;
+            }
+
+            .card {
+                flex-direction: column;
+                gap: 10px;
+                align-items: flex-start;
+            }
+
+            .card button {
+                width: 100%;
+                text-align: center;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="navbar">
         <h1>Gestão de Filas - Facilita 2.0</h1>
         <div id="user-info"></div>
         <button id="logout-btn" style="display: none;">Sair</button>
-        
+    </div>
+
+    <div class="container">
+        <div class="loader" id="loader"></div>
+
         <div class="login-form" id="login-form">
             <h2>Login</h2>
-            <input type="email" id="email" placeholder="Email" required>
-            <input type="password" id="password" placeholder="Senha" required>
+            <input type="email" id="email" placeholder="Email" required aria-label="Email">
+            <input type="password" id="password" placeholder="Senha" required aria-label="Senha">
             <button onclick="handleLogin()">Entrar</button>
         </div>
 
         <div class="queue-list" id="queue-list">
-            <h2>Filas do Seu Departamento</h2>
-            <!-- Filas serão inseridas aqui -->
+            <div class="section-header">
+                <h2>Filas do Seu Departamento</h2>
+                <div class="controls">
+                    <input type="text" id="queue-filter" placeholder="Filtrar por serviço..." aria-label="Filtrar filas">
+                    <button onclick="loadQueues()"><i class="fas fa-sync"></i> Atualizar</button>
+                </div>
+            </div>
+            <div id="queue-content"></div>
         </div>
 
         <div class="ticket-list" id="ticket-list">
-            <h2>Tickets Ativos</h2>
-            <!-- Tickets serão inseridos aqui -->
+            <div class="section-header">
+                <h2>Tickets Ativos</h2>
+                <div class="controls">
+                    <input type="text" id="ticket-filter" placeholder="Filtrar por senha..." aria-label="Filtrar tickets">
+                    <button onclick="loadTickets()"><i class="fas fa-sync"></i> Atualizar</button>
+                </div>
+            </div>
+            <div id="ticket-content"></div>
+        </div>
+
+        <div class="report-section" id="report-section" style="display: none;">
+            <h2>Relatório de Atendimento</h2>
+            <canvas id="report-chart"></canvas>
         </div>
 
         <div class="error" id="error-message"></div>
     </div>
 
+    <div class="modal" id="ticket-modal">
+        <div class="modal-content">
+            <h3>Detalhes do Ticket</h3>
+            <p id="modal-ticket-number"></p>
+            <p id="modal-ticket-service"></p>
+            <p id="modal-ticket-status"></p>
+            <button onclick="closeModal()">Fechar</button>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script>
+        // Configurações do toastr
+        toastr.options = {
+            closeButton: true,
+            progressBar: true,
+            positionClass: 'toast-top-right',
+            timeOut: 3000
+        };
+
         // Configurações e variáveis globais
         const API_BASE_URL = 'https://fila-facilita2-0.onrender.com';
         let token = localStorage.getItem('token');
         let userInfo = JSON.parse(localStorage.getItem('userInfo')) || {};
+        let chartInstance = null;
 
         // Classe principal para gerenciamento de autenticação e requisições
         class ApiService {
@@ -127,60 +378,66 @@
                     config.body = JSON.stringify(body);
                 }
 
-                console.log(`[ApiService] Enviando requisição para: ${API_BASE_URL}${endpoint}`, {
-                    method,
-                    headers: { ...headers, Authorization: token ? '[PROTECTED]' : undefined },
-                    body
-                });
+                console.log(`[ApiService] Enviando requisição para: ${API_BASE_URL}${endpoint}`);
+                showLoader();
 
                 try {
                     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
                     
                     if (response.status === 401) {
-                        console.warn(`[ApiService] Erro 401 na requisição ${endpoint}. Token pode estar inválido.`);
+                        console.warn(`[ApiService] Erro 401 na requisição ${endpoint}.`);
                         handleLogout();
-                        throw new Error(`Sessão expirada na requisição ${endpoint}`);
+                        throw new Error(`Sessão expirada`);
                     }
                     
                     if (!response.ok) {
                         const errorText = await response.text();
-                        console.error(`[ApiService] Erro ${response.status} na requisição ${endpoint}: ${errorText}`);
                         throw new Error(errorText || response.statusText);
                     }
                     
                     const data = await response.json();
-                    console.log(`[ApiService] Resposta recebida de ${endpoint}:`, data);
+                    hideLoader();
                     return data;
                 } catch (error) {
                     console.error(`[ApiService] Erro na requisição ${endpoint}:`, error);
+                    hideLoader();
                     throw error;
                 }
             }
 
             static async login(email, password) {
-                console.log('[ApiService] Tentando login com:', { email });
                 return await this.request('/api/admin/login', 'POST', { email, password });
             }
 
             static async getQueues() {
-                console.log('[ApiService] Buscando filas');
                 return await this.request('/api/admin/queues');
             }
 
             static async getTickets() {
-                console.log('[ApiService] Buscando tickets');
                 return await this.request('/api/tickets/admin');
             }
 
             static async callNextTicket(queueId) {
-                console.log(`[ApiService] Chamando próximo ticket para queueId: ${queueId}`);
                 return await this.request(`/api/admin/queue/${queueId}/call`, 'POST');
+            }
+
+            static async getReport(date = new Date().toISOString().split('T')[0]) {
+                return await this.request(`/api/admin/report?date=${date}`);
             }
         }
 
         // Funções de manipulação da interface
+        function showLoader() {
+            document.getElementById('loader').style.display = 'block';
+        }
+
+        function hideLoader() {
+            document.getElementById('loader').style.display = 'none';
+        }
+
         function showError(message) {
             document.getElementById('error-message').textContent = message;
+            toastr.error(message);
         }
 
         function clearError() {
@@ -203,6 +460,7 @@
                 };
                 localStorage.setItem('token', token);
                 localStorage.setItem('userInfo', JSON.stringify(userInfo));
+                toastr.success('Login realizado com sucesso!');
                 initApp();
             } catch (error) {
                 showError('Erro ao fazer login: ' + error.message);
@@ -214,29 +472,35 @@
             userInfo = {};
             localStorage.removeItem('token');
             localStorage.removeItem('userInfo');
+            toastr.info('Sessão encerrada.');
             initApp();
         }
 
         async function loadQueues() {
             try {
                 const queues = await ApiService.getQueues();
-                const queueList = document.getElementById('queue-list');
-                queueList.innerHTML = '<h2>Filas do Seu Departamento</h2>';
+                const queueContent = document.getElementById('queue-content');
+                queueContent.innerHTML = '';
                 
                 if (queues.length === 0) {
-                    queueList.innerHTML += '<p>Nenhuma fila encontrada para o seu departamento.</p>';
+                    queueContent.innerHTML = '<p>Nenhuma fila encontrada para o seu departamento.</p>';
                     return;
                 }
 
-                queues.forEach(queue => {
-                    const queueItem = document.createElement('div');
-                    queueItem.className = 'queue-item';
-                    queueItem.innerHTML = `
-                        <span>${queue.service} (${queue.department}) - ${queue.active_tickets}/${queue.daily_limit} tickets ativos</span>
-                        <button onclick="callNextTicket('${queue.id}')">Chamar Próximo</button>
-                    `;
-                    queueList.appendChild(queueItem);
-                });
+                const filter = document.getElementById('queue-filter').value.toLowerCase();
+                queues
+                    .filter(queue => queue.service.toLowerCase().includes(filter))
+                    .forEach(queue => {
+                        const card = document.createElement('div');
+                        card.className = 'card';
+                        card.innerHTML = `
+                            <span><strong>${queue.service}</strong> (${queue.department}) - ${queue.active_tickets}/${queue.daily_limit} tickets ativos</span>
+                            <div>
+                                <button onclick="callNextTicket('${queue.id}')"><i class="fas fa-phone"></i> Chamar Próximo</button>
+                            </div>
+                        `;
+                        queueContent.appendChild(card);
+                    });
             } catch (error) {
                 showError('Erro ao carregar filas: ' + error.message);
             }
@@ -245,22 +509,28 @@
         async function loadTickets() {
             try {
                 const tickets = await ApiService.getTickets();
-                const ticketList = document.getElementById('ticket-list');
-                ticketList.innerHTML = '<h2>Tickets Ativos</h2>';
+                const ticketContent = document.getElementById('ticket-content');
+                ticketContent.innerHTML = '';
                 
                 if (tickets.length === 0) {
-                    ticketList.innerHTML += '<p>Nenhum ticket ativo encontrado.</p>';
+                    ticketContent.innerHTML = '<p>Nenhum ticket ativo encontrado.</p>';
                     return;
                 }
 
-                tickets.forEach(ticket => {
-                    const ticketItem = document.createElement('div');
-                    ticketItem.className = 'ticket-item';
-                    ticketItem.innerHTML = `
-                        <span>Senha: ${ticket.number} | Serviço: ${ticket.service} | Status: ${ticket.status}</span>
-                    `;
-                    ticketList.appendChild(ticketItem);
-                });
+                const filter = document.getElementById('ticket-filter').value.toLowerCase();
+                tickets
+                    .filter(ticket => ticket.number.toLowerCase().includes(filter))
+                    .forEach(ticket => {
+                        const card = document.createElement('div');
+                        card.className = 'card';
+                        card.innerHTML = `
+                            <span>Senha: <strong>${ticket.number}</strong> | Serviço: ${ticket.service} | Status: ${ticket.status}</span>
+                            <div>
+                                <button onclick="showTicketDetails('${ticket.number}', '${ticket.service}', '${ticket.status}')"><i class="fas fa-info-circle"></i> Detalhes</button>
+                            </div>
+                        `;
+                        ticketContent.appendChild(card);
+                    });
             } catch (error) {
                 showError('Erro ao carregar tickets: ' + error.message);
             }
@@ -270,10 +540,72 @@
             clearError();
             try {
                 const response = await ApiService.callNextTicket(queueId);
-                alert(response.message);
-                loadTickets(); // Atualiza a lista de tickets após chamar
+                toastr.success(response.message);
+                loadTickets();
             } catch (error) {
                 showError('Erro ao chamar próximo ticket: ' + error.message);
+            }
+        }
+
+        function showTicketDetails(number, service, status) {
+            document.getElementById('modal-ticket-number').textContent = `Senha: ${number}`;
+            document.getElementById('modal-ticket-service').textContent = `Serviço: ${service}`;
+            document.getElementById('modal-ticket-status').textContent = `Status: ${status}`;
+            document.getElementById('ticket-modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('ticket-modal').style.display = 'none';
+        }
+
+        async function loadReport() {
+            try {
+                const report = await ApiService.getReport();
+                const ctx = document.getElementById('report-chart').getContext('2d');
+                
+                if (chartInstance) {
+                    chartInstance.destroy();
+                }
+
+                chartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: report.map(r => r.service),
+                        datasets: [{
+                            label: 'Tickets Atendidos',
+                            data: report.map(r => r.attended),
+                            backgroundColor: '#2563eb',
+                            borderColor: '#1e40af',
+                            borderWidth: 1
+                        }, {
+                            label: 'Tickets Emitidos',
+                            data: report.map(r => r.issued),
+                            backgroundColor: '#10b981',
+                            borderColor: '#059669',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Relatório de Atendimento por Serviço'
+                            }
+                        }
+                    }
+                });
+
+                document.getElementById('report-section').style.display = 'block';
+            } catch (error) {
+                showError('Erro ao carregar relatório: ' + error.message);
             }
         }
 
@@ -283,6 +615,7 @@
             const ticketList = document.getElementById('ticket-list');
             const logoutBtn = document.getElementById('logout-btn');
             const userInfoDiv = document.getElementById('user-info');
+            const reportSection = document.getElementById('report-section');
 
             if (token && userInfo.email) {
                 loginForm.style.display = 'none';
@@ -292,13 +625,19 @@
                 userInfoDiv.innerHTML = `Bem-vindo, ${userInfo.email} | Departamento: ${userInfo.department || 'N/A'}`;
                 loadQueues();
                 loadTickets();
+                loadReport();
             } else {
                 loginForm.style.display = 'block';
                 queueList.style.display = 'none';
                 ticketList.style.display = 'none';
                 logoutBtn.style.display = 'none';
                 userInfoDiv.innerHTML = '';
+                reportSection.style.display = 'none';
             }
+
+            // Filtros
+            document.getElementById('queue-filter').addEventListener('input', loadQueues);
+            document.getElementById('ticket-filter').addEventListener('input', loadTickets);
         }
 
         // Inicializa a aplicação
