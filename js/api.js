@@ -1,5 +1,5 @@
 // js/api.js
-import { getToken } from './auth.js';
+import { getToken } from './script.js';
 const API_URL = 'https://fila-facilita2-0.onrender.com/api';
 
 export async function fetchWithAuth(url, options = {}) {

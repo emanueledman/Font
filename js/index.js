@@ -1,4 +1,4 @@
-import { handleAdminLogin } from './auth.js';
+import { handleAdminLogin } from './script.js';
 import { showToast } from './toast.js';
 
 console.log('index.js carregado');

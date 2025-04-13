@@ -1,7 +1,7 @@
 // js/dashboard.js
 import { fetchWithAuth } from './api.js';
 import { showToast } from './toast.js';
-import { isAuthenticated, logout } from './auth.js';
+import { isAuthenticated, logout } from './script.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     if (!isAuthenticated()) {
