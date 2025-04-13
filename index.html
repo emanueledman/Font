@@ -1,269 +1,233 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fila Facilita - Painel Admin</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fila Facilita - Painel Administrativo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 </head>
 <body>
-  <div class="admin-panel">
-    <!-- Sidebar -->
-    <div class="sidebar">
-      <button class="sidebar-toggle"><i class="fas fa-bars"></i></button>
-      <div class="brand">
-        <i class="fas fa-ticket-alt"></i>
-        <h2>Fila Facilita</h2>
-      </div>
-      <div class="user-info">
-        <div class="avatar">
-          <i class="fas fa-user"></i>
+    <div class="admin-panel">
+        <div class="sidebar">
+            <div class="brand">
+                <i class="fas fa-ticket-alt"></i>
+                <h2>Fila Facilita</h2>
+            </div>
+            <div class="user-info">
+                <div class="avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="user-details">
+                    <h3 id="user-name">Nome do Usuário</h3>
+                    <p id="user-department">Departamento</p>
+                </div>
+            </div>
+            <nav>
+                <a href="#" data-section="dashboard-section" class="active">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                <a href="#" data-section="queues-section">
+                    <i class="fas fa-list-ol"></i> Filas
+                </a>
+                <a href="#" data-section="tickets-section">
+                    <i class="fas fa-ticket-alt"></i> Tickets
+                </a>
+                <a href="#" data-section="reports-section">
+                    <i class="fas fa-chart-bar"></i> Relatórios
+                </a>
+                <a href="#" data-section="settings-section">
+                    <i class="fas fa-cog"></i> Configurações
+                </a>
+                <a href="#" id="logout" class="logout">
+                    <i class="fas fa-sign-out-alt"></i> Sair
+                </a>
+            </nav>
         </div>
-        <div class="user-details">
-          <h3>Gestor</h3>
-          <p>Admin</p>
+        <div class="main-content">
+            <header>
+                <h1 id="page-title">Dashboard</h1>
+                <div class="header-actions">
+                    <div class="date-time">
+                        <i class="far fa-calendar-alt"></i>
+                        <span id="current-date">13 de abril, 2025</span>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Dashboard Section -->
+            <section id="dashboard-section" class="section active">
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <div class="stat-icon blue">
+                            <i class="fas fa-list-ol"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="active-queues">0</h3>
+                            <p>Filas Ativas</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon orange">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="pending-tickets">0</h3>
+                            <p>Tickets Pendentes</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="avg-wait-time">0 min</h3>
+                            <p>Tempo Médio de Espera</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon purple">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="attended-tickets">0</h3>
+                            <p>Atendimentos Hoje</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="recent-activity">
+                    <h2>Visão Geral das Filas</h2>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Serviço</th>
+                                    <th>Tickets Ativos</th>
+                                    <th>Ticket Atual</th>
+                                    <th>Status</th>
+                                    <th>Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="queues-table">
+                                <!-- Dados serão carregados dinamicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Queues Section -->
+            <section id="queues-section" class="section">
+                <div class="section-header">
+                    <h2>Gerenciamento de Filas</h2>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Serviço</th>
+                                <th>Tickets Ativos</th>
+                                <th>Ticket Atual</th>
+                                <th>Status</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="queues-table-full">
+                            <!-- Dados serão carregados dinamicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            
+            <!-- Tickets Section -->
+            <section id="tickets-section" class="section">
+                <div class="section-header">
+                    <h2>Gerenciamento de Tickets</h2>
+                    <div class="filter-container">
+                        <label for="ticket-status-filter">Filtrar por Status:</label>
+                        <select id="ticket-status-filter" onchange="filterTickets()">
+                            <option value="">Todos</option>
+                            <option value="Pendente">Pendente</option>
+                            <option value="Chamado">Chamado</option>
+                            <option value="attended">Atendido</option>
+                            <option value="Cancelado">Cancelado</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Ticket</th>
+                                <th>Serviço</th>
+                                <th>Status</th>
+                                <th>Tempo de Espera</th>
+                                <th>Guichê</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tickets-table">
+                            <!-- Dados serão carregados dinamicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            
+            <!-- Reports Section -->
+            <section id="reports-section" class="section">
+                <div class="section-header">
+                    <h2>Relatórios e Estatísticas</h2>
+                </div>
+                <div class="report-container">
+                    <div class="report-filters">
+                        <form id="report-form">
+                            <div class="form-group">
+                                <label for="report-date">Data:</label>
+                                <input type="date" id="report-date" value="">
+                            </div>
+                            <div class="form-group">
+                                <label for="report-type">Tipo de Relatório:</label>
+                                <select id="report-type">
+                                    <option value="status">Tickets por Status</option>
+                                    <option value="wait-time">Tempo Médio de Espera</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn primary-btn">Gerar Relatório</button>
+                        </form>
+                    </div>
+                    <div class="report-chart-container">
+                        <canvas id="report-chart"></canvas>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Settings Section -->
+            <section id="settings-section" class="section">
+                <div class="section-header">
+                    <h2>Configurações da Conta</h2>
+                </div>
+                <div class="settings-container">
+                    <form id="settings-form">
+                        <div class="form-group">
+                            <label for="settings-email">Email:</label>
+                            <input type="email" id="settings-email" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label for="settings-password">Nova Senha:</label>
+                            <input type="password" id="settings-password">
+                        </div>
+                        <div class="form-group">
+                            <label for="settings-confirm-password">Confirmar Senha:</label>
+                            <input type="password" id="settings-confirm-password">
+                        </div>
+                        <button type="submit" class="btn primary-btn">Atualizar Senha</button>
+                    </form>
+                </div>
+            </section>
         </div>
-      </div>
-      <nav>
-        <a href="#" data-section="dashboard" class="active">
-          <i class="fas fa-tachometer-alt"></i><span>Dashboard</span>
-        </a>
-        <a href="#" data-section="queues">
-          <i class="fas fa-list-ol"></i><span>Filas</span>
-        </a>
-        <a href="#" data-section="tickets">
-          <i class="fas fa-ticket-alt"></i><span>Tickets</span>
-        </a>
-        <a href="#" data-section="reports">
-          <i class="fas fa-chart-bar"></i><span>Relatórios</span>
-        </a>
-        <a href="#" data-section="settings">
-          <i class="fas fa-cog"></i><span>Ajustes</span>
-        </a>
-        <a href="#" class="logout">
-          <i class="fas fa-sign-out-alt"></i><span>Sair</span>
-        </a>
-      </nav>
     </div>
-
-    <!-- Main Content -->
-    <div class="main-content">
-      <header>
-        <h1>Dashboard</h1>
-        <div class="header-actions">
-          <div class="search-bar">
-            <i class="fas fa-search"></i>
-            <input type="text" placeholder="Buscar...">
-          </div>
-          <div class="date-time">
-            <i class="far fa-calendar-alt"></i>
-            <span>12 de abril, 2025</span>
-          </div>
-        </div>
-      </header>
-
-      <!-- Dashboard -->
-      <section id="dashboard" class="section active">
-        <div class="stats-container">
-          <div class="stat-card">
-            <div class="stat-icon"><i class="fas fa-list-ol"></i></div>
-            <div class="stat-info">
-              <h3>22</h3>
-              <p>Filas Ativas</p>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon"><i class="fas fa-users"></i></div>
-            <div class="stat-info">
-              <h3>48</h3>
-              <p>Tickets Pendentes</p>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon"><i class="fas fa-clock"></i></div>
-            <div class="stat-info">
-              <h3>7 min</h3>
-              <p>Tempo Médio</p>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
-            <div class="stat-info">
-              <h3>150</h3>
-              <p>Atendidos Hoje</p>
-            </div>
-          </div>
-        </div>
-        <div class="table-container">
-          <h2>Atividade Recente</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Serviço</th>
-                <th>Tickets</th>
-                <th>Atual</th>
-                <th>Status</th>
-                <th>Ação</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Caixa</td>
-                <td>15</td>
-                <td>A-008</td>
-                <td><span class="status status-chamado">Chamado</span></td>
-                <td><button class="btn btn-primary">Ver</button></td>
-              </tr>
-              <tr>
-                <td>Suporte</td>
-                <td>10</td>
-                <td>B-004</td>
-                <td><span class="status status-pendente">Pendente</span></td>
-                <td><button class="btn btn-primary">Ver</button></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- Queues -->
-      <section id="queues" class="section">
-        <h2>Gerenciar Filas</h2>
-        <div class="table-container">
-          <table>
-            <thead>
-              MONITORING
-              <tr>
-                <th>Serviço</th>
-                <th>Tickets</th>
-                <th>Atual</th>
-                <th>Status</th>
-                <th>Ação</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Recepção</td>
-                <td>12</td>
-                <td>C-002</td>
-                <td><span class="status status-atendido">Atendido</span></td>
-                <td><button class="btn btn-primary">Ver</button></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- Tickets -->
-      <section id="tickets" class="section">
-        <h2>Gerenciar Tickets</h2>
-        <div class="form-group">
-          <label for="ticket-status">Filtrar Status</label>
-          <select id="ticket-status">
-            <option value="">Todos</option>
-            <option value="pendente">Pendente</option>
-            <option value="chamado">Chamado</option>
-            <option value="atendido">Atendido</option>
-            <option value="cancelado">Cancelado</option>
-          </select>
-        </div>
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Ticket</th>
-                <th>Serviço</th>
-                <th>Status</th>
-                <th>Tempo</th>
-                <th>Guichê</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>A-008</td>
-                <td>Caixa</td>
-                <td><span class="status status-chamado">Chamado</span></td>
-                <td>5 min</td>
-                <td>Guichê 1</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- Reports -->
-      <section id="reports" class="section">
-        <h2>Relatórios</h2>
-        <div class="report-container">
-          <div class="report-filters">
-            <form>
-              <div class="form-group">
-                <label for="report-date">Data</label>
-                <input type="date" id="report-date">
-              </div>
-              <div class="form-group">
-                <label for="report-type">Tipo</label>
-                <select id="report-type">
-                  <option value="status">Por Status</option>
-                  <option value="tempo">Por Tempo</option>
-                </select>
-              </div>
-              <button type="submit" class="btn btn-primary">Gerar</button>
-            </form>
-          </div>
-          <div class="report-chart">
-            <canvas id="chart"></canvas>
-          </div>
-        </div>
-      </section>
-
-      <!-- Settings -->
-      <section id="settings" class="section">
-        <h2>Configurações</h2>
-        <form>
-          <div class="form-group">
-            <label for="email">Email</label>
-            <input type="email" id="email" value="admin@fila.com" disabled>
-          </div>
-          <div class="form-group">
-            <label for="password">Nova Senha</label>
-            <input type="password" id="password">
-          </div>
-          <div class="form-group">
-            <label for="confirm-password">Confirmar Senha</label>
-            <input type="password" id="confirm-password">
-          </div>
-          <button type="submit" class="btn btn-primary">Salvar</button>
-        </form>
-      </section>
-    </div>
-  </div>
-
-  <script>
-    // Sidebar toggle
-    const sidebar = document.querySelector('.sidebar');
-    const mainContent = document.querySelector('.main-content');
-    document.querySelector('.sidebar-toggle').addEventListener('click', () => {
-      sidebar.classList.toggle('collapsed');
-      mainContent.classList.toggle('expanded');
-      sidebar.style.width = sidebar.classList.contains('collapsed') ? '80px' : '280px';
-      mainContent.style.marginLeft = sidebar.classList.contains('collapsed') ? '80px' : '280px';
-    });
-
-    // Navigation
-    document.querySelectorAll('nav a').forEach(link => {
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (!link.classList.contains('logout')) {
-          document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
-          document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-          link.classList.add('active');
-          document.querySelector(`#${link.dataset.section}`).classList.add('active');
-        }
-      });
-    });
-  </script>
+    
+    <script src="admin.js"></script>
 </body>
 </html>
