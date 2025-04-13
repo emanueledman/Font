@@ -41,6 +41,96 @@
         button[aria-label] {
             cursor: pointer;
         }
+        /* Estilos para a linha do tempo (Dashboard) */
+        .timeline-container {
+            max-width: 800px;
+            margin: 20px auto;
+            position: relative;
+            padding: 20px 0;
+        }
+        .timeline-event {
+            position: relative;
+            margin-bottom: 20px;
+            padding-left: 50px;
+            opacity: 0;
+            animation: fadeIn 0.5s forwards;
+        }
+        .timeline-dot {
+            position: absolute;
+            left: 20px;
+            top: 10px;
+            width: 12px;
+            height: 12px;
+            background: #007bff;
+            border-radius: 50%;
+        }
+        .timeline-content {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .timeline-empty, .timeline-error {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        /* Estilos para os cards (Tickets) */
+        .cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+        .ticket-card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .ticket-card:hover {
+            transform: translateY(-5px);
+        }
+        .ticket-card.expanded .card-body {
+            display: block;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .card-header h3 {
+            margin: 0;
+            font-size: 1.2em;
+        }
+        .card-header .status {
+            font-size: 0.9em;
+            padding: 5px 10px;
+            border-radius: 12px;
+            color: #fff;
+        }
+        .status-pendente { background: #007bff; }
+        .status-chamado { background: #ffc107; }
+        .status-attended { background: #28a745; }
+        .status-cancelado { background: #dc3545; }
+        .card-body {
+            display: none;
+        }
+        .card-body p {
+            margin: 5px 0;
+        }
+        .cards-empty, .cards-error {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
     </style>
 </head>
 <body>
@@ -93,62 +183,10 @@
             
             <!-- Dashboard Section -->
             <section id="dashboard-section" class="section active">
-                <div class="stats-container">
-                    <div class="stat-card">
-                        <div class="stat-icon blue">
-                            <i class="fas fa-list-ol"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3 id="active-queues">0</h3>
-                            <p>Filas Ativas</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon orange">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3 id="pending-tickets">0</h3>
-                            <p>Tickets Pendentes</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon green">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3 id="avg-wait-time">0 min</h3>
-                            <p>Tempo Médio de Espera</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon purple">
-                            <i class="fas fa-check-circle"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3 id="attended-tickets">0</h3>
-                            <p>Atendimentos Hoje</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="recent-activity">
-                    <h2>Visão Geral das Filas</h2>
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Serviço</th>
-                                    <th>Tickets Ativos</th>
-                                    <th>Ticket Atual</th>
-                                    <th>Status</th>
-                                    <th>Ação</th>
-                                </tr>
-                            </thead>
-                            <tbody id="queues-table">
-                                <!-- Dados serão carregados dinamicamente -->
-                            </tbody>
-                        </table>
+                <div class="timeline-container">
+                    <h2>Eventos Recentes</h2>
+                    <div id="timeline-events">
+                        <!-- Eventos serão carregados dinamicamente -->
                     </div>
                 </div>
             </section>
@@ -180,32 +218,9 @@
             <section id="tickets-section" class="section">
                 <div class="section-header">
                     <h2>Gerenciamento de Tickets</h2>
-                    <div class="filter-container">
-                        <label for="ticket-status-filter">Filtrar por Status:</label>
-                        <select id="ticket-status-filter" aria-label="Filtrar tickets por status">
-                            <option value="">Todos</option>
-                            <option value="Pendente">Pendente</option>
-                            <option value="Chamado">Chamado</option>
-                            <option value="attended">Atendido</option>
-                            <option value="Cancelado">Cancelado</option>
-                        </select>
-                    </div>
                 </div>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Ticket</th>
-                                <th>Serviço</th>
-                                <th>Status</th>
-                                <th>Tempo de Espera</th>
-                                <th>Guichê</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tickets-table">
-                            <!-- Dados serão carregados dinamicamente -->
-                        </tbody>
-                    </table>
+                <div class="cards-container" id="tickets-cards">
+                    <!-- Cards serão carregados dinamicamente -->
                 </div>
             </section>
             

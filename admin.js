@@ -227,7 +227,7 @@ class AdminPanel {
             ]);
 
             await Promise.all([
-                this.loadDashboard(queues, tickets),
+                this.loadDashboard(tickets), // Passar apenas tickets
                 this.loadQueues(queues),
                 this.loadTickets(tickets)
             ]);
@@ -241,44 +241,55 @@ class AdminPanel {
         }
     }
 
-    async loadDashboard(queues = null, tickets = null) {
+    async loadDashboard(tickets = null) {
         if (this.isLoading) return;
         this.isLoading = true;
         this.showLoading();
 
+        const timelineContainer = document.getElementById('timeline-events');
+        if (!timelineContainer) return;
+
         try {
-            const [queuesData, ticketsData] = queues && tickets ? 
-                [queues, tickets] : 
-                await Promise.all([ApiService.getQueues(), ApiService.getTickets()]);
-            
-            const today = new Date().toISOString().split('T')[0];
-    
-            const activeQueues = queuesData.length;
-            const pendingTickets = ticketsData.filter(t => t.status === 'Pendente').length;
-            const attendedToday = ticketsData.filter(t => t.status === 'attended' && t.issued_at.startsWith(today)).length;
-            
-            const waitTimes = ticketsData
-                .filter(t => t.wait_time && t.wait_time !== 'N/A' && !isNaN(parseFloat(t.wait_time)))
-                .map(t => parseFloat(t.wait_time));
-            
-            const avgWaitTime = waitTimes.length ? 
-                (waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length).toFixed(1) : '0.0';
-    
-            document.getElementById('active-queues').textContent = activeQueues;
-            document.getElementById('pending-tickets').textContent = pendingTickets;
-            document.getElementById('avg-wait-time').textContent = `${avgWaitTime} min`;
-            document.getElementById('attended-tickets').textContent = attendedToday;
-            
-            console.log("Dados do dashboard carregados:", {
-                filas_ativas: activeQueues,
-                tickets_pendentes: pendingTickets,
-                tempo_medio: avgWaitTime,
-                atendimentos_hoje: attendedToday,
-                tickets: ticketsData,
-                queues: queuesData
+            const ticketsData = tickets || await ApiService.getTickets();
+
+            // Limpar container
+            timelineContainer.innerHTML = '';
+
+            // Filtrar e ordenar os últimos 10 tickets com status Chamado ou attended
+            const recentTickets = ticketsData
+                .filter(t => ['Chamado', 'attended'].includes(t.status))
+                .sort((a, b) => new Date(b.issued_at) - new Date(a.issued_at))
+                .slice(0, 10);
+
+            if (recentTickets.length === 0) {
+                timelineContainer.innerHTML = '<div class="timeline-empty">Nenhum evento recente encontrado.</div>';
+                return;
+            }
+
+            // Criar linha do tempo
+            recentTickets.forEach((ticket, index) => {
+                const eventDiv = document.createElement('div');
+                eventDiv.className = 'timeline-event';
+                eventDiv.style.animationDelay = `${index * 0.2}s`;
+
+                const time = new Date(ticket.issued_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                const action = ticket.status === 'Chamado' ? 'chamado' : 'atendido';
+                const counter = ticket.counter ? `no guichê ${ticket.counter}` : '';
+
+                eventDiv.innerHTML = `
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                        <p><strong>Ticket ${ticket.number}</strong> (${ticket.service}) foi ${action} ${counter} às ${time}</p>
+                    </div>
+                `;
+
+                timelineContainer.appendChild(eventDiv);
             });
+
+            console.log(`Carregados ${recentTickets.length} eventos recentes na linha do tempo`, recentTickets);
         } catch (error) {
-            this.showError('Erro ao carregar dashboard', error);
+            this.showError('Erro ao carregar eventos recentes', error);
+            timelineContainer.innerHTML = '<div class="timeline-error">Erro ao carregar eventos</div>';
         } finally {
             this.isLoading = false;
             this.hideLoading();
@@ -339,43 +350,59 @@ class AdminPanel {
     }
 
     async loadTickets(tickets = null) {
-        const tableBody = document.getElementById('tickets-table');
-        if (!tableBody) return;
+        const cardsContainer = document.getElementById('tickets-cards');
+        if (!cardsContainer) return;
 
         try {
             const ticketsData = tickets || await ApiService.getTickets();
-            const filter = document.getElementById('ticket-status-filter')?.value;
-            const validStatuses = ['Pendente', 'Chamado', 'attended', 'Cancelado'];
-            
-            let filteredTickets = ticketsData;
-            if (filter && validStatuses.includes(filter)) {
-                filteredTickets = ticketsData.filter(t => t.status === filter);
-            }
-    
-            tableBody.innerHTML = '';
-    
-            console.log(`Response de /api/tickets/admin:`, ticketsData);
-            console.log(`Carregados ${filteredTickets.length} tickets (filtro: ${filter || 'todos'})`);
-    
-            if (filteredTickets.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="5">Nenhum ticket encontrado para seu departamento</td></tr>';
+
+            // Limpar container
+            cardsContainer.innerHTML = '';
+
+            // Ordenar por prioridade: Pendente primeiro, depois Chamado, attended, Cancelado
+            const statusPriority = { Pendente: 1, Chamado: 2, attended: 3, Cancelado: 4 };
+            const sortedTickets = ticketsData.sort((a, b) => 
+                statusPriority[a.status] - statusPriority[b.status] || 
+                new Date(a.issued_at) - new Date(b.issued_at)
+            );
+
+            if (sortedTickets.length === 0) {
+                cardsContainer.innerHTML = '<div class="cards-empty">Nenhum ticket encontrado para seu departamento.</div>';
                 return;
             }
-    
-            filteredTickets.forEach(ticket => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${ticket.number}</td>
-                    <td>${ticket.service}</td>
-                    <td><span class="status-${ticket.status.toLowerCase()}">${ticket.status}</span></td>
-                    <td>${ticket.wait_time !== 'N/A' ? `${ticket.wait_time} min` : 'N/A'}</td>
-                    <td>${ticket.counter || 'N/A'}</td>
+
+            // Criar cards
+            sortedTickets.forEach(ticket => {
+                const card = document.createElement('div');
+                card.className = `ticket-card status-${ticket.status.toLowerCase()}`;
+                card.addEventListener('click', () => {
+                    card.classList.toggle('expanded');
+                });
+
+                const issuedTime = new Date(ticket.issued_at).toLocaleString('pt-BR', {
+                    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+
+                card.innerHTML = `
+                    <div class="card-header">
+                        <h3>Ticket ${ticket.number}</h3>
+                        <span class="status">${ticket.status}</span>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Serviço:</strong> ${ticket.service}</p>
+                        <p><strong>Emitido em:</strong> ${issuedTime}</p>
+                        <p><strong>Tempo de Espera:</strong> ${ticket.wait_time !== 'N/A' ? `${ticket.wait_time} min` : 'N/A'}</p>
+                        <p><strong>Guichê:</strong> ${ticket.counter || 'N/A'}</p>
+                    </div>
                 `;
-                tableBody.appendChild(row);
+
+                cardsContainer.appendChild(card);
             });
+
+            console.log(`Carregados ${sortedTickets.length} tickets como cards`, sortedTickets);
         } catch (error) {
             this.showError('Erro ao carregar tickets', error);
-            tableBody.innerHTML = '<tr><td colspan="5">Erro ao carregar tickets</td></tr>';
+            cardsContainer.innerHTML = '<div class="cards-error">Erro ao carregar tickets</div>';
         }
     }
 
