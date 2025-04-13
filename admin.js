@@ -127,7 +127,7 @@ class AdminPanel {
     }
 
     initComponents() {
-        document.getElementById('user-name').textContent = userInfo.email;
+        document.getElementById('user-name').textContent = userInfo.email || 'Usuário';
         document.getElementById('user-department').textContent = userInfo.department || 'Gestor';
         document.getElementById('page-title').textContent = 'Dashboard';
         document.getElementById('settings-email').value = userInfo.email || '';
@@ -193,6 +193,11 @@ class AdminPanel {
 
     async loadInitialData() {
         try {
+            // Limpar qualquer estado anterior
+            document.getElementById('queues-table').innerHTML = '';
+            document.getElementById('queues-table-full').innerHTML = '';
+            document.getElementById('tickets-table').innerHTML = '';
+            
             await Promise.all([
                 this.loadDashboard(),
                 this.loadQueues(),
@@ -211,13 +216,13 @@ class AdminPanel {
             ]);
             const today = new Date().toISOString().split('T')[0];
 
-            // Filtrar filas apenas por segurança (backend já filtra)
+            // Verificar filas (backend já filtra, mas reforçamos)
             const userQueues = queues.filter(q => 
                 q.institution_id === userInfo.institution_id && 
                 q.department === userInfo.department
             );
             
-            // Tickets já vêm filtrados pelo backend, mas verificamos por consistência
+            // Tickets já vêm filtrados pelo backend
             const userTickets = tickets;
 
             const activeQueues = userQueues.length;
@@ -256,7 +261,7 @@ class AdminPanel {
             if (tableBody) tableBody.innerHTML = '';
             if (fullTableBody) fullTableBody.innerHTML = '';
 
-            // Filtrar filas apenas por segurança (backend já filtra)
+            // Verificar filas (backend já filtra, mas reforçamos)
             const userQueues = queues.filter(q => 
                 q.institution_id === userInfo.institution_id && 
                 q.department === userInfo.department
@@ -297,9 +302,11 @@ class AdminPanel {
         try {
             const data = await ApiService.callNextTicket(queueId);
             this.showSuccess(`Senha ${data.ticket_number} chamada para o guichê ${data.counter}`);
-            this.loadQueues();
-            this.loadTickets();
-            this.loadDashboard();
+            await Promise.all([
+                this.loadQueues(),
+                this.loadTickets(),
+                this.loadDashboard()
+            ]);
         } catch (error) {
             this.showError('Erro ao chamar próximo ticket', error);
         }
@@ -332,7 +339,7 @@ class AdminPanel {
                     <td>${ticket.number || ticket.ticket_number}</td>
                     <td>${ticket.service}</td>
                     <td><span class="status-${ticket.status.toLowerCase()}">${ticket.status}</span></td>
-                    <td>${ticket.wait_time || 'N/A'}</td>
+                    <td>${ticket.wait_time !== 'N/A' ? `${ticket.wait_time} min` : 'N/A'}</td>
                     <td>${ticket.counter || 'N/A'}</td>
                 `;
                 tableBody.appendChild(row);
@@ -388,7 +395,7 @@ class AdminPanel {
                         .filter(t => t.service === service && t.wait_time && t.wait_time !== 'N/A')
                         .map(t => parseFloat(t.wait_time) || 0);
                     return times.length ? 
-                        (times.reduce((a, b) => a + b, 0) / times.length) : 0;
+                        (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : 0;
                 });
 
                 chartInstance = new Chart(ctx, {
@@ -490,7 +497,7 @@ class LoginManager {
             console.error('Erro no login:', error);
             
             document.getElementById('email').value = email;
-            document.getElementById('password').value = password;
+            document.getElementById('password').value = '';
         } finally {
             submitBtn.disabled = false;
             submitBtn.textContent = 'Entrar';
