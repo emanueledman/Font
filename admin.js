@@ -13,7 +13,7 @@ class ApiService {
         };
         
         if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
+            headers['Authorization'] = `${token}`;  // Garante que o token use o prefixo 'Bearer '
         }
 
         const config = { 
@@ -32,17 +32,12 @@ class ApiService {
         try {
             const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
             
-            // Log da resposta para depuração
-            console.log(`Resposta de ${endpoint}:`, {
-                status: response.status,
-                statusText: response.statusText
-            });
-            
             // Tratamento especial para erros de autenticação
             if (response.status === 401) {
                 console.error('Erro de autenticação. Token pode estar inválido ou expirado.');
-                AuthManager.logout();
-                return;
+                // Opcionalmente, você pode redirecionar para login
+                // AuthManager.logout();
+                // return;
             }
             
             if (!response.ok) {
@@ -51,9 +46,7 @@ class ApiService {
                 throw new Error(errorText || response.statusText);
             }
             
-            const data = await response.json();
-            console.log(`Dados recebidos de ${endpoint}:`, data);
-            return data;
+            return await response.json();
         } catch (error) {
             console.error(`Erro na requisição ${endpoint}:`, error);
             throw error;
