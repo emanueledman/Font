@@ -13,7 +13,7 @@ class ApiService {
         };
         
         if (token) {
-            headers['Authorization'] = `Bearer ${token}`;  // Garante que o token use o prefixo 'Bearer '
+            headers['Authorization'] = `${token}`;  // Garante que o token use o prefixo 'Bearer '
         }
 
         const config = { 
