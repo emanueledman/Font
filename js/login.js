@@ -22,12 +22,13 @@ export async function handleLogin(event) {
         localStorage.setItem('token', result.token);
         localStorage.setItem('userInfo', JSON.stringify(userInfo));
 
-        if (userInfo.role === 'DEPARTMENT_ADMIN') {
+        // Mapeia user_role para a página correta
+        if (['DEPARTMENT_ADMIN', 'admin', 'administrador'].includes(userInfo.role.toLowerCase())) {
             window.location.href = '/admin.html';
-        } else if (userInfo.role === 'USER') {
+        } else if (['USER', 'gestor', 'manager'].includes(userInfo.role.toLowerCase())) {
             window.location.href = '/manager.html';
         } else {
-            throw new Error('Função de usuário inválida');
+            throw new Error(`Função de usuário inválida: ${userInfo.role}`);
         }
     } catch (error) {
         errorDiv.textContent = `Erro: ${error.message}`;
