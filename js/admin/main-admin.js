@@ -1,15 +1,4 @@
-console.log('main-admin.js: Script carregado com sucesso!'); // Teste inicial
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('main-admin.js: DOM carregado, executando...'); // Teste DOM
-
-    // Função para o botão Atualizar
-    window.loadDashboard = () => {
-        console.log('main-admin.js: Botão Atualizar clicado'); // Log
-        alert('Botão Atualizar clicado em admin.html!'); // Ação visível
-    };
-
-    /*
     // Lógica original comentada para não alterar comportamento
     import { initApp, logout } from '../common/auth.js';
     import { initWebSocket, startPolling, stopPolling } from '../common/websocket.js';
@@ -289,5 +278,3 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = '/index.html';
         }
     });
-    */
-});
