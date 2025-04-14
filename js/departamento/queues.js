@@ -10,27 +10,28 @@ async function fetchQueues() {
 }
 
 function renderQueues(queues) {
-    const tbody = document.getElementById('queues');
-    tbody.innerHTML = '';
+    const container = document.getElementById('queues-container');
+    container.innerHTML = '';
     if (!queues || queues.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="p-3 text-gray-500 text-center">Nenhuma fila disponível.</td></tr>';
+        container.innerHTML = '<p class="text-gray-500 text-center col-span-full">Nenhuma fila disponível.</p>';
         return;
     }
     queues.forEach(queue => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td class="p-3">${queue.service}</td>
-            <td class="p-3">${queue.prefix}</td>
-            <td class="p-3">${queue.status}</td>
-            <td class="p-3">${queue.active_tickets}/${queue.daily_limit}</td>
-            <td class="p-3">${queue.open_time || 'N/A'} - ${queue.end_time || 'N/A'}</td>
-            <td class="p-3">
-                <button onclick="callNext('${queue.id}')" class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-sm mr-1">Chamar</button>
-                <button onclick="editQueue('${queue.id}')" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-sm mr-1">Editar</button>
-                <button onclick="deleteQueue('${queue.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm">Excluir</button>
-            </td>
+        const card = document.createElement('div');
+        card.className = 'card bg-white rounded-xl shadow-lg p-6';
+        card.innerHTML = `
+            <h3 class="text-lg font-semibold text-gray-800">${queue.service}</h3>
+            <p class="text-gray-600">Prefixo: ${queue.prefix}</p>
+            <p class="text-gray-600">Status: ${queue.status}</p>
+            <p class="text-gray-600">Tickets: ${queue.active_tickets}/${queue.daily_limit}</p>
+            <p class="text-gray-600">Horário: ${queue.open_time || 'N/A'} - ${queue.end_time || 'N/A'}</p>
+            <div class="mt-4 flex space-x-2">
+                <button onclick="callNext('${queue.id}')" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg">Chamar</button>
+                <button onclick="editQueue('${queue.id}')" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg">Editar</button>
+                <button onclick="deleteQueue('${queue.id}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg">Excluir</button>
+            </div>
         `;
-        tbody.appendChild(tr);
+        container.appendChild(card);
     });
 }
 
@@ -40,6 +41,7 @@ async function callNext(queueId) {
         showSuccess(`Senha ${response.data.ticket_number} chamada para o guichê ${response.data.counter}!`);
         await fetchQueues();
         await fetchTickets();
+        await fetchCurrentCall();
     } catch (error) {
         console.error('Erro ao chamar próxima senha:', error);
         showError('Erro ao chamar próxima senha.', error.response?.data?.error || error.message);
@@ -133,8 +135,8 @@ document.getElementById('queue-form')?.addEventListener('submit', async e => {
 
 document.getElementById('queue-filter')?.addEventListener('input', () => {
     const filter = document.getElementById('queue-filter').value.toLowerCase();
-    document.querySelectorAll('#queues tr').forEach(row => {
-        const service = row.cells[0].textContent.toLowerCase();
-        row.style.display = service.includes(filter) ? '' : 'none';
+    document.querySelectorAll('#queues-container .card').forEach(card => {
+        const service = card.querySelector('h3').textContent.toLowerCase();
+        card.style.display = service.includes(filter) ? '' : 'none';
     });
 });

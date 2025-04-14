@@ -15,6 +15,8 @@ function setupSocketListeners() {
         showToast(`Fila atualizada: ${data.message}`);
         await fetchQueues();
         await fetchTickets();
+        await fetchCurrentCall();
+        await fetchDashboardData();
     });
 
     socket.on('notification', data => {
@@ -46,7 +48,7 @@ function showSuccess(message) {
 function showToast(message, bgColor = 'bg-blue-500') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
-    toast.className = `text-white px-4 py-2 rounded-lg shadow-lg ${bgColor} animate-slide-in`;
+    toast.className = `text-white px-6 py-3 rounded-lg shadow-lg ${bgColor} animate-slide-in`;
     toast.textContent = message;
     container.appendChild(toast);
     setTimeout(() => {

@@ -24,8 +24,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         await fetchUserInfo();
         await fetchDepartmentInfo();
+        await fetchDashboardData();
         await fetchQueues();
         await fetchTickets();
+        await fetchCurrentCall();
         setupSocketListeners();
         setupNavigation();
     } catch (error) {
@@ -34,8 +36,54 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+async function fetchDashboardData() {
+    try {
+        const [queuesRes, ticketsRes, reportRes] = await Promise.all([
+            axios.get('/api/admin/queues'),
+            axios.get('/api/tickets/admin'),
+            axios.get(`/api/admin/report?date=${new Date().toISOString().split('T')[0]}`)
+        ]);
+
+        const queues = queuesRes.data;
+        const tickets = ticketsRes.data;
+        const report = reportRes.data;
+
+        document.getElementById('active-queues').textContent = queues.length;
+        document.getElementById('pending-tickets').textContent = tickets.filter(t => t.status === 'Pendente').length;
+        document.getElementById('today-calls').textContent = report.reduce((sum, item) => sum + item.attended, 0);
+        document.getElementById('active-users').textContent = '1'; // Simulado
+
+        const ctx = document.getElementById('activity-chart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: report.map(item => item.service),
+                datasets: [{
+                    label: 'Senhas Atendidas',
+                    data: report.map(item => item.attended),
+                    borderColor: '#10B981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao carregar dashboard:', error);
+        showError('Erro ao carregar dados do dashboard.');
+    }
+}
+
 function setupNavigation() {
     const sections = {
+        'nav-dashboard': 'dashboard-section',
+        'nav-call': 'call-section',
         'nav-queues': 'queues-section',
         'nav-tickets': 'tickets-section',
         'nav-reports': 'reports-section',
