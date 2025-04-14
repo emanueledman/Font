@@ -1,35 +1,5 @@
-// Combined ApiService, utils, and login logic
-const ApiService = {
-    async request(endpoint, method = 'GET', data = null) {
-        const token = localStorage.getItem('token');
-        const headers = {
-            'Content-Type': 'application/json',
-            'Authorization': token ? `Bearer ${token}` : ''
-        };
-
-        const options = { method, headers };
-        if (data) options.body = JSON.stringify(data);
-
-        try {
-            const response = await fetch(`/api${endpoint}`, options);
-            if (response.status === 401) {
-                localStorage.removeItem('token');
-                localStorage.removeItem('userInfo');
-                window.location.href = '/index.html';
-                throw new Error('Sessão expirada');
-            }
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.error || 'Falha na requisição');
-            return result;
-        } catch (error) {
-            throw error;
-        }
-    },
-
-    login(email, password) {
-        return this.request('/admin/login', 'POST', { email, password });
-    }
-};
+// Log to confirm script is loaded
+console.log('auth.js carregado');
 
 function showNotification(message, type = 'success') {
     const notification = document.createElement('div');
@@ -41,6 +11,8 @@ function showNotification(message, type = 'success') {
 
 async function handleLogin(event) {
     event.preventDefault();
+    console.log('handleLogin chamado'); // Debug
+
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     const errorDiv = document.getElementById('error-message');
@@ -50,7 +22,22 @@ async function handleLogin(event) {
     loginBtn.disabled = true;
 
     try {
-        const result = await ApiService.login(email, password);
+        console.log('Enviando requisição para /api/admin/login'); // Debug
+        const response = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, password })
+        });
+
+        console.log('Resposta recebida:', response.status); // Debug
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Falha no login');
+        }
+
         const userInfo = {
             id: result.user_id,
             email: result.email,
@@ -61,13 +48,10 @@ async function handleLogin(event) {
         localStorage.setItem('token', result.token);
         localStorage.setItem('userInfo', JSON.stringify(userInfo));
 
-        const role = userInfo.role.toLowerCase();
-        if (['dept_admin', 'inst_admin', 'sys_admin'].includes(role)) {
-            window.location.href = '/admin.html';
-        } else {
-            throw new Error(`Função de usuário inválida: ${userInfo.role}`);
-        }
+        console.log('Login bem-sucedido, redirecionando...'); // Debug
+        window.location.href = '/admin.html';
     } catch (error) {
+        console.error('Erro no login:', error.message); // Debug
         errorDiv.textContent = `Erro: ${error.message}`;
         errorDiv.style.display = 'block';
     } finally {
@@ -75,12 +59,14 @@ async function handleLogin(event) {
     }
 }
 
+// Bind event listener
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM carregado, inicializando formulário'); // Debug
     const form = document.getElementById('login-form');
     if (form) {
         form.addEventListener('submit', handleLogin);
-        console.log('Formulário de login inicializado');
+        console.log('Evento de submit adicionado ao formulário');
     } else {
-        console.error('Formulário de login não encontrado');
+        console.error('Formulário #login-form não encontrado');
     }
 });
