@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Facilita Angola - Administração</title>
-    <link rel="stylesheet" href="css/admin.css">
-    <link rel="icon" href="favicon.ico">
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <link rel="stylesheet" href="/css/admin.css">
+    <link rel="icon" href="/favicon.ico">
 </head>
 <body>
     <div class="container">
@@ -28,216 +27,23 @@
             <h2 id="section-title">Instituições</h2>
             <div class="error-message" id="global-error"></div>
 
-            <!-- Instituições -->
             <div id="institutions-section" class="content-section active">
-                <button id="create-institution-btn" class="admin-only">Criar Instituição</button>
-                <table id="institutions-table">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>Localização</th>
-                            <th>Latitude</th>
-                            <th>Longitude</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+                <p>Bem-vindo ao painel de administração. Selecione uma seção no menu.</p>
             </div>
-
-            <!-- Departamentos -->
             <div id="departments-section" class="content-section">
-                <button id="create-department-btn">Criar Departamento</button>
-                <table id="departments-table">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>Setor</th>
-                            <th>Instituição</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+                <p>Gerenciar departamentos aqui.</p>
             </div>
-
-            <!-- Usuários -->
             <div id="users-section" class="content-section">
-                <button id="create-user-btn">Criar Usuário</button>
-                <table id="users-table">
-                    <thead>
-                        <tr>
-                            <th>Email</th>
-                            <th>Nome</th>
-                            <th>Função</th>
-                            <th>Departamento</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+                <p>Gerenciar usuários aqui.</p>
             </div>
-
-            <!-- Filas -->
             <div id="queues-section" class="content-section">
-                <button id="create-queue-btn">Criar Fila</button>
-                <table id="queues-table">
-                    <thead>
-                        <tr>
-                            <th>Serviço</th>
-                            <th>Prefixo</th>
-                            <th>Horário de Abertura</th>
-                            <th>Horário de Fecho</th>
-                            <th>Limite Diário</th>
-                            <th>Estado</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+                <p>Gerenciar filas aqui.</p>
             </div>
-
-            <!-- Senhas -->
             <div id="tickets-section" class="content-section">
-                <table id="tickets-table">
-                    <thead>
-                        <tr>
-                            <th>Número</th>
-                            <th>Serviço</th>
-                            <th>Estado</th>
-                            <th>Emissão</th>
-                            <th>Guichê</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+                <p>Gerenciar senhas aqui.</p>
             </div>
         </main>
     </div>
-
-    <!-- Modals -->
-    <div id="create-institution-modal" class="modal">
-        <div class="modal-content">
-            <h2>Criar Instituição</h2>
-            <form id="create-institution-form">
-                <label>Nome: <input type="text" name="name" required></label>
-                <label>Localização: <input type="text" name="location" required></label>
-                <label>Latitude: <input type="number" step="any" name="latitude" required></label>
-                <label>Longitude: <input type="number" step="any" name="longitude" required></label>
-                <div class="modal-actions">
-                    <button type="submit">Criar</button>
-                    <button type="button" id="cancel-institution">Cancelar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    <div id="edit-institution-modal" class="modal">
-        <div class="modal-content">
-            <h2>Editar Instituição</h2>
-            <form id="edit-institution-form">
-                <input type="hidden" name="id">
-                <label>Nome: <input type="text" name="name" required></label>
-                <label>Localização: <input type="text" name="location" required></label>
-                <label>Latitude: <input type="number" step="any" name="latitude" required></label>
-                <label>Longitude: <input type="number" step="any" name="longitude" required></label>
-                <div class="modal-actions">
-                    <button type="submit">Guardar</button>
-                    <button type="button" id="cancel-edit-institution">Cancelar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    <div id="create-department-modal" class="modal">
-        <div class="modal-content">
-            <h2>Criar Departamento</h2>
-            <form id="create-department-form">
-                <label>Nome: <input type="text" name="name" required></label>
-                <label>Setor: <input type="text" name="sector" required></label>
-                <div class="modal-actions">
-                    <button type="submit">Criar</button>
-                    <button type="button" id="cancel-department">Cancelar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    <div id="create-user-modal" class="modal">
-        <div class="modal-content">
-            <h2>Criar Usuário</h2>
-            <form id="create-user-form">
-                <label>Email: <input type="email" name="email" required></label>
-                <label>Nome: <input type="text" name="name" required></label>
-                <label>Senha: <input type="password" name="password" required></label>
-                <label>Função:
-                    <select name="role" required>
-                        <option value="user">Usuário</option>
-                        <option value="dept_admin">Gestor de Departamento</option>
-                        <option value="inst_admin" class="admin-only">Gestor de Instituição</option>
-                    </select>
-                </label>
-                <label>Departamento:
-                    <select name="department_id"></select>
-                </label>
-                <div class="modal-actions">
-                    <button type="submit">Criar</button>
-                    <button type="button" id="cancel-user">Cancelar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    <div id="edit-user-modal" class="modal">
-        <div class="modal-content">
-            <h2>Editar Usuário</h2>
-            <form id="edit-user-form">
-                <input type="hidden" name="id">
-                <label>Email: <input type="email" name="email" required></label>
-                <label>Nome: <input type="text" name="name" required></label>
-                <label>Senha: <input type="password" name="password"></label>
-                <label>Função:
-                    <select name="role" required>
-                        <option value="user">Usuário</option>
-                        <option value="dept_admin">Gestor de Departamento</option>
-                        <option value="inst_admin" class="admin-only">Gestor de Instituição</option>
-                    </select>
-                </label>
-                <label>Departamento:
-                    <select name="department_id"></select>
-                </label>
-                <div class="modal-actions">
-                    <button type="submit">Guardar</button>
-                    <button type="button" id="cancel-edit-user">Cancelar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    <div id="create-queue-modal" class="modal">
-        <div class="modal-content">
-            <h2>Criar Fila</h2>
-            <form id="create-queue-form">
-                <label>Serviço: <input type="text" name="service" required></label>
-                <label>Prefixo: <input type="text" name="prefix" maxlength="2" required></label>
-                <label>Horário de Abertura: <input type="time" name="open_time" required></label>
-                <label>Horário de Fecho: <input type="time" name="end_time" required></label>
-                <label>Limite Diário: <input type="number" name="daily_limit" min="1" required></label>
-                <label>Número de Guichês: <input type="number" name="num_counters" min="1" required></label>
-                <div class="modal-actions">
-                    <button type="submit">Criar</button>
-                    <button type="button" id="cancel-queue">Cancelar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    <div id="call-next-modal" class="modal">
-        <div class="modal-content">
-            <h2>Chamar Próxima Senha</h2>
-            <p>Serviço: <span id="call-next-service"></span></p>
-            <div class="modal-actions">
-                <button id="confirm-call-next">Confirmar</button>
-                <button id="cancel-call-next">Cancelar</button>
-            </div>
-        </div>
-    </div>
-
-    <script type="module" src="js/app.js"></script>
+    <script src="/js/app.js"></script>
 </body>
 </html>

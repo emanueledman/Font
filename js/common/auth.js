@@ -1,34 +1,45 @@
-import { ApiService } from './api-service.js';
-import { showNotification } from './utils.js';
+// Combined ApiService, utils, and login logic
+const ApiService = {
+    async request(endpoint, method = 'GET', data = null) {
+        const token = localStorage.getItem('token');
+        const headers = {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : ''
+        };
 
-export async function initApp() {
-    const token = localStorage.getItem('token');
-    if (!token) {
-        console.warn('initApp: Nenhum token encontrado');
-        return { isAuthenticated: false };
-    }
+        const options = { method, headers };
+        if (data) options.body = JSON.stringify(data);
 
-    try {
-        await ApiService.getAdminQueues();
-        console.log('initApp: Token validado');
-        return { isAuthenticated: true };
-    } catch (error) {
-        console.error('initApp: Falha na validação do token:', error);
-        showNotification('Sessão inválida, faça login novamente', 'error');
-        localStorage.removeItem('token');
-        localStorage.removeItem('userInfo');
-        return { isAuthenticated: false };
+        try {
+            const response = await fetch(`/api${endpoint}`, options);
+            if (response.status === 401) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('userInfo');
+                window.location.href = '/index.html';
+                throw new Error('Sessão expirada');
+            }
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Falha na requisição');
+            return result;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    login(email, password) {
+        return this.request('/admin/login', 'POST', { email, password });
     }
+};
+
+function showNotification(message, type = 'success') {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    setTimeout(() => notification.remove(), 5000);
 }
 
-export function logout() {
-    console.log('logout: Limpando localStorage');
-    localStorage.removeItem('token');
-    localStorage.removeItem('userInfo');
-    window.location.href = '/index.html';
-}
-
-export async function handleLogin(event) {
+async function handleLogin(event) {
     event.preventDefault();
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
@@ -68,5 +79,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('login-form');
     if (form) {
         form.addEventListener('submit', handleLogin);
+        console.log('Formulário de login inicializado');
+    } else {
+        console.error('Formulário de login não encontrado');
     }
 });
