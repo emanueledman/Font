@@ -4,24 +4,24 @@ import { showNotification } from './utils.js';
 export async function initApp() {
     const token = localStorage.getItem('token');
     if (!token) {
-        console.warn('Nenhum token encontrado em localStorage'); // Debug
-        return;
+        console.warn('initApp: Nenhum token encontrado'); // Debug
+        return { isAuthenticated: false, error: 'Nenhum token' };
     }
 
     try {
-        console.log('Validando token com chamada à API...'); // Debug
-        await ApiService.getAdminQueues();
-        console.log('Token validado com sucesso'); // Debug
+        console.log('initApp: Validando token com API...'); // Debug
+        await ApiService.getAdminQueues(); // Valida o token
+        console.log('initApp: Token validado com sucesso'); // Debug
+        return { isAuthenticated: true };
     } catch (error) {
-        console.error('Erro ao validar token:', error); // Debug
+        console.error('initApp: Erro ao validar token:', error); // Debug
         showNotification('Sessão inválida, faça login novamente', 'error');
-        // Não chama logout() imediatamente para evitar loops
-        // logout();
+        return { isAuthenticated: false, error: error.message };
     }
 }
 
 export function logout() {
-    console.log('Executando logout...'); // Debug
+    console.log('logout: Limpando localStorage'); // Debug
     localStorage.removeItem('token');
     localStorage.removeItem('userInfo');
 }

@@ -141,11 +141,17 @@ function showPage(section) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('Inicializando admin...'); // Debug
+    console.log('main-admin.js: Inicializando...'); // Debug
     try {
-        await initApp();
+        const authStatus = await initApp();
+        if (!authStatus.isAuthenticated) {
+            console.warn('main-admin.js: Usuário não autenticado, redirecionando para index.html'); // Debug
+            window.location.href = '/index.html';
+            return;
+        }
+
         if (!userInfo.role || !['dept_admin', 'inst_admin', 'sys_admin'].includes(userInfo.role.toLowerCase())) {
-            console.warn('Usuário sem permissão para admin, redirecionando...'); // Debug
+            console.warn('main-admin.js: Usuário sem permissão para admin, redirecionando para index.html'); // Debug
             window.location.href = '/index.html';
             return;
         }
@@ -155,21 +161,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (userInfoElement && logoutBtn) {
             userInfoElement.textContent = userInfo.email;
             logoutBtn.onclick = () => {
+                console.log('main-admin.js: Logout clicado'); // Debug
                 logout();
                 window.location.href = '/index.html';
             };
         } else {
-            console.error('Elementos user-info ou logout-btn não encontrados'); // Debug
+            console.error('main-admin.js: Elementos user-info ou logout-btn não encontrados'); // Debug
         }
 
         const menuItems = document.querySelectorAll('.menu a');
         if (menuItems.length === 0) {
-            console.error('Itens de menu não encontrados'); // Debug
+            console.error('main-admin.js: Itens de menu não encontrados'); // Debug
         }
         menuItems.forEach(item => {
             item.addEventListener('click', () => {
                 const section = item.dataset.section;
-                console.log(`Navegando para seção: ${section}`); // Debug
+                console.log(`main-admin.js: Navegando para seção: ${section}`); // Debug
                 showPage(section);
                 if (section === 'dashboard') updateDashboard();
                 else if (section === 'queues') updateQueues();
@@ -179,15 +186,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         });
 
-        console.log('Inicializando WebSocket...'); // Debug
+        console.log('main-admin.js: Inicializando WebSocket...'); // Debug
         initWebSocket(userInfo, updateDashboard, updateQueues, updateTickets);
-        console.log('Iniciando polling...'); // Debug
+        console.log('main-admin.js: Iniciando polling...'); // Debug
         pollingInterval = startPolling(updateDashboard, updateQueues, updateTickets);
 
         // Carrega o dashboard inicial
         await updateDashboard();
     } catch (error) {
-        console.error('Erro na inicialização do admin:', error); // Debug
-        showNotification('Erro ao inicializar o painel', 'error');
+        console.error('main-admin.js: Erro na inicialização:', error); // Debug
+        window.location.href = '/index.html';
     }
 });

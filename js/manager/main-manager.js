@@ -10,7 +10,6 @@ import { loadReport } from './reports-manager.js';
 let pollingInterval;
 const userInfo = JSON.parse(localStorage.getItem('userInfo')) || {};
 
-// Definir funções no escopo global
 window.loadDashboard = async () => {
     console.log('Botão loadDashboard clicado'); // Debug
     try {
@@ -148,11 +147,17 @@ function showPage(section) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('main-manager.js: DOM carregado, inicializando...'); // Debug
+    console.log('main-manager.js: Inicializando...'); // Debug
     try {
-        await initApp();
+        const authStatus = await initApp();
+        if (!authStatus.isAuthenticated) {
+            console.warn('main-manager.js: Usuário não autenticado, redirecionando para index.html'); // Debug
+            window.location.href = '/index.html';
+            return;
+        }
+
         if (!userInfo.role || userInfo.role.toLowerCase() !== 'user') {
-            console.warn('Usuário sem permissão para manager, redirecionando...'); // Debug
+            console.warn('main-manager.js: Usuário sem permissão para manager, redirecionando para index.html'); // Debug
             window.location.href = '/index.html';
             return;
         }
@@ -162,22 +167,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (userInfoElement && logoutBtn) {
             userInfoElement.textContent = userInfo.email;
             logoutBtn.onclick = () => {
-                console.log('Botão logout clicado'); // Debug
+                console.log('main-manager.js: Logout clicado'); // Debug
                 logout();
                 window.location.href = '/index.html';
             };
         } else {
-            console.error('Elementos user-info ou logout-btn não encontrados'); // Debug
+            console.error('main-manager.js: Elementos user-info ou logout-btn não encontrados'); // Debug
         }
 
         const menuItems = document.querySelectorAll('.menu a');
         if (menuItems.length === 0) {
-            console.error('Itens de menu não encontrados'); // Debug
+            console.error('main-manager.js: Itens de menu não encontrados'); // Debug
         }
         menuItems.forEach(item => {
             item.addEventListener('click', () => {
                 const section = item.dataset.section;
-                console.log(`Menu clicado: ${section}`); // Debug
+                console.log(`main-manager.js: Navegando para seção: ${section}`); // Debug
                 showPage(section);
                 if (section === 'dashboard') updateDashboard();
                 else if (section === 'queues') updateQueues();
@@ -187,16 +192,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         });
 
-        console.log('Inicializando WebSocket...'); // Debug
+        console.log('main-manager.js: Inicializando WebSocket...'); // Debug
         initWebSocket(userInfo, updateDashboard, updateQueues, updateTickets);
-        console.log('Iniciando polling...'); // Debug
+        console.log('main-manager.js: Iniciando polling...'); // Debug
         pollingInterval = startPolling(updateDashboard, updateQueues, updateTickets);
 
         // Carrega o dashboard inicial
-        console.log('Carregando dashboard inicial...'); // Debug
         await updateDashboard();
     } catch (error) {
-        console.error('Erro na inicialização de main-manager:', error); // Debug
-        showNotification('Erro ao inicializar o painel', 'error');
+        console.error('main-manager.js: Erro na inicialização:', error); // Debug
+        window.location.href = '/index.html';
     }
 });
