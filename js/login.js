@@ -12,6 +12,7 @@ export async function handleLogin(event) {
     loginBtn.disabled = true;
 
     try {
+        console.log('Enviando requisição de login para:', email); // Debug
         const result = await ApiService.login(email, password);
         console.log('Resposta do login:', result); // Debug
         const userInfo = {
@@ -22,11 +23,15 @@ export async function handleLogin(event) {
         };
         localStorage.setItem('token', result.token);
         localStorage.setItem('userInfo', JSON.stringify(userInfo));
+        console.log('Token salvo:', result.token); // Debug
+        console.log('UserInfo salvo:', userInfo); // Debug
 
         const role = userInfo.role.toLowerCase();
         if (['dept_admin', 'inst_admin', 'sys_admin'].includes(role)) {
+            console.log('Redirecionando para admin.html'); // Debug
             window.location.href = '/admin.html';
         } else if (['user'].includes(role)) {
+            console.log('Redirecionando para manager.html'); // Debug
             window.location.href = '/manager.html';
         } else {
             throw new Error(`Função de usuário inválida: ${userInfo.role}`);
@@ -43,6 +48,7 @@ export async function handleLogin(event) {
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('login-form');
     if (form) {
+        console.log('Formulário de login encontrado'); // Debug
         form.addEventListener('submit', handleLogin);
     } else {
         console.error('Formulário de login não encontrado'); // Debug
