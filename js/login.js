@@ -13,6 +13,7 @@ export async function handleLogin(event) {
 
     try {
         const result = await ApiService.login(email, password);
+        console.log('Resposta do login:', result); // Debug
         const userInfo = {
             id: result.user_id,
             email: result.email,
@@ -22,7 +23,6 @@ export async function handleLogin(event) {
         localStorage.setItem('token', result.token);
         localStorage.setItem('userInfo', JSON.stringify(userInfo));
 
-        // Mapeia user_role para a página correta
         const role = userInfo.role.toLowerCase();
         if (['dept_admin', 'inst_admin', 'sys_admin'].includes(role)) {
             window.location.href = '/admin.html';
@@ -32,6 +32,7 @@ export async function handleLogin(event) {
             throw new Error(`Função de usuário inválida: ${userInfo.role}`);
         }
     } catch (error) {
+        console.error('Erro no login:', error); // Debug
         errorDiv.textContent = `Erro: ${error.message}`;
         errorDiv.style.display = 'block';
     } finally {
@@ -40,5 +41,10 @@ export async function handleLogin(event) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('login-form').addEventListener('submit', handleLogin);
+    const form = document.getElementById('login-form');
+    if (form) {
+        form.addEventListener('submit', handleLogin);
+    } else {
+        console.error('Formulário de login não encontrado'); // Debug
+    }
 });
