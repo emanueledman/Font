@@ -41,18 +41,10 @@ function setupEventListeners() {
 // Modificação no arquivo que verifica o usuário após login
 async function fetchUserInfo() {
     try {
-        // Usar a rota correta conforme implementado no backend
         const response = await axios.get('/api/admin/user');
-        const userInfo = document.getElementById('user-info');
-        userInfo.textContent = `Gestor: ${response.data.email}`;
-        userInfo.classList.remove('hidden');
+        document.getElementById('user-email').textContent = response.data.email;
     } catch (error) {
-        console.error('Erro ao buscar informações do usuário:', error);
-        // Verificar se é erro de autenticação
-        if (error.response?.status === 401) {
-            localStorage.removeItem('adminToken');
-            window.location.href = '/index.html';
-        }
+        console.error('Erro ao buscar usuário:', error);
         showError('Erro ao carregar informações do usuário.');
     }
 }
