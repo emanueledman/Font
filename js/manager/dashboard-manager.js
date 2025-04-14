@@ -2,14 +2,27 @@ import { ApiService } from '../common/api-service.js';
 import { formatTicketStatus, formatDate, showNotification } from '../common/utils.js';
 
 export async function updateDashboardManager() {
-    if (!localStorage.getItem('token')) return;
+    console.log('updateDashboardManager chamado'); // Debug
+    if (!localStorage.getItem('token')) {
+        console.warn('Token não encontrado, pulando atualização do dashboard'); // Debug
+        return;
+    }
     try {
+        const pendingTickets = document.getElementById('pending-tickets');
+        const attendedTickets = document.getElementById('attended-tickets');
+        const recentTicketsContent = document.getElementById('recent-tickets-content');
+        if (!pendingTickets || !attendedTickets || !recentTicketsContent) {
+            console.error('Elementos do dashboard não encontrados'); // Debug
+            return;
+        }
+
         const tickets = await ApiService.getAdminTickets();
-        document.getElementById('pending-tickets').textContent = tickets.filter(t => t.status === 'Pendente').length;
-        document.getElementById('attended-tickets').textContent = tickets.filter(t => t.status === 'attended').length;
+        console.log('Tickets recebidos:', tickets); // Debug
+        pendingTickets.textContent = tickets.filter(t => t.status === 'Pendente').length;
+        attendedTickets.textContent = tickets.filter(t => t.status === 'attended').length;
 
         const recentTickets = tickets.slice(0, 3);
-        document.getElementById('recent-tickets-content').innerHTML = recentTickets.map(ticket => `
+        recentTicketsContent.innerHTML = recentTickets.map(ticket => `
             <tr>
                 <td>${ticket.ticket_number}</td>
                 <td>${ticket.service}</td>
@@ -19,14 +32,17 @@ export async function updateDashboardManager() {
             </tr>
         `).join('');
     } catch (error) {
+        console.error('Erro em updateDashboardManager:', error); // Debug
         showNotification('Erro ao atualizar dashboard: ' + error.message, 'error');
     }
 }
 
 export function loadDashboard() {
+    console.log('loadDashboard chamado'); // Debug
     updateDashboardManager();
 }
 
 export function exportDashboard() {
+    console.log('exportDashboard chamado'); // Debug
     showNotification('Exportação não permitida', 'error');
 }

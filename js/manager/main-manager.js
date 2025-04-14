@@ -10,63 +10,77 @@ import { loadReport } from './reports-manager.js';
 let pollingInterval;
 const userInfo = JSON.parse(localStorage.getItem('userInfo')) || {};
 
+// Definir funções no escopo global
 window.loadDashboard = async () => {
+    console.log('Botão loadDashboard clicado'); // Debug
     try {
-        console.log('Carregando dashboard...'); // Debug
         await loadDashboard();
     } catch (error) {
-        console.error('Erro ao carregar dashboard:', error); // Debug
+        console.error('Erro em loadDashboard:', error); // Debug
         showNotification('Erro ao carregar dashboard', 'error');
     }
 };
 window.loadQueues = async () => {
+    console.log('Botão loadQueues clicado'); // Debug
     try {
-        console.log('Carregando filas...'); // Debug
         await loadQueues();
     } catch (error) {
-        console.error('Erro ao carregar filas:', error); // Debug
+        console.error('Erro em loadQueues:', error); // Debug
         showNotification('Erro ao carregar filas', 'error');
     }
 };
 window.loadTickets = async () => {
+    console.log('Botão loadTickets clicado'); // Debug
     try {
-        console.log('Carregando tickets...'); // Debug
         await loadTickets();
     } catch (error) {
-        console.error('Erro ao carregar tickets:', error); // Debug
+        console.error('Erro em loadTickets:', error); // Debug
         showNotification('Erro ao carregar tickets', 'error');
     }
 };
-window.loadReport = loadReport;
+window.loadReport = async () => {
+    console.log('Botão loadReport clicado'); // Debug
+    try {
+        await loadReport();
+    } catch (error) {
+        console.error('Erro em loadReport:', error); // Debug
+        showNotification('Erro ao carregar relatório', 'error');
+    }
+};
+window.loadStartService = async () => {
+    console.log('Botão loadStartService clicado'); // Debug
+    showNotification('Iniciar Atendimento não implementado', 'error');
+};
 
 async function updateDashboard() {
+    console.log('Atualizando dashboard...'); // Debug
     try {
-        console.log('Atualizando dashboard...'); // Debug
         await updateDashboardManager();
     } catch (error) {
-        console.error('Erro ao atualizar dashboard:', error); // Debug
+        console.error('Erro em updateDashboard:', error); // Debug
     }
 }
 
 async function updateQueues() {
+    console.log('Atualizando filas...'); // Debug
     try {
-        console.log('Atualizando filas...'); // Debug
         await updateQueuesManager();
     } catch (error) {
-        console.error('Erro ao atualizar filas:', error); // Debug
+        console.error('Erro em updateQueues:', error); // Debug
     }
 }
 
 async function updateTickets() {
+    console.log('Atualizando tickets...'); // Debug
     try {
-        console.log('Atualizando tickets...'); // Debug
         await updateTicketsManager();
     } catch (error) {
-        console.error('Erro ao atualizar tickets:', error); // Debug
+        console.error('Erro em updateTickets:', error); // Debug
     }
 }
 
 window.openCallNextModal = async (queueId, service) => {
+    console.log(`Abrindo modal para queueId: ${queueId}, serviço: ${service}`); // Debug
     try {
         const modal = document.getElementById('call-next-modal') || createCallNextModal();
         modal.style.display = 'flex';
@@ -74,6 +88,7 @@ window.openCallNextModal = async (queueId, service) => {
 
         const confirmBtn = document.getElementById('confirm-call-next');
         confirmBtn.onclick = async () => {
+            console.log(`Confirmando chamada para queueId: ${queueId}`); // Debug
             try {
                 const result = await ApiService.callNextTicket(queueId);
                 showNotification(`Senha ${result.ticket_number} chamada`, 'success');
@@ -85,12 +100,13 @@ window.openCallNextModal = async (queueId, service) => {
             }
         };
     } catch (error) {
-        console.error('Erro ao abrir modal de chamada:', error); // Debug
+        console.error('Erro ao abrir modal:', error); // Debug
         showNotification('Erro ao abrir modal', 'error');
     }
 };
 
 function createCallNextModal() {
+    console.log('Criando modal de chamada'); // Debug
     const modal = document.createElement('div');
     modal.id = 'call-next-modal';
     modal.className = 'modal';
@@ -105,11 +121,15 @@ function createCallNextModal() {
         </div>
     `;
     document.body.appendChild(modal);
-    document.getElementById('cancel-call-next').onclick = () => modal.style.display = 'none';
+    document.getElementById('cancel-call-next').onclick = () => {
+        console.log('Cancelando modal'); // Debug
+        modal.style.display = 'none';
+    };
     return modal;
 }
 
 function showPage(section) {
+    console.log(`Mostrando seção: ${section}`); // Debug
     try {
         document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
         document.querySelectorAll('.menu a').forEach(a => a.classList.remove('active'));
@@ -123,12 +143,12 @@ function showPage(section) {
             console.error(`Seção ${section} ou item de menu não encontrado`); // Debug
         }
     } catch (error) {
-        console.error('Erro ao mostrar página:', error); // Debug
+        console.error('Erro em showPage:', error); // Debug
     }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('Inicializando manager...'); // Debug
+    console.log('main-manager.js: DOM carregado, inicializando...'); // Debug
     try {
         await initApp();
         if (!userInfo.role || userInfo.role.toLowerCase() !== 'user') {
@@ -142,6 +162,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (userInfoElement && logoutBtn) {
             userInfoElement.textContent = userInfo.email;
             logoutBtn.onclick = () => {
+                console.log('Botão logout clicado'); // Debug
                 logout();
                 window.location.href = '/index.html';
             };
@@ -156,12 +177,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         menuItems.forEach(item => {
             item.addEventListener('click', () => {
                 const section = item.dataset.section;
-                console.log(`Navegando para seção: ${section}`); // Debug
+                console.log(`Menu clicado: ${section}`); // Debug
                 showPage(section);
                 if (section === 'dashboard') updateDashboard();
                 else if (section === 'queues') updateQueues();
                 else if (section === 'tickets') updateTickets();
                 else if (section === 'reports') loadReport();
+                else if (section === 'start-service') loadStartService();
             });
         });
 
@@ -171,9 +193,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         pollingInterval = startPolling(updateDashboard, updateQueues, updateTickets);
 
         // Carrega o dashboard inicial
+        console.log('Carregando dashboard inicial...'); // Debug
         await updateDashboard();
     } catch (error) {
-        console.error('Erro na inicialização do manager:', error); // Debug
+        console.error('Erro na inicialização de main-manager:', error); // Debug
         showNotification('Erro ao inicializar o painel', 'error');
     }
 });
