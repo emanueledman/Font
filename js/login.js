@@ -23,9 +23,10 @@ export async function handleLogin(event) {
         localStorage.setItem('userInfo', JSON.stringify(userInfo));
 
         // Mapeia user_role para a página correta
-        if (['DEPARTMENT_ADMIN', 'admin', 'administrador'].includes(userInfo.role.toLowerCase())) {
+        const role = userInfo.role.toLowerCase();
+        if (['dept_admin', 'inst_admin', 'sys_admin'].includes(role)) {
             window.location.href = '/admin.html';
-        } else if (['USER', 'gestor', 'manager'].includes(userInfo.role.toLowerCase())) {
+        } else if (['user'].includes(role)) {
             window.location.href = '/manager.html';
         } else {
             throw new Error(`Função de usuário inválida: ${userInfo.role}`);

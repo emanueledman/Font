@@ -89,7 +89,7 @@ function showPage(section) {
 
 document.addEventListener('DOMContentLoaded', async () => {
     await initApp();
-    if (!userInfo.role || !['DEPARTMENT_ADMIN', 'admin', 'administrador'].includes(userInfo.role.toLowerCase())) {
+    if (!userInfo.role || !['dept_admin', 'inst_admin', 'sys_admin'].includes(userInfo.role.toLowerCase())) {
         window.location.href = '/index.html';
         return;
     }

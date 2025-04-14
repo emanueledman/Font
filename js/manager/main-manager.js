@@ -76,7 +76,7 @@ function showPage(section) {
 
 document.addEventListener('DOMContentLoaded', async () => {
     await initApp();
-    if (!userInfo.role || !['USER', 'gestor', 'manager'].includes(userInfo.role.toLowerCase())) {
+    if (!userInfo.role || userInfo.role.toLowerCase() !== 'user') {
         window.location.href = '/index.html';
         return;
     }
