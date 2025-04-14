@@ -38,13 +38,21 @@ function setupEventListeners() {
     document.getElementById('filter-status').addEventListener('change', filterQueues);
 }
 
+// Modificação no arquivo que verifica o usuário após login
 async function fetchUserInfo() {
     try {
-        const response = await axios.get('/api/user');
+        // Usar a rota correta conforme implementado no backend
+        const response = await axios.get('/api/admin/user');
         const userInfo = document.getElementById('user-info');
         userInfo.textContent = `Gestor: ${response.data.email}`;
         userInfo.classList.remove('hidden');
     } catch (error) {
+        console.error('Erro ao buscar informações do usuário:', error);
+        // Verificar se é erro de autenticação
+        if (error.response?.status === 401) {
+            localStorage.removeItem('adminToken');
+            window.location.href = '/index.html';
+        }
         showError('Erro ao carregar informações do usuário.');
     }
 }
