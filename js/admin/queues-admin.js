@@ -1,75 +1,89 @@
 import { ApiService } from '../common/api-service.js';
-import { formatQueueStatus, formatDate, showNotification } from '../common/utils.js';
+import { showNotification, formToObject } from '../common/utils.js';
 
-export async function updateQueuesAdmin() {
-    if (!localStorage.getItem('token')) return;
+export async function loadQueues() {
+    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
     try {
         const queues = await ApiService.getAdminQueues();
-        document.getElementById('queue-content').innerHTML = queues.map(queue => `
-            <tr>
+        const tbody = document.querySelector('#queues-table tbody');
+        tbody.innerHTML = '';
+        queues.forEach(queue => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
                 <td>${queue.service}</td>
-                <td>${queue.department || '-'}</td>
                 <td>${queue.prefix}</td>
-                <td>${queue.active_tickets}</td>
-                <td>${queue.current_ticket || '-'}</td>
-                <td>${queue.avg_wait_time || 0}</td>
-                <td>${formatQueueStatus(queue.active_tickets, queue.daily_limit)}</td>
+                <td>${queue.open_time || 'N/A'}</td>
+                <td>${queue.end_time || 'N/A'}</td>
+                <td>${queue.daily_limit}</td>
+                <td>${queue.status}</td>
                 <td>
-                    <button onclick="openCallNextModal('${queue.id}', '${queue.service}')">Chamar</button>
-                    <button onclick="pauseQueue('${queue.id}')">Pausar</button>
+                    <button class="call-next" data-id="${queue.id}" data-service="${queue.service}">Chamar Próxima</button>
                 </td>
-            </tr>
-        `).join('');
-        updateQueueHistory(queues);
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.querySelectorAll('.call-next').forEach(btn => {
+            btn.addEventListener('click', () => openCallNextModal(btn.dataset.id, btn.dataset.service));
+        });
     } catch (error) {
-        showNotification('Erro ao atualizar filas: ' + error.message, 'error');
+        showNotification(`Erro ao carregar filas: ${error.message}`, 'error');
     }
 }
 
-function updateQueueHistory(queues) {
-    document.getElementById('queue-history-content').innerHTML = queues.map(queue => `
-        <tr>
-            <td>${queue.service}</td>
-            <td>${queue.total_tickets}</td>
-            <td>${queue.attended_tickets}</td>
-            <td>${queue.cancelled_tickets}</td>
-            <td>${formatDate(queue.updated_at)}</td>
-        </tr>
-    `).join('');
+function openCreateQueueModal() {
+    const modal = document.getElementById('create-queue-modal');
+    modal.style.display = 'flex';
 }
 
-export function openCreateQueueModal() {
-    document.getElementById('create-queue-modal').style.display = 'flex';
-}
-
-export function closeCreateQueueModal() {
-    document.getElementById('create-queue-modal').style.display = 'none';
-}
-
-export async function createQueue(event) {
+async function createQueue(event) {
     event.preventDefault();
-    const data = {
-        service: document.getElementById('queue-service').value,
-        prefix: document.getElementById('queue-prefix').value,
-        open_time: document.getElementById('queue-open-time').value,
-        end_time: document.getElementById('queue-end-time').value,
-        daily_limit: parseInt(document.getElementById('queue-daily-limit').value),
-        num_counters: parseInt(document.getElementById('queue-num-counters').value),
-    };
+    const form = event.target;
+    const data = formToObject(form);
+    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+    
     try {
-        await ApiService.createQueue(data);
+        await ApiService.createQueue(userInfo.department_id, data);
         showNotification('Fila criada com sucesso', 'success');
-        closeCreateQueueModal();
-        updateQueuesAdmin();
+        form.reset();
+        document.getElementById('create-queue-modal').style.display = 'none';
+        loadQueues();
     } catch (error) {
-        showNotification('Erro ao criar fila: ' + error.message, 'error');
+        showNotification(`Erro ao criar fila: ${error.message}`, 'error');
     }
 }
 
-export function loadQueues() {
-    updateQueuesAdmin();
+function openCallNextModal(queueId, service) {
+    const modal = document.getElementById('call-next-modal');
+    document.getElementById('call-next-service').textContent = service;
+    modal.style.display = 'flex';
+
+    const confirmBtn = document.getElementById('confirm-call-next');
+    confirmBtn.onclick = async () => {
+        try {
+            const result = await ApiService.callNextTicket(queueId);
+            showNotification(`Senha ${result.ticket_number} chamada`, 'success');
+            modal.style.display = 'none';
+            loadQueues();
+        } catch (error) {
+            showNotification(`Erro ao chamar senha: ${error.message}`, 'error');
+        }
+    };
+
+    document.getElementById('cancel-call-next').onclick = () => {
+        modal.style.display = 'none';
+    };
 }
 
-export function openCallNextModal(queueId, service) {
-    // Implementação será compartilhada com manager, movida para main.js
+export function initQueues() {
+    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+    if (['dept_admin', 'inst_admin', 'sys_admin'].includes(userInfo.role)) {
+        document.getElementById('create-queue-btn').style.display = 'block';
+        document.getElementById('create-queue-btn').addEventListener('click', openCreateQueueModal);
+        document.getElementById('create-queue-form').addEventListener('submit', createQueue);
+        document.getElementById('cancel-queue').addEventListener('click', () => {
+            document.getElementById('create-queue-modal').style.display = 'none';
+        });
+        loadQueues();
+    }
 }

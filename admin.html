@@ -1,400 +1,243 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel Administrativo - Facilita 2.0</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css">
+    <title>Facilita Angola - Administração</title>
+    <link rel="stylesheet" href="css/admin.css">
+    <link rel="icon" href="favicon.ico">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
-    <div class="sidebar" id="sidebar">
-        <div class="logo">Facilita 2.0</div>
-        <ul class="menu">
-            <li><a href="#" data-section="dashboard" class="active">Dashboard</a></li>
-            <li><a href="#" data-section="queues">Filas</a></li>
-            <li><a href="#" data-section="tickets">Tickets</a></li>
-            <li><a href="#" data-section="start-service">Iniciar Atendimento</a></li>
-            <li><a href="#" data-section="reports">Relatórios</a></li>
-            <li><a href="#" data-section="settings">Configurações</a></li>
-        </ul>
-    </div>
-    <div class="main-content" id="main-content">
-        <div class="header">
-            <h1 id="section-title">Dashboard</h1>
+    <div class="container">
+        <header>
+            <h1>Facilita Angola - Administração</h1>
             <div class="user-info">
-                <span id="user-info"></span>
+                <span id="user-email"></span>
                 <button id="logout-btn">Sair</button>
             </div>
-        </div>
-        <div class="content-section active" id="dashboard-section">
-            <div class="section-header">
-                <h2>Visão Geral</h2>
-                <div class="controls">
-                    <button onclick="loadDashboard()">Atualizar</button>
-                    <button onclick="exportDashboard()" title="Exportar dados do dashboard como CSV"><i class="fas fa-download"></i> Exportar</button>
-                </div>
-            </div>
-            <div class="dashboard-grid">
-                <div class="dashboard-card card-orange">
-                    <h3>Filas Ativas</h3>
-                    <p id="active-queues">0</p>
-                    <div class="tooltip"><i class="fas fa-info-circle"></i><span>Filas atualmente abertas para atendimento.</span></div>
-                </div>
-                <div class="dashboard-card card-red">
-                    <h3>Tickets Pendentes</h3>
-                    <p id="pending-tickets">0</p>
-                    <div class="tooltip"><i class="fas fa-info-circle"></i><span>Tickets aguardando atendimento.</span></div>
-                </div>
-                <div class="dashboard-card card-green">
-                    <h3>Tickets Atendidos Hoje</h3>
-                    <p id="attended-tickets">0</p>
-                    <div class="tooltip"><i class="fas fa-info-circle"></i><span>Tickets atendidos no dia atual.</span></div>
-                </div>
-                <div class="dashboard-card card-purple">
-                    <h3>Tempo Médio de Espera</h3>
-                    <p id="avg-wait-time">0 min</p>
-                    <div class="tooltip"><i class="fas fa-info-circle"></i><span>Tempo médio de espera para atendimento.</span></div>
-                </div>
-                <div class="dashboard-card card-blue">
-                    <h3>Taxa de Atendimento/Hora</h3>
-                    <p id="attendance-rate">0</p>
-                    <div class="tooltip"><i class="fas fa-info-circle"></i><span>Tickets atendidos por hora.</span></div>
-                </div>
-                <div class="dashboard-card card-orange">
-                    <h3>Tickets Cancelados Hoje</h3>
-                    <p id="cancelled-tickets">0</p>
-                    <div class="tooltip"><i class="fas fa-info-circle"></i><span>Tickets cancelados no dia atual.</span></div>
-                </div>
-                <div class="dashboard-card card-red">
-                    <h3>Filas Pausadas</h3>
-                    <p id="paused-queues">0</p>
-                    <div class="tooltip"><i class="fas fa-info-circle"></i><span>Filas temporariamente pausadas.</span></div>
-                </div>
-            </div>
-            <div class="charts-container">
-                <div class="chart-container">
-                    <canvas id="dashboard-chart"></canvas>
-                </div>
-                <div class="chart-container">
-                    <canvas id="status-chart"></canvas>
-                </div>
-                <div class="chart-container">
-                    <canvas id="history-chart"></canvas>
-                </div>
-            </div>
-            <div class="recent-tickets">
-                <h3>Últimos Tickets Chamados</h3>
-                <table class="table" id="recent-tickets-table">
+        </header>
+        <nav class="menu">
+            <a href="#" data-section="institutions" class="admin-only">Instituições</a>
+            <a href="#" data-section="departments">Departamentos</a>
+            <a href="#" data-section="users">Usuários</a>
+            <a href="#" data-section="queues">Filas</a>
+            <a href="#" data-section="tickets">Senhas</a>
+        </nav>
+        <main>
+            <h2 id="section-title">Instituições</h2>
+            <div class="error-message" id="global-error"></div>
+
+            <!-- Instituições -->
+            <div id="institutions-section" class="content-section active">
+                <button id="create-institution-btn" class="admin-only">Criar Instituição</button>
+                <table id="institutions-table">
                     <thead>
                         <tr>
-                            <th>Senha</th>
+                            <th>Nome</th>
+                            <th>Localização</th>
+                            <th>Latitude</th>
+                            <th>Longitude</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <!-- Departamentos -->
+            <div id="departments-section" class="content-section">
+                <button id="create-department-btn">Criar Departamento</button>
+                <table id="departments-table">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Setor</th>
+                            <th>Instituição</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <!-- Usuários -->
+            <div id="users-section" class="content-section">
+                <button id="create-user-btn">Criar Usuário</button>
+                <table id="users-table">
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Nome</th>
+                            <th>Função</th>
+                            <th>Departamento</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <!-- Filas -->
+            <div id="queues-section" class="content-section">
+                <button id="create-queue-btn">Criar Fila</button>
+                <table id="queues-table">
+                    <thead>
+                        <tr>
                             <th>Serviço</th>
+                            <th>Prefixo</th>
+                            <th>Horário de Abertura</th>
+                            <th>Horário de Fecho</th>
+                            <th>Limite Diário</th>
+                            <th>Estado</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <!-- Senhas -->
+            <div id="tickets-section" class="content-section">
+                <table id="tickets-table">
+                    <thead>
+                        <tr>
+                            <th>Número</th>
+                            <th>Serviço</th>
+                            <th>Estado</th>
+                            <th>Emissão</th>
                             <th>Guichê</th>
-                            <th>Chamado às</th>
-                            <th>Status</th>
+                            <th>Ações</th>
                         </tr>
                     </thead>
-                    <tbody id="recent-tickets-content"></tbody>
+                    <tbody></tbody>
                 </table>
             </div>
-        </div>
-        <div class="content-section" id="queues-section">
-            <div class="section-header">
-                <h2>Filas do Seu Departamento</h2>
-                <div class="controls">
-                    <input type="text" id="queue-filter" placeholder="Filtrar por serviço..." aria-label="Filtrar filas">
-                    <button onclick="loadQueues()">Atualizar</button>
-                    <button onclick="openCreateQueueModal()" title="Criar uma nova fila"><i class="fas fa-plus"></i> Nova Fila</button>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="create-institution-modal" class="modal">
+        <div class="modal-content">
+            <h2>Criar Instituição</h2>
+            <form id="create-institution-form">
+                <label>Nome: <input type="text" name="name" required></label>
+                <label>Localização: <input type="text" name="location" required></label>
+                <label>Latitude: <input type="number" step="any" name="latitude" required></label>
+                <label>Longitude: <input type="number" step="any" name="longitude" required></label>
+                <div class="modal-actions">
+                    <button type="submit">Criar</button>
+                    <button type="button" id="cancel-institution">Cancelar</button>
                 </div>
-            </div>
-            <table class="table" id="queues-table">
-                <thead>
-                    <tr>
-                        <th>Serviço</th>
-                        <th>Departamento</th>
-                        <th>Prefixo</th>
-                        <th>Tickets Ativos</th>
-                        <th>Último Ticket Chamado</th>
-                        <th>Tempo Médio (min)</th>
-                        <th>Status</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="queue-content"></tbody>
-            </table>
-            <div class="queue-history">
-                <h3>Histórico de Tickets por Fila</h3>
-                <table class="table" id="queue-history-table">
-                    <thead>
-                        <tr>
-                            <th>Serviço</th>
-                            <th>Total Emitidos</th>
-                            <th>Total Atendidos</th>
-                            <th>Total Cancelados</th>
-                            <th>Última Atualização</th>
-                        </tr>
-                    </thead>
-                    <tbody id="queue-history-content"></tbody>
-                </table>
-            </div>
-        </div>
-        <div class="content-section" id="tickets-section">
-            <div class="section-header">
-                <h2>Tickets Ativos</h2>
-                <div class="controls">
-                    <input type="text" id="ticket-filter" placeholder="Filtrar por senha..." aria-label="Filtrar tickets">
-                    <select id="ticket-status-filter" aria-label="Filtrar por status">
-                        <option value="">Todos os Status</option>
-                        <option value="Pendente">Pendente</option>
-                        <option value="Chamado">Chamado</option>
-                        <option value="attended">Atendido</option>
-                    </select>
-                    <input type="date" id="ticket-date-filter" aria-label="Filtrar por data">
-                    <button onclick="loadTickets()">Atualizar</button>
-                </div>
-            </div>
-            <div class="tickets-grid" id="ticket-content"></div>
-            <div class="ticket-history">
-                <h3>Histórico de Ações nos Tickets</h3>
-                <table class="table" id="ticket-history-table">
-                    <thead>
-                        <tr>
-                            <th>Senha</th>
-                            <th>Ação</th>
-                            <th>Data/Hora</th>
-                            <th>Usuário</th>
-                        </tr>
-                    </thead>
-                    <tbody id="ticket-history-content"></tbody>
-                </table>
-            </div>
-        </div>
-        <div class="content-section" id="start-service-section">
-            <div class="section-header">
-                <h2>Iniciar Atendimento</h2>
-                <div class="controls">
-                    <button onclick="loadStartService()">Atualizar</button>
-                </div>
-            </div>
-            <div class="start-service-grid" id="start-service-content"></div>
-            <div class="service-history">
-                <h3>Atendimentos do Dia</h3>
-                <table class="table" id="service-history-table">
-                    <thead>
-                        <tr>
-                            <th>Serviço</th>
-                            <th>Tickets Atendidos</th>
-                            <th>Tempo Médio (min)</th>
-                            <th>Último Atendimento</th>
-                        </tr>
-                    </thead>
-                    <tbody id="service-history-content"></tbody>
-                </table>
-            </div>
-            <div class="next-tickets">
-                <h3>Próximos Tickets a Serem Chamados</h3>
-                <table class="table" id="next-tickets-table">
-                    <thead>
-                        <tr>
-                            <th>Senha</th>
-                            <th>Serviço</th>
-                            <th>Posição</th>
-                            <th>Tempo Estimado (min)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="next-tickets-content"></tbody>
-                </table>
-            </div>
-        </div>
-        <div class="content-section" id="reports-section">
-            <div class="section-header">
-                <h2>Relatório de Atendimento</h2>
-                <div class="controls">
-                    <input type="date" id="report-start-date" aria-label="Data inicial">
-                    <input type="date" id="report-end-date" aria-label="Data final">
-                    <button onclick="loadReport()">Atualizar</button>
-                    <button onclick="exportReport()">Exportar CSV</button>
-                    <button onclick="exportReportPDF()" title="Exportar relatório como PDF"><i class="fas fa-file-pdf"></i> Exportar PDF</button>
-                </div>
-            </div>
-            <div class="charts-container">
-                <div class="chart-container">
-                    <canvas id="report-chart"></canvas>
-                </div>
-                <div class="chart-container">
-                    <canvas id="timeline-chart"></canvas>
-                </div>
-            </div>
-            <div class="report-details">
-                <h3>Detalhes do Relatório</h3>
-                <table class="table" id="report-table">
-                    <thead>
-                        <tr>
-                            <th>Serviço</th>
-                            <th>Tickets Emitidos</th>
-                            <th>Tickets Atendidos</th>
-                            <th>Tickets Cancelados</th>
-                            <th>Tempo Médio (min)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="report-content"></tbody>
-                </table>
-            </div>
-        </div>
-        <div class="content-section" id="settings-section">
-            <div class="section-header">
-                <h2>Configurações</h2>
-                <div class="controls">
-                    <button onclick="loadSettings()">Atualizar</button>
-                </div>
-            </div>
-            <div class="settings-container">
-                <div class="settings-section">
-                    <h3>Gerenciamento de Usuários</h3>
-                    <div class="controls">
-                        <button onclick="openCreateUserModal()" title="Adicionar novo usuário"><i class="fas fa-user-plus"></i> Novo Usuário</button>
-                    </div>
-                    <table class="table" id="users-table">
-                        <thead>
-                            <tr>
-                                <th>Nome</th>
-                                <th>Email</th>
-                                <th>Função</th>
-                                <th>Departamento</th>
-                                <th>Status</th>
-                                <th>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="users-content"></tbody>
-                    </table>
-                </div>
-                <div class="settings-section">
-                    <h3>Configurações de Filas</h3>
-                    <form id="queue-settings-form" onsubmit="saveQueueSettings(event)">
-                        <div class="form-group">
-                            <label for="default-daily-limit">Limite Diário Padrão</label>
-                            <input type="number" id="default-daily-limit" value="20" min="1" required aria-label="Limite diário padrão">
-                        </div>
-                        <div class="form-group">
-                            <label for="ticket-expiration">Tempo de Expiração de Tickets (min)</label>
-                            <input type="number" id="ticket-expiration" value="30" min="1" required aria-label="Tempo de expiração de tickets">
-                        </div>
-                        <div class="form-group">
-                            <label for="call-timeout">Tempo Limite para Chamada (min)</label>
-                            <input type="number" id="call-timeout" value="5" min="1" required aria-label="Tempo limite para chamada">
-                        </div>
-                        <button type="submit">Salvar</button>
-                    </form>
-                </div>
-                <div class="settings-section">
-                    <h3>Configurações de Notificações</h3>
-                    <form id="notification-settings-form" onsubmit="saveNotificationSettings(event)">
-                        <div class="form-group">
-                            <label for="enable-websocket">Ativar Notificações WebSocket</label>
-                            <input type="checkbox" id="enable-websocket" checked aria-label="Ativar notificações WebSocket">
-                        </div>
-                        <div class="form-group">
-                            <label for="default-message">Mensagem Padrão de Notificação</label>
-                            <textarea id="default-message" rows="3" required aria-label="Mensagem padrão de notificação">Dirija-se ao guichê {counter}! Senha {number} chamada.</textarea>
-                        </div>
-                        <button type="submit">Salvar</button>
-                    </form>
-                </div>
-                <div class="settings-section">
-                    <h3>Logs do Sistema</h3>
-                    <table class="table" id="logs-table">
-                        <thead>
-                            <tr>
-                                <th>Ação</th>
-                                <th>Usuário</th>
-                                <th>Data/Hora</th>
-                                <th>Detalhes</th>
-                            </tr>
-                        </thead>
-                        <tbody id="logs-content"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        <div class="modal" id="create-queue-modal">
-            <div class="modal-content">
-                <h2>Criar Nova Fila</h2>
-                <form id="create-queue-form" onsubmit="createQueue(event)">
-                    <div class="form-group">
-                        <label for="queue-service">Serviço</label>
-                        <input type="text" id="queue-service" required aria-label="Nome do serviço">
-                    </div>
-                    <div class="form-group">
-                        <label for="queue-prefix">Prefixo</label>
-                        <input type="text" id="queue-prefix" maxlength="2" required aria-label="Prefixo da fila">
-                    </div>
-                    <div class="form-group">
-                        <label for="queue-open-time">Horário de Abertura</label>
-                        <input type="time" id="queue-open-time" required aria-label="Horário de abertura">
-                    </div>
-                    <div class="form-group">
-                        <label for="queue-end-time">Horário de Fechamento</label>
-                        <input type="time" id="queue-end-time" aria-label="Horário de fechamento">
-                    </div>
-                    <div class="form-group">
-                        <label for="queue-daily-limit">Limite Diário</label>
-                        <input type="number" id="queue-daily-limit" min="1" required aria-label="Limite diário">
-                    </div>
-                    <div class="form-group">
-                        <label for="queue-num-counters">Número de Guichês</label>
-                        <input type="number" id="queue-num-counters" min="1" required aria-label="Número de guichês">
-                    </div>
-                    <div class="modal-actions">
-                        <button type="submit">Criar</button>
-                        <button type="button" onclick="closeCreateQueueModal()">Cancelar</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-        <div class="modal" id="create-user-modal">
-            <div class="modal-content">
-                <h2>Adicionar Novo Usuário</h2>
-                <form id="create-user-form" onsubmit="createUser(event)">
-                    <div class="form-group">
-                        <label for="user-name">Nome</label>
-                        <input type="text" id="user-name" required aria-label="Nome do usuário">
-                    </div>
-                    <div class="form-group">
-                        <label for="user-email">Email</label>
-                        <input type="email" id="user-email" required aria-label="Email do usuário">
-                    </div>
-                    <div class="form-group">
-                        <label for="user-password">Senha</label>
-                        <input type="password" id="user-password" required aria-label="Senha do usuário">
-                    </div>
-                    <div class="form-group">
-                        <label for="user-role">Função</label>
-                        <select id="user-role" required aria-label="Função do usuário">
-                            <option value="USER">Usuário</option>
-                            <option value="DEPARTMENT_ADMIN">Administrador de Departamento</option>
-                        </select>
-                    </div>
-                    <div class="modal-actions">
-                        <button type="submit">Adicionar</button>
-                        <button type="button" onclick="closeCreateUserModal()">Cancelar</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-        <div class="loader" id="loader">
-            <div class="spinner"></div>
+            </form>
         </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script type="module" src="js/admin/main-admin.js"></script>
+    <div id="edit-institution-modal" class="modal">
+        <div class="modal-content">
+            <h2>Editar Instituição</h2>
+            <form id="edit-institution-form">
+                <input type="hidden" name="id">
+                <label>Nome: <input type="text" name="name" required></label>
+                <label>Localização: <input type="text" name="location" required></label>
+                <label>Latitude: <input type="number" step="any" name="latitude" required></label>
+                <label>Longitude: <input type="number" step="any" name="longitude" required></label>
+                <div class="modal-actions">
+                    <button type="submit">Guardar</button>
+                    <button type="button" id="cancel-edit-institution">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="create-department-modal" class="modal">
+        <div class="modal-content">
+            <h2>Criar Departamento</h2>
+            <form id="create-department-form">
+                <label>Nome: <input type="text" name="name" required></label>
+                <label>Setor: <input type="text" name="sector" required></label>
+                <div class="modal-actions">
+                    <button type="submit">Criar</button>
+                    <button type="button" id="cancel-department">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="create-user-modal" class="modal">
+        <div class="modal-content">
+            <h2>Criar Usuário</h2>
+            <form id="create-user-form">
+                <label>Email: <input type="email" name="email" required></label>
+                <label>Nome: <input type="text" name="name" required></label>
+                <label>Senha: <input type="password" name="password" required></label>
+                <label>Função:
+                    <select name="role" required>
+                        <option value="user">Usuário</option>
+                        <option value="dept_admin">Gestor de Departamento</option>
+                        <option value="inst_admin" class="admin-only">Gestor de Instituição</option>
+                    </select>
+                </label>
+                <label>Departamento:
+                    <select name="department_id"></select>
+                </label>
+                <div class="modal-actions">
+                    <button type="submit">Criar</button>
+                    <button type="button" id="cancel-user">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="edit-user-modal" class="modal">
+        <div class="modal-content">
+            <h2>Editar Usuário</h2>
+            <form id="edit-user-form">
+                <input type="hidden" name="id">
+                <label>Email: <input type="email" name="email" required></label>
+                <label>Nome: <input type="text" name="name" required></label>
+                <label>Senha: <input type="password" name="password"></label>
+                <label>Função:
+                    <select name="role" required>
+                        <option value="user">Usuário</option>
+                        <option value="dept_admin">Gestor de Departamento</option>
+                        <option value="inst_admin" class="admin-only">Gestor de Instituição</option>
+                    </select>
+                </label>
+                <label>Departamento:
+                    <select name="department_id"></select>
+                </label>
+                <div class="modal-actions">
+                    <button type="submit">Guardar</button>
+                    <button type="button" id="cancel-edit-user">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="create-queue-modal" class="modal">
+        <div class="modal-content">
+            <h2>Criar Fila</h2>
+            <form id="create-queue-form">
+                <label>Serviço: <input type="text" name="service" required></label>
+                <label>Prefixo: <input type="text" name="prefix" maxlength="2" required></label>
+                <label>Horário de Abertura: <input type="time" name="open_time" required></label>
+                <label>Horário de Fecho: <input type="time" name="end_time" required></label>
+                <label>Limite Diário: <input type="number" name="daily_limit" min="1" required></label>
+                <label>Número de Guichês: <input type="number" name="num_counters" min="1" required></label>
+                <div class="modal-actions">
+                    <button type="submit">Criar</button>
+                    <button type="button" id="cancel-queue">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="call-next-modal" class="modal">
+        <div class="modal-content">
+            <h2>Chamar Próxima Senha</h2>
+            <p>Serviço: <span id="call-next-service"></span></p>
+            <div class="modal-actions">
+                <button id="confirm-call-next">Confirmar</button>
+                <button id="cancel-call-next">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>
