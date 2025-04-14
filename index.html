@@ -3,224 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fila Facilita</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <link rel="stylesheet" href="css/styles.css">
+    <title>Facilita 2.0 - Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 font-sans">
-    <!-- Login Screen -->
-    <div id="login-screen" class="min-h-screen flex items-center justify-center hidden">
-        <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
-            <h2 class="text-2xl font-bold mb-6 text-center">Fila Facilita - Login</h2>
-            <form id="login-form">
-                <div class="mb-4">
-                    <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
-                    <input type="email" id="email" class="mt-1 p-2 w-full border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                </div>
-                <div class="mb-6">
-                    <label for="password" class="block text-sm font-medium text-gray-700">Senha</label>
-                    <input type="password" id="password" class="mt-1 p-2 w-full border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                </div>
-                <div id="login-error" class="hidden text-red-500 text-sm mb-4"><i class="fas fa-exclamation-circle"></i> <span></span></div>
-                <div id="login-message" class="hidden text-green-500 text-sm mb-4"><i class="fas fa-check-circle"></i> <span></span></div>
-                <button type="submit" class="w-full bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600 flex items-center justify-center">
-                    <span id="login-button-text">Entrar</span>
-                    <i id="login-spinner" class="fas fa-spinner fa-spin hidden ml-2"></i>
-                </button>
-            </form>
-        </div>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
+        <h1 class="text-3xl font-bold text-blue-600 text-center mb-6">Facilita 2.0 - Login</h1>
+        <form id="login-form">
+            <div class="mb-4">
+                <label for="email" class="block text-sm font-medium">Email</label>
+                <input type="email" id="email" class="w-full border p-2 rounded-lg" required>
+            </div>
+            <div class="mb-4">
+                <label for="password" class="block text-sm font-medium">Senha</label>
+                <input type="password" id="password" class="w-full border p-2 rounded-lg" required>
+            </div>
+            <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700">Entrar</button>
+        </form>
+        <p id="error-message" class="mt-4 text-red-600 text-center hidden"></p>
     </div>
-
-    <!-- App Screen -->
-    <div id="app-screen" class="flex min-h-screen hidden">
-        <!-- Sidebar -->
-        <div id="sidebar" class="bg-blue-800 text-white w-64 flex-shrink-0 transition-all duration-300">
-            <div class="p-4 flex items-center">
-                <i class="fas fa-ticket-alt text-2xl mr-2"></i>
-                <h1 class="text-xl font-bold">Fila Facilita</h1>
-            </div>
-            <div class="p-4 flex items-center border-b border-blue-700">
-                <div id="user-avatar" class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-xl"></div>
-                <div class="ml-3">
-                    <div id="user-name" class="font-semibold"></div>
-                    <div id="user-department" class="text-sm opacity-75"></div>
-                </div>
-            </div>
-            <nav class="mt-4">
-                <a href="#" class="menu-item flex items-center p-4 hover:bg-blue-700 active" data-page="dashboard">
-                    <i class="fas fa-tachometer-alt mr-3"></i> Dashboard
-                </a>
-                <a href="#" class="menu-item flex items-center p-4 hover:bg-blue-700" data-page="queues">
-                    <i class="fas fa-stream mr-3"></i> Filas
-                </a>
-                <a href="#" class="menu-item flex items-center p-4 hover:bg-blue-700" data-page="tickets">
-                    <i class="fas fa-ticket-alt mr-3"></i> Senhas
-                </a>
-                <a href="#" id="logout-button" class="flex items-center p-4 hover:bg-blue-700">
-                    <i class="fas fa-sign-out-alt mr-3"></i> Sair
-                </a>
-            </nav>
-        </div>
-
-        <!-- Content -->
-        <div class="content flex-1 flex flex-col transition-all duration-300">
-            <header class="bg-white shadow p-4 flex justify-between items-center">
-                <div class="flex items-center">
-                    <button id="toggle-sidebar" class="text-gray-600 mr-4">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <h2 id="page-title" class="text-xl font-bold">Dashboard /
-
-                    </h2>
-                </div>
-            </header>
-            <main class="p-6 flex-1 overflow-auto">
-                <!-- Dashboard Page -->
-                <div id="page-dashboard" class="page">
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                        <div class="bg-white p-4 rounded-lg shadow text-center">
-                            <h3 class="text-lg font-semibold">Total de Filas</h3>
-                            <p id="total-queues" class="text-2xl font-bold text-blue-500">0</p>
-                        </div>
-                        <div class="bg-white p-4 rounded-lg shadow text-center">
-                            <h3 class="text-lg font-semibold">Senhas Pendentes</h3>
-                            <p id="pending-tickets" class="text-2xl font-bold text-yellow-500">0</p>
-                        </div>
-                        <div class="bg-white p-4 rounded-lg shadow text-center">
-                            <h3 class="text-lg font-semibold">Senhas Atendidas</h3>
-                            <p id="attended-tickets" class="text-2xl font-bold text-green-500">0</p>
-                        </div>
-                        <div class="bg-white p-4 rounded-lg shadow text-center">
-                            <h3 class="text-lg font-semibold">Senhas Canceladas</h3>
-                            <p id="cancelled-tickets" class="text-2xl font-bold text-red-500">0</p>
-                        </div>
-                    </div>
-                    <div class="bg-white p-6 rounded-lg shadow mb-6">
-                        <h3 class="text-lg font-semibold mb-4">Resumo das Filas</h3>
-                        <div class="overflow-x-auto">
-                            <table class="w-full">
-                                <thead>
-                                    <tr class="bg-gray-100">
-                                        <th class="p-2 text-left">Serviço</th>
-                                        <th class="p-2 text-left">Prefixo</th>
-                                        <th class="p-2 text-left">Senhas Ativas</th>
-                                        <th class="p-2 text-left">Limite Diário</th>
-                                        <th class="p-2 text-left">Status</th>
-                                        <th class="p-2 text-left">Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="queues-summary-body"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="bg-white p-6 rounded-lg shadow">
-                        <h3 class="text-lg font-semibold mb-4">Senhas Recentes</h3>
-                        <div class="overflow-x-auto">
-                            <table class="w-full">
-                                <thead>
-                                    <tr class="bg-gray-100">
-                                        <th class="p-2 text-left">Número</th>
-                                        <th class="p-2 text-left">Serviço</th>
-                                        <th class="p-2 text-left">Status</th>
-                                        <th class="p-2 text-left">Emitido em</th>
-                                        <th class="p-2 text-left">Atendido em</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="recent-tickets-body"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Queues Page -->
-                <div id="page-queues" class="page hidden">
-                    <div class="bg-white p-6 rounded-lg shadow">
-                        <h3 class="text-lg font-semibold mb-4">Filas</h3>
-                        <div class="overflow-x-auto">
-                            <table class="w-full">
-                                <thead>
-                                    <tr class="bg-gray-100">
-                                        <th class="p-2 text-left">ID</th>
-                                        <th class="p-2 text-left">Serviço</th>
-                                        <th class="p-2 text-left">Prefixo</th>
-                                        <th class="p-2 text-left">Senhas Ativas</th>
-                                        <th class="p-2 text-left">Limite Diário</th>
-                                        <th class="p-2 text-left">Senha Atual</th>
-                                        <th class="p-2 text-left">Status</th>
-                                        <th class="p-2 text-left">Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="queues-table-body"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tickets Page -->
-                <div id="page-tickets" class="page hidden">
-                    <div class="bg-white p-6 rounded-lg shadow">
-                        <h3 class="text-lg font-semibold mb-4">Senhas</h3>
-                        <div class="overflow-x-auto">
-                            <table class="w-full">
-                                <thead>
-                                    <tr class="bg-gray-100">
-                                        <th class="p-2 text-left">ID</th>
-                                        <th class="p-2 text-left">Número</th>
-                                        <th class="p-2 text-left">Serviço</th>
-                                        <th class="p-2 text-left">Status</th>
-                                        <th class="p-2 text-left">Emitido em</th>
-                                        <th class="p-2 text-left">Atendido em</th>
-                                        <th class="p-2 text-left">Guichê</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tickets-table-body"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </main>
-        </div>
-    </div>
-
-    <!-- Call Next Modal -->
-    <div id="call-next-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
-        <div class="bg-white rounded-lg p-6 w-full max-w-md">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold">Chamar Próxima Senha</h3>
-                <button id="close-call-modal" class="text-gray-600 hover:text-gray-800">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div id="call-next-info">
-                <p class="mb-4">Você está chamando a próxima senha para o serviço: <span id="call-next-service" class="font-semibold"></span></p>
-                <div class="flex justify-end">
-                    <button id="cancel-call-next" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md mr-2 hover:bg-gray-400">Cancelar</button>
-                    <button id="confirm-call-next" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 flex items-center">
-                        <span id="call-button-text">Confirmar</span>
-                        <i id="call-spinner" class="fas fa-spinner fa-spin hidden ml-2"></i>
-                    </button>
-                </div>
-            </div>
-            <div id="call-next-result" class="hidden">
-                <div id="call-success" class="hidden">
-                    <p class="text-green-500 mb-4"><i class="fas fa-check-circle mr-2"></i> Senha chamada com sucesso!</p>
-                    <p><strong>Número:</strong> <span id="result-ticket-number"></span></p>
-                    <p><strong>Guichê:</strong> <span id="result-counter"></span></p>
-                    <p><strong>Senhas Restantes:</strong> <span id="result-remaining"></span></p>
-                </div>
-                <div id="call-error" class="hidden">
-                    <p class="text-red-500 mb-4"><i class="fas fa-exclamation-circle mr-2"></i> Erro ao chamar senha</p>
-                    <p id="call-error-message"></p>
-                </div>
-                <div class="flex justify-end mt-4">
-                    <button id="finish-call-next" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Fechar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
-    <script src="js/app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="login.js"></script>
 </body>
 </html>
