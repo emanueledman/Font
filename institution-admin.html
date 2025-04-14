@@ -21,11 +21,43 @@
     </header>
     <!-- Conteúdo principal -->
     <main class="container mx-auto p-4 flex-grow">
-        <h2 class="text-xl font-semibold mb-4">Gerenciar Departamentos</h2>
-        <div id="departments" class="space-y-4"></div>
-        <button onclick="createDepartment()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg mt-4">
-            Criar Novo Departamento
-        </button>
+        <!-- Tabs para navegação -->
+        <div class="flex space-x-4 mb-6">
+            <button id="tab-departments" class="px-4 py-2 bg-blue-500 text-white rounded-lg">Departamentos</button>
+            <button id="tab-reports" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg">Relatórios</button>
+            <button id="tab-settings" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg">Configurações</button>
+        </div>
+        <!-- Seção de departamentos -->
+        <div id="departments-section">
+            <h2 class="text-xl font-semibold mb-4">Gerenciar Departamentos</h2>
+            <div id="departments" class="space-y-4"></div>
+            <button onclick="createDepartment()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg mt-4">
+                Criar Novo Departamento
+            </button>
+        </div>
+        <!-- Seção de relatórios -->
+        <div id="reports-section" class="hidden">
+            <h2 class="text-xl font-semibold mb-4">Relatórios</h2>
+            <div class="mb-4">
+                <label for="report-date" class="block text-sm font-medium text-gray-700">Data</label>
+                <input type="date" id="report-date" class="mt-1 p-2 border rounded-lg">
+                <button onclick="generateReport()" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+                    Gerar Relatório
+                </button>
+            </div>
+            <div id="report-results" class="space-y-4"></div>
+        </div>
+        <!-- Seção de configurações -->
+        <div id="settings-section" class="hidden">
+            <h2 class="text-xl font-semibold mb-4">Configurações</h2>
+            <div class="mb-4">
+                <label for="institution-name" class="block text-sm font-medium text-gray-700">Nome da Instituição</label>
+                <input type="text" id="institution-name" class="mt-1 p-2 w-full border rounded-lg">
+                <button onclick="updateInstitution()" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+                    Atualizar
+                </button>
+            </div>
+        </div>
     </main>
 </body>
 </html>
