@@ -3,24 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel do Administrador de Departamento - Fila Fácil</title>
+    <title>Painel do Administrador - Fila Fácil</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="css/department-admin.css">
-    <script src="js/departamento/utils.js" defer></script>
-    <script src="js/departamento/queues.js" defer></script>
-    <script src="js/departamento/tickets.js" defer></script>
-    <script src="js/departamento/reports.js" defer></script>
-    <script src="js/departamento/settings.js" defer></script>
-    <script src="js/departamento/department-admin.js" defer></script>
+    <script src="js/utils.js" defer></script>
+    <script src="js/queues.js" defer></script>
+    <script src="js/tickets.js" defer></script>
+    <script src="js/reports.js" defer></script>
+    <script src="js/settings.js" defer></script>
+    <script src="js/department-admin.js" defer></script>
 </head>
-<body class="bg-gray-100 min-h-screen flex">
+<body class="bg-gray-50 min-h-screen flex font-sans">
     <!-- Sidebar -->
-    <aside id="sidebar" class="bg-blue-800 text-white w-64 min-h-screen p-4 flex flex-col transition-all duration-300">
-        <div class="flex items-center mb-6">
-            <h1 class="text-xl font-bold">Fila Fácil</h1>
+    <aside id="sidebar" class="bg-blue-900 text-white w-20 md:w-64 min-h-screen p-4 flex flex-col transition-all duration-300">
+        <div class="flex items-center mb-8">
+            <img src="https://via.placeholder.com/40" alt="Logo" class="w-10 h-10 md:mr-2">
+            <h1 class="hidden md:block text-xl font-bold">Fila Fácil</h1>
             <button id="sidebar-toggle" class="ml-auto text-white md:hidden">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -28,144 +29,219 @@
             </button>
         </div>
         <nav class="flex-grow">
-            <ul class="space-y-2">
+            <ul class="space-y-4">
                 <li>
-                    <button id="nav-queues" class="w-full flex items-center px-4 py-2 bg-blue-700 rounded-lg hover:bg-blue-600">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button id="nav-dashboard" class="w-full flex items-center px-3 py-2 bg-blue-700 rounded-lg hover:bg-blue-600" title="Dashboard">
+                        <svg class="w-6 h-6 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                        </svg>
+                        <span class="hidden md:block">Dashboard</span>
+                    </button>
+                </li>
+                <li>
+                    <button id="nav-call" class="w-full flex items-center px-3 py-2 rounded-lg hover:bg-blue-600" title="Chamada">
+                        <svg class="w-6 h-6 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                        <span class="hidden md:block">Chamada</span>
+                    </button>
+                </li>
+                <li>
+                    <button id="nav-queues" class="w-full flex items-center px-3 py-2 rounded-lg hover:bg-blue-600" title="Filas">
+                        <svg class="w-6 h-6 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                         </svg>
-                        Filas
+                        <span class="hidden md:block">Filas</span>
                     </button>
                 </li>
                 <li>
-                    <button id="nav-tickets" class="w-full flex items-center px-4 py-2 rounded-lg hover:bg-blue-600">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button id="nav-tickets" class="w-full flex items-center px-3 py-2 rounded-lg hover:bg-blue-600" title="Tickets">
+                        <svg class="w-6 h-6 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
                         </svg>
-                        Tickets
+                        <span class="hidden md:block">Tickets</span>
                     </button>
                 </li>
                 <li>
-                    <button id="nav-reports" class="w-full flex items-center px-4 py-2 rounded-lg hover:bg-blue-600">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button id="nav-reports" class="w-full flex items-center px-3 py-2 rounded-lg hover:bg-blue-600" title="Relatórios">
+                        <svg class="w-6 h-6 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2M9 19" />
                         </svg>
-                        Relatórios
+                        <span class="hidden md:block">Relatórios</span>
                     </button>
                 </li>
                 <li>
-                    <button id="nav-settings" class="w-full flex items-center px-4 py-2 rounded-lg hover:bg-blue-600">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button id="nav-settings" class="w-full flex items-center px-3 py-2 rounded-lg hover:bg-blue-600" title="Configurações">
+                        <svg class="w-6 h-6 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z" />
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
-                        Configurações
+                        <span class="hidden md:block">Configurações</span>
                     </button>
                 </li>
             </ul>
         </nav>
         <div>
-            <span id="user-email" class="block px-4 py-2 text-sm"></span>
-            <button id="logout" class="w-full flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <span id="user-email" class="block px-3 py-2 text-sm truncate"></span>
+            <button id="logout" class="w-full flex items-center px-3 py-2 bg-red-600 hover:bg-red-700 rounded-lg" title="Sair">
+                <svg class="w-6 h-6 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
-                Sair
+                <span class="hidden md:block">Sair</span>
             </button>
         </div>
     </aside>
 
     <!-- Conteúdo principal -->
-    <main class="flex-grow p-4">
-        <!-- Seção de Filas -->
-        <div id="queues-section">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-semibold">Gerenciar Filas</h2>
-                <button id="create-queue-btn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm">Criar Fila</button>
+    <main class="flex-grow p-6">
+        <!-- Dashboard -->
+        <div id="dashboard-section">
+            <h1 class="text-3xl font-bold text-gray-800 mb-6">Bem-vindo, <span id="department-name"></span></h1>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-gradient-to-r from-blue-500 to-blue-700 text-white p-6 rounded-xl shadow-lg flex items-center animate-fade-in">
+                    <svg class="w-12 h-12 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    <div>
+                        <h3 class="text-lg font-semibold">Filas Ativas</h3>
+                        <p id="active-queues" class="text-2xl font-bold">0</p>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-r from-green-500 to-green-700 text-white p-6 rounded-xl shadow-lg flex items-center animate-fade-in delay-100">
+                    <svg class="w-12 h-12 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                    </svg>
+                    <div>
+                        <h3 class="text-lg font-semibold">Tickets Pendentes</h3>
+                        <p id="pending-tickets" class="text-2xl font-bold">0</p>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-r from-yellow-500 to-yellow-700 text-white p-6 rounded-xl shadow-lg flex items-center animate-fade-in delay-200">
+                    <svg class="w-12 h-12 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                        <h3 class="text-lg font-semibold">Chamadas Hoje</h3>
+                        <p id="today-calls" class="text-2xl font-bold">0</p>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-r from-purple-500 to-purple-700 text-white p-6 rounded-xl shadow-lg flex items-center animate-fade-in delay-300">
+                    <svg class="w-12 h-12 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <div>
+                        <h3 class="text-lg font-semibold">Usuários Ativos</h3>
+                        <p id="active-users" class="text-2xl font-bold">0</p>
+                    </div>
+                </div>
             </div>
-            <div class="mb-4">
-                <input type="text" id="queue-filter" placeholder="Filtrar por serviço..." class="p-2 border rounded-lg w-full">
-            </div>
-            <div class="bg-white rounded-lg shadow overflow-x-auto">
-                <table id="queues-table" class="w-full">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="p-3 text-left text-sm font-semibold text-gray-600">Serviço</th>
-                            <th class="p-3 text-left text-sm font-semibold text-gray-600">Prefixo</th>
-                            <th class="p-3 text-left text-sm font-semibold text-gray-600">Status</th>
-                            <th class="p-3 text-left text-sm font-semibold text-gray-600">Tickets Ativos</th>
-                            <th class="p-3 text-left text-sm font-semibold text-gray-600">Horário</th>
-                            <th class="p-3 text-left text-sm font-semibold text-gray-600">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="queues"></tbody>
-                </table>
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">Atividade Recente</h2>
+                <canvas id="activity-chart" class="max-h-64"></canvas>
             </div>
         </div>
 
-        <!-- Seção de Tickets -->
+        <!-- Chamada -->
+        <div id="call-section" class="hidden">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">Chamada Atual</h2>
+            <div class="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-xl shadow-2xl p-8 mb-8 flex flex-col items-center animate-zoom-in">
+                <h3 class="text-2xl font-semibold mb-4">Senha Atual</h3>
+                <p id="current-ticket" class="text-6xl font-bold animate-pulse">---</p>
+                <p id="current-service" class="text-xl mt-2"></p>
+                <p id="current-counter" class="text-lg mt-1"></p>
+                <button id="call-next-btn" class="mt-6 bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg text-lg font-semibold">Chamar Próxima</button>
+            </div>
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-xl font-semibold mb-4">Últimas Chamadas</h3>
+                <div id="recent-calls" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+            </div>
+        </div>
+
+        <!-- Filas -->
+        <div id="queues-section" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Gerenciar Filas</h2>
+                <button id="create-queue-btn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">Criar Fila</button>
+            </div>
+            <div class="mb-6">
+                <input type="text" id="queue-filter" placeholder="Filtrar por serviço..." class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div id="queues-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </div>
+
+        <!-- Tickets -->
         <div id="tickets-section" class="hidden">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-semibold">Gerenciar Tickets</h2>
-                <button id="validate-qr-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">Validar QR Code</button>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Gerenciar Tickets</h2>
+                <button id="validate-qr-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">Validar QR Code</button>
             </div>
-            <div class="mb-4">
-                <input type="text" id="ticket-filter" placeholder="Filtrar por número ou serviço..." class="p-2 border rounded-lg w-full">
+            <div class="mb-6">
+                <input type="text" id="ticket-filter" placeholder="Filtrar por número ou serviço..." class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
             </div>
-            <div id="tickets-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            <div id="tickets-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
         </div>
 
-        <!-- Seção de Relatórios -->
+        <!-- Relatórios -->
         <div id="reports-section" class="hidden">
-            <h2 class="text-xl font-semibold mb-4">Relatórios</h2>
-            <div class="mb-4 flex space-x-2">
-                <input type="date" id="report-date" class="p-2 border rounded-lg">
-                <button id="generate-report-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">Gerar Relatório</button>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Relatórios</h2>
+            <div class="mb-6 flex space-x-4">
+                <input type="date" id="report-date" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                <button id="generate-report-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">Gerar Relatório</button>
             </div>
-            <div class="bg-white rounded-lg shadow p-4">
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
                 <canvas id="report-chart" class="max-h-96"></canvas>
             </div>
-            <div id="report-results" class="mt-4 space-y-4"></div>
+            <div id="report-results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
         </div>
 
-        <!-- Seção de Configurações -->
+        <!-- Configurações -->
         <div id="settings-section" class="hidden">
-            <h2 class="text-xl font-semibold mb-4">Configurações</h2>
-            <div class="bg-white rounded-lg shadow p-4">
-                <h3 class="text-lg font-medium mb-2">Informações do Departamento</h3>
-                <p id="department-info" class="text-gray-600"></p>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Configurações</h2>
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-xl font-semibold mb-4">Informações do Departamento</h3>
+                <form id="department-form">
+                    <div class="mb-4">
+                        <label for="dept-name" class="block text-sm font-medium text-gray-700">Nome do Departamento</label>
+                        <input type="text" id="dept-name" name="dept-name" class="mt-1 p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-4">
+                        <label for="dept-id" class="block text-sm font-medium text-gray-700">ID do Departamento</label>
+                        <input type="text" id="dept-id" name="dept-id" readonly class="mt-1 p-3 border rounded-lg w-full bg-gray-100">
+                    </div>
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">Salvar</button>
+                </form>
             </div>
         </div>
     </main>
 
     <!-- Modal para Criar/Editar Fila -->
-    <div id="queue-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
-        <div class="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 id="queue-modal-title" class="text-lg font-semibold mb-4"></h3>
+    <div id="queue-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden">
+        <div class="bg-white rounded-2xl p-8 w-full max-w-lg shadow-2xl animate-fade-in">
+            <h3 id="queue-modal-title" class="text-2xl font-semibold mb-6 text-gray-800"></h3>
             <form id="queue-form">
                 <div class="mb-4">
                     <label for="service" class="block text-sm font-medium text-gray-700">Serviço</label>
-                    <input type="text" id="service" name="service" required class="mt-1 p-2 border rounded-lg w-full">
+                    <input type="text" id="service" name="service" required class="mt-1 p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div class="mb-4">
                     <label for="prefix" class="block text-sm font-medium text-gray-700">Prefixo</label>
-                    <input type="text" id="prefix" name="prefix" required class="mt-1 p-2 border rounded-lg w-full">
+                    <input type="text" id="prefix" name="prefix" required class="mt-1 p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div class="mb-4">
                     <label for="open_time" class="block text-sm font-medium text-gray-700">Horário de Abertura</label>
-                    <input type="time" id="open_time" name="open_time" required class="mt-1 p-2 border rounded-lg w-full">
+                    <input type="time" id="open_time" name="open_time" required class="mt-1 p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div class="mb-4">
                     <label for="daily_limit" class="block text-sm font-medium text-gray-700">Limite Diário</label>
-                    <input type="number" id="daily_limit" name="daily_limit" required class="mt-1 p-2 border rounded-lg w-full">
+                    <input type="number" id="daily_limit" name="daily_limit" required class="mt-1 p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div class="mb-4">
                     <label for="num_counters" class="block text-sm font-medium text-gray-700">Número de Guichês</label>
-                    <input type="number" id="num_counters" name="num_counters" required class="mt-1 p-2 border rounded-lg w-full">
+                    <input type="number" id="num_counters" name="num_counters" required class="mt-1 p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
                 </div>
                 <input type="hidden" id="queue_id" name="queue_id">
-                <div class="flex justify-end space-x-2">
-                    <button type="button" id="cancel-queue-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg">Cancelar</button>
+                <div class="flex justify-end space-x-4">
+                    <button type="button" id="cancel-queue-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg">Cancelar</button>
                     <button type="submit" id="submit-queue-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">Salvar</button>
                 </div>
             </form>
@@ -173,16 +249,16 @@
     </div>
 
     <!-- Modal para Validar QR Code -->
-    <div id="qr-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
-        <div class="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 class="text-lg font-semibold mb-4">Validar QR Code</h3>
+    <div id="qr-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden">
+        <div class="bg-white rounded-2xl p-8 w-full max-w-lg shadow-2xl animate-fade-in">
+            <h3 class="text-2xl font-semibold mb-6 text-gray-800">Validar QR Code</h3>
             <form id="qr-form">
                 <div class="mb-4">
                     <label for="qr_code" class="block text-sm font-medium text-gray-700">QR Code</label>
-                    <input type="text" id="qr_code" name="qr_code" required class="mt-1 p-2 border rounded-lg w-full">
+                    <input type="text" id="qr_code" name="qr_code" required class="mt-1 p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
                 </div>
-                <div class="flex justify-end space-x-2">
-                    <button type="button" id="cancel-qr-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg">Cancelar</button>
+                <div class="flex justify-end space-x-4">
+                    <button type="button" id="cancel-qr-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg">Cancelar</button>
                     <button type="submit" id="submit-qr-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">Validar</button>
                 </div>
             </form>
@@ -190,10 +266,10 @@
     </div>
 
     <!-- Modal de Erro/Sucesso -->
-    <div id="error-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
-        <div class="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 id="error-modal-title" class="text-lg font-semibold mb-4"></h3>
-            <p id="error-message" class="text-gray-600 mb-4"></p>
+    <div id="error-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden">
+        <div class="bg-white rounded-2xl p-8 w-full max-w-lg shadow-2xl animate-fade-in">
+            <h3 id="error-modal-title" class="text-2xl font-semibold mb-4 text-gray-800"></h3>
+            <p id="error-message" class="text-gray-600 mb-6"></p>
             <div class="flex justify-end">
                 <button id="close-error-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">Fechar</button>
             </div>
@@ -201,6 +277,6 @@
     </div>
 
     <!-- Toast para Notificações -->
-    <div id="toast-container" class="fixed bottom-4 right-4 space-y-2"></div>
+    <div id="toast-container" class="fixed bottom-6 right-6 space-y-4"></div>
 </body>
 </html>
