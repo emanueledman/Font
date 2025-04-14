@@ -4,7 +4,7 @@ const socket = io(API_BASE, { transports: ['websocket'], reconnectionAttempts: 5
 document.addEventListener('DOMContentLoaded', () => {
     const token = localStorage.getItem('adminToken');
     if (!token) {
-        window.location.href = '/login.html';
+        window.location.href = '/index.html';
         return;
     }
 
