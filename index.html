@@ -11,22 +11,17 @@
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
-        <div class="logo">
-            Facilita 2.0
-        </div>
+        <div class="logo">Facilita 2.0</div>
         <ul class="menu">
             <li><a href="#" data-section="dashboard" class="active">Dashboard</a></li>
             <li><a href="#" data-section="queues">Filas</a></li>
             <li><a href="#" data-section="tickets">Tickets</a></li>
             <li><a href="#" data-section="start-service">Iniciar Atendimento</a></li>
             <li><a href="#" data-section="reports">Relatórios</a></li>
-            <li><a href="#" data-section="settings">Configurações</a></li>
+            <li class="admin-only" style="display: none;"><a href="#" data-section="settings">Configurações</a></li>
         </ul>
     </div>
-
-    <!-- Main Content -->
     <div class="main-content" id="main-content">
         <div class="header">
             <h1 id="section-title">Dashboard</h1>
@@ -35,8 +30,6 @@
                 <button id="logout-btn" style="display: none;">Sair</button>
             </div>
         </div>
-
-        <!-- Login Section -->
         <div class="login-section" id="login-section">
             <h2>Login</h2>
             <div class="form-group">
@@ -50,8 +43,6 @@
             <button onclick="handleLogin()">Entrar</button>
             <div class="error" id="error-message"></div>
         </div>
-
-        <!-- Dashboard Section -->
         <div class="content-section active" id="dashboard-section">
             <div class="section-header">
                 <h2>Visão Geral</h2>
@@ -124,15 +115,13 @@
                 </table>
             </div>
         </div>
-
-        <!-- Queues Section -->
         <div class="content-section" id="queues-section">
             <div class="section-header">
                 <h2>Filas do Seu Departamento</h2>
                 <div class="controls">
                     <input type="text" id="queue-filter" placeholder="Filtrar por serviço..." aria-label="Filtrar filas">
                     <button onclick="loadQueues()">Atualizar</button>
-                    <button onclick="openCreateQueueModal()" title="Criar uma nova fila"><i class="fas fa-plus"></i> Nova Fila</button>
+                    <button class="admin-only" onclick="openCreateQueueModal()" title="Criar uma nova fila"><i class="fas fa-plus"></i> Nova Fila</button>
                 </div>
             </div>
             <table class="table" id="queues-table">
@@ -166,8 +155,6 @@
                 </table>
             </div>
         </div>
-
-        <!-- Tickets Section -->
         <div class="content-section" id="tickets-section">
             <div class="section-header">
                 <h2>Tickets Ativos</h2>
@@ -183,9 +170,7 @@
                     <button onclick="loadTickets()">Atualizar</button>
                 </div>
             </div>
-            <div class="tickets-grid" id="ticket-content">
-                <!-- Cards de tickets serão inseridos aqui via JavaScript -->
-            </div>
+            <div class="tickets-grid" id="ticket-content"></div>
             <div class="ticket-history">
                 <h3>Histórico de Ações nos Tickets</h3>
                 <table class="table" id="ticket-history-table">
@@ -201,8 +186,6 @@
                 </table>
             </div>
         </div>
-
-        <!-- Start Service Section -->
         <div class="content-section" id="start-service-section">
             <div class="section-header">
                 <h2>Iniciar Atendimento</h2>
@@ -210,9 +193,7 @@
                     <button onclick="loadStartService()">Atualizar</button>
                 </div>
             </div>
-            <div class="start-service-grid" id="start-service-content">
-                <!-- Cards de filas para iniciar atendimento serão inseridos aqui -->
-            </div>
+            <div class="start-service-grid" id="start-service-content"></div>
             <div class="service-history">
                 <h3>Atendimentos do Dia</h3>
                 <table class="table" id="service-history-table">
@@ -242,8 +223,6 @@
                 </table>
             </div>
         </div>
-
-        <!-- Reports Section -->
         <div class="content-section" id="reports-section">
             <div class="section-header">
                 <h2>Relatório de Atendimento</h2>
@@ -279,9 +258,7 @@
                 </table>
             </div>
         </div>
-
-        <!-- Settings Section -->
-        <div class="content-section" id="settings-section">
+        <div class="content-section admin-only" id="settings-section">
             <div class="section-header">
                 <h2>Configurações</h2>
                 <div class="controls">
@@ -289,7 +266,6 @@
                 </div>
             </div>
             <div class="settings-container">
-                <!-- Usuários -->
                 <div class="settings-section">
                     <h3>Gerenciamento de Usuários</h3>
                     <div class="controls">
@@ -309,7 +285,6 @@
                         <tbody id="users-content"></tbody>
                     </table>
                 </div>
-                <!-- Configurações de Filas -->
                 <div class="settings-section">
                     <h3>Configurações de Filas</h3>
                     <form id="queue-settings-form" onsubmit="saveQueueSettings(event)">
@@ -328,7 +303,6 @@
                         <button type="submit">Salvar</button>
                     </form>
                 </div>
-                <!-- Notificações -->
                 <div class="settings-section">
                     <h3>Configurações de Notificações</h3>
                     <form id="notification-settings-form" onsubmit="saveNotificationSettings(event)">
@@ -343,7 +317,6 @@
                         <button type="submit">Salvar</button>
                     </form>
                 </div>
-                <!-- Logs do Sistema -->
                 <div class="settings-section">
                     <h3>Logs do Sistema</h3>
                     <table class="table" id="logs-table">
@@ -360,8 +333,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- Modal para Criar Fila -->
         <div class="modal" id="create-queue-modal">
             <div class="modal-content">
                 <h2>Criar Nova Fila</h2>
@@ -397,8 +368,6 @@
                 </form>
             </div>
         </div>
-
-        <!-- Modal para Criar Usuário -->
         <div class="modal" id="create-user-modal">
             <div class="modal-content">
                 <h2>Adicionar Novo Usuário</h2>
@@ -429,19 +398,16 @@
                 </form>
             </div>
         </div>
-
-        <!-- Loader -->
         <div class="loader" id="loader">
             <div class="spinner"></div>
         </div>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="js/script.js"></script>
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>
