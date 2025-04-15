@@ -672,20 +672,29 @@
     }
   }
   
-  /* Efeitos de loading e skeleton */
-  .skeleton {
-    background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
-    background-size: 200% 100%;
-    animation: skeletonLoading 1.5s ease-in-out infinite;
-    border-radius: 8px;
-    height: 16px;
-    margin-bottom: 8px;
-  }
-  
-  @keyframes skeletonLoading {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
-  }
+  #loading-overlay {
+    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+    opacity: 0;
+    visibility: hidden;
+}
+
+#loading-overlay:not(.hidden) {
+    opacity: 1;
+    visibility: visible;
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
   
   /* Efeitos de glowing */
   .glowing-border {
@@ -730,7 +739,7 @@
   
   /* Fontes do Google para melhorar a tipografia */
   @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
-  
+
 @media (max-width: 768px) {
     #sidebar {
         transform: translateX(-100%);
