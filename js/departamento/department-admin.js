@@ -1,292 +1,336 @@
 const API_BASE = 'https://fila-facilita2-0.onrender.com';
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Mostrar spinner
+    toggleLoading(true, 'Carregando painel...');
+
     const token = localStorage.getItem('adminToken');
+    console.log('Token usado:', token || 'Nenhum token');
+
     if (!token) {
-        window.location.href = '/index.html';
-        return;
+        console.warn('Nenhum token encontrado. Algumas funções podem estar limitadas.');
+        showToast('Faça login para acessar todas as funcionalidades.', 'warning');
+        // Continuar sem redirecionar
+    } else {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
 
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     axios.defaults.baseURL = API_BASE;
 
+    // Interceptor para erros 401
     axios.interceptors.response.use(
         response => response,
         error => {
             if (error.response?.status === 401) {
-                localStorage.clear();
-                window.location.href = '/index.html';
+                showToast('Sessão expirada. Algumas funções podem estar limitadas.', 'warning');
+                localStorage.removeItem('adminToken');
+                // Não redireciona automaticamente
             }
             return Promise.reject(error);
         }
     );
 
     try {
-        await fetchUserInfo();
-        await fetchDepartmentInfo();
-        await fetchDashboardData();
+        await Promise.all([
+            fetchUserInfo().catch(err => {
+                console.error('Erro em fetchUserInfo:', err);
+                return null;
+            }),
+            fetchDepartmentInfo().catch(err => {
+                console.error('Erro em fetchDepartmentInfo:', err);
+                return null;
+            }),
+            fetchDashboardData().catch(err => {
+                console.error('Erro em fetchDashboardData:', err);
+                return null;
+            })
+        ]);
+
         await fetchQueues();
         await fetchTickets();
         await fetchCurrentCall();
-        await fetchNotifications();
         setupSocketListeners();
         setupNavigation();
-        updateCurrentDate();
-    } catch (error) {
-        console.error('Erro na inicialização:', error);
-        showError('Erro ao inicializar painel.', error.response?.data?.error || error.message);
-    }
-});
 
-async function fetchDashboardData() {
-    try {
-        document.getElementById('chart-loading').classList.remove('hidden');
-        const [queuesRes, ticketsRes, reportRes, usersRes] = await Promise.all([
-            axios.get('/api/admin/queues'),
-            axios.get('/api/tickets/admin'),
-            axios.get(`/api/admin/report?period=today`),
-            axios.get('/api/admin/users?role=dept_admin')
-        ]);
-
-        const queues = queuesRes.data.queues || [];
-        const tickets = ticketsRes.data.tickets || [];
-        const report = reportRes.data;
-        const users = usersRes.data;
-
-        // Atualiza métricas do dashboard
-        document.getElementById('active-queues').textContent = queues.filter(q => q.status === 'active').length;
-        document.getElementById('active-queues-trend').textContent = `+${queues.filter(q => new Date(q.updated_at).toDateString() === new Date().toDateString()).length} hoje`;
-        document.getElementById('pending-tickets').textContent = tickets.filter(t => t.status === 'pending').length;
-        document.getElementById('pending-tickets-trend').textContent = `+${tickets.filter(t => new Date(t.created_at).toDateString() === new Date().toDateString() && t.status === 'pending').length} hoje`;
-        document.getElementById('today-calls').textContent = report.reduce((sum, item) => sum + (item.attended || 0), 0);
-        document.getElementById('today-calls-trend').textContent = `+${report.reduce((sum, item) => sum + (item.attended || 0), 0)} agora`;
-        document.getElementById('active-users').textContent = users.filter(u => u.is_online).length;
-        document.getElementById('active-users-trend').textContent = `${users.filter(u => u.is_online).length}/${users.length} online`;
-
-        // Atualiza filas mais ativas
-        const topQueues = document.getElementById('top-queues');
-        topQueues.innerHTML = '';
-        const sortedQueues = queues
-            .map(q => ({
-                ...q,
-                ticket_count: tickets.filter(t => t.queue_id === q.id && new Date(t.created_at).toDateString() === new Date().toDateString()).length
-            }))
-            .sort((a, b) => b.ticket_count - a.ticket_count)
-            .slice(0, 3);
-        
-        if (sortedQueues.length === 0) {
-            topQueues.innerHTML = '<p class="text-gray-500 text-sm">Nenhuma fila ativa hoje.</p>';
-        } else {
-            sortedQueues.forEach(queue => {
-                const percentage = queue.daily_limit ? (queue.active_tickets / queue.daily_limit) * 100 : 0;
-                const div = document.createElement('div');
-                div.className = 'flex items-center justify-between';
-                div.innerHTML = `
-                    <div class="flex items-center">
-                        <div class="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
-                        <span class="text-gray-700">${queue.service}</span>
-                    </div>
-                    <div class="w-1/3 bg-gray-200 rounded-full h-2.5">
-                        <div class="bg-blue-600 h-2.5 rounded-full" style="width: ${percentage}%"></div>
-                    </div>
-                    <span class="text-sm font-medium">${queue.ticket_count} tickets</span>
-                `;
-                topQueues.appendChild(div);
+        // Configurar botão de atualizar
+        const refreshButton = document.getElementById('refresh-data');
+        if (refreshButton) {
+            refreshButton.addEventListener('click', async () => {
+                toggleLoading(true, 'Atualizando dados...');
+                try {
+                    await fetchDashboardData();
+                    showToast('Dados atualizados com sucesso!', 'success');
+                } catch (error) {
+                    console.error('Erro ao atualizar:', error);
+                    showToast('Falha ao atualizar dados.', 'error');
+                } finally {
+                    toggleLoading(false);
+                }
             });
         }
 
-        // Atualiza gráfico de atividade
-        const ctx = document.getElementById('activity-chart').getContext('2d');
-        if (window.activityChart) {
-            window.activityChart.destroy();
+        // Configurar notificações
+        const notificationsBtn = document.getElementById('notifications-btn');
+        const notificationsDropdown = document.getElementById('notifications-dropdown');
+        if (notificationsBtn && notificationsDropdown) {
+            notificationsBtn.addEventListener('click', () => {
+                notificationsDropdown.classList.toggle('hidden');
+            });
         }
-        window.activityChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: report.map(item => item.service || item.period),
-                datasets: [
-                    {
+    } catch (error) {
+        console.error('Erro na inicialização:', error);
+        showToast('Erro ao inicializar painel.', 'error');
+    } finally {
+        toggleLoading(false);
+    }
+});
+
+// Função para controlar o spinner
+function toggleLoading(show, message = 'Carregando...') {
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const loadingMessage = document.getElementById('loading-message');
+    
+    if (loadingOverlay && loadingMessage) {
+        if (show) {
+            loadingMessage.textContent = message;
+            loadingOverlay.classList.remove('hidden');
+        } else {
+            loadingOverlay.classList.add('hidden');
+        }
+    }
+}
+
+// Busca informações do usuário
+async function fetchUserInfo() {
+    try {
+        const response = await axios.get('/api/admin/profile', { timeout: 5000 });
+        console.log('Resposta do perfil:', response.data);
+        const userName = document.getElementById('user-name');
+        const userEmail = document.getElementById('user-email');
+        if (userName) userName.textContent = response.data.name || 'Usuário';
+        if (userEmail) userEmail.textContent = response.data.email || 'email@empresa.com';
+    } catch (error) {
+        console.error('Erro ao buscar usuário:', error.response || error);
+        showToast('Não foi possível carregar informações do usuário.', 'warning');
+    }
+}
+
+// Busca informações do departamento
+async function fetchDepartmentInfo() {
+    try {
+        const response = await axios.get('/api/admin/department', { timeout: 5000 });
+        console.log('Resposta do departamento:', response.data);
+        const departmentName = document.getElementById('department-name');
+        if (departmentName) {
+            departmentName.textContent = response.data.department_name || 'Departamento';
+        }
+    } catch (error) {
+        console.error('Erro ao buscar departamento:', error.response || error);
+        showToast('Não foi possível carregar nome do departamento.', 'warning');
+        if (document.getElementById('department-name')) {
+            document.getElementById('department-name').textContent = 'Departamento';
+        }
+    }
+}
+
+// Carrega dados do dashboard
+async function fetchDashboardData() {
+    try {
+        toggleLoading(true, 'Carregando dados do dashboard...');
+        document.querySelectorAll('.skeleton').forEach(el => {
+            el.style.display = 'block';
+        });
+
+        const today = new Date().toISOString().split('T')[0];
+        const [queuesRes, ticketsRes, reportRes] = await Promise.all([
+            axios.get('/api/admin/queues', { timeout: 10000 }),
+            axios.get('/api/tickets/admin', { timeout: 10000 }),
+            axios.get(`/api/admin/report?date=${today}`, { timeout: 10000 })
+        ]);
+
+        console.log('Resposta queues:', queuesRes.data);
+        console.log('Resposta tickets:', ticketsRes.data);
+        console.log('Resposta report:', reportRes.data);
+
+        const queues = queuesRes.data || [];
+        const tickets = ticketsRes.data || [];
+        const report = reportRes.data || [];
+
+        // Atualizar cards
+        document.getElementById('active-queues').textContent = queues.length || '0';
+        document.getElementById('pending-tickets').textContent = tickets.filter(t => t.status === 'Pendente').length || '0';
+        document.getElementById('today-calls').textContent = report.reduce((sum, item) => sum + (item.attended || 0), 0) || '0';
+        document.getElementById('active-users').textContent = '1'; // Simulado, ajustar se houver endpoint
+
+        // Atualizar tendências (mockadas, ajustar conforme API)
+        document.getElementById('active-queues-trend').textContent = '+2 hoje';
+        document.getElementById('pending-tickets-trend').textContent = '+12 hoje';
+
+        // Atualizar gráfico
+        const ctx = document.getElementById('activity-chart')?.getContext('2d');
+        if (ctx) {
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: report.map(item => item.service || 'Desconhecido'),
+                    datasets: [{
                         label: 'Senhas Atendidas',
                         data: report.map(item => item.attended || 0),
                         borderColor: '#10B981',
                         backgroundColor: 'rgba(16, 185, 129, 0.2)',
                         fill: true,
                         tension: 0.4
-                    },
-                    {
-                        label: 'Senhas Emitidas',
-                        data: report.map(item => item.issued || 0),
-                        borderColor: '#3B82F6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                        fill: true,
-                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: true }
                     }
-                ]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: { beginAtZero: true, title: { display: true, text: 'Quantidade' } },
-                    x: { title: { display: true, text: 'Serviço' } }
-                }
-            }
-        });
-
-        // Configura botões de período do gráfico
-        document.querySelectorAll('.chart-period-btn').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                document.querySelectorAll('.chart-period-btn').forEach(b => b.classList.remove('active', 'bg-blue-100', 'text-blue-700'));
-                btn.classList.add('active', 'bg-blue-100', 'text-blue-700');
-                const period = btn.dataset.period;
-                try {
-                    document.getElementById('chart-loading').classList.remove('hidden');
-                    const reportRes = await axios.get(`/api/admin/report?period=${period}`);
-                    const report = reportRes.data;
-                    window.activityChart.data.labels = report.map(item => item.service || item.period);
-                    window.activityChart.data.datasets[0].data = report.map(item => item.attended || 0);
-                    window.activityChart.data.datasets[1].data = report.map(item => item.issued || 0);
-                    window.activityChart.update();
-                } catch (error) {
-                    console.error('Erro ao atualizar gráfico:', error);
-                    showError('Erro ao atualizar gráfico.');
-                } finally {
-                    document.getElementById('chart-loading').classList.add('hidden');
                 }
             });
+        }
+
+        document.querySelectorAll('.skeleton').forEach(el => {
+            el.style.display = 'none';
         });
     } catch (error) {
-        console.error('Erro ao carregar dashboard:', error);
-        showError('Erro ao carregar dados do dashboard.');
+        console.error('Erro ao carregar dashboard:', error.response || error);
+        showToast('Falha ao carregar dados do dashboard.', 'error');
+
+        document.getElementById('active-queues').textContent = '0';
+        document.getElementById('pending-tickets').textContent = '0';
+        document.getElementById('today-calls').textContent = '0';
+        document.getElementById('active-users').textContent = '0';
+        document.getElementById('active-queues-trend').textContent = '';
+        document.getElementById('pending-tickets-trend').textContent = '';
+
+        document.querySelectorAll('.skeleton').forEach(el => {
+            el.style.display = 'none';
+        });
     } finally {
-        document.getElementById('chart-loading').classList.add('hidden');
+        toggleLoading(false);
     }
 }
 
-async function fetchNotifications() {
+// Carrega filas
+async function fetchQueues() {
     try {
-        const response = await axios.get('/api/admin/notifications');
-        const notifications = response.data.slice(0, 5); // Limita a 5 notificações
-        const notificationList = document.getElementById('notifications-list');
-        const notificationCount = document.getElementById('notification-count');
-        
-        notificationList.innerHTML = '';
-        if (notifications.length === 0) {
-            notificationList.innerHTML = '<p class="p-3 text-gray-500 text-sm">Nenhuma notificação disponível.</p>';
-            notificationCount.classList.add('hidden');
-        } else {
-            notificationCount.classList.remove('hidden');
-            notifications.forEach(notification => {
-                const typeStyles = {
-                    ticket: { bg: 'bg-blue-100', icon: 'text-blue-600', svg: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />' },
-                    queue: { bg: 'bg-yellow-100', icon: 'text-yellow-600', svg: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />' },
-                    system: { bg: 'bg-green-100', icon: 'text-green-600', svg: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />' }
-                };
-                const style = typeStyles[notification.type] || typeStyles.system;
-                const div = document.createElement('div');
-                div.className = 'p-3 hover:bg-gray-50 cursor-pointer';
-                div.innerHTML = `
-                    <div class="flex items-start">
-                        <div class="${style.bg} p-2 rounded-lg mr-3">
-                            <svg class="w-4 h-4 ${style.icon}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                ${style.svg}
-                            </svg>
+        toggleLoading(true, 'Carregando filas...');
+        const queuesContainer = document.getElementById('queues-container');
+        const queuesLoading = document.getElementById('queues-loading');
+        if (queuesLoading) queuesLoading.classList.remove('hidden');
+        if (queuesContainer) queuesContainer.innerHTML = '';
+
+        const response = await axios.get('/api/admin/queues', { timeout: 10000 });
+        console.log('Resposta queues:', response.data);
+
+        const queues = response.data || [];
+        if (queuesContainer) {
+            if (queues.length === 0) {
+                queuesContainer.innerHTML = '<p>Nenhuma fila disponível.</p>';
+            } else {
+                queues.forEach(queue => {
+                    queuesContainer.innerHTML += `
+                        <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-semibold">${queue.service || 'Sem nome'}</h3>
+                                <span class="px-2 py-1 rounded-full text-xs ${queue.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+                                    ${queue.status === 'active' ? 'Ativa' : 'Inativa'}
+                                </span>
+                            </div>
+                            <p class="text-sm text-gray-500 mb-2">Prefixo: ${queue.prefix || 'N/A'}</p>
+                            <p class="text-sm text-gray-500 mb-2">Tickets Pendentes: ${queue.pending_tickets || '0'}</p>
+                            <p class="text-sm text-gray-500 mb-4">Horário: ${queue.open_time || 'N/A'} - ${queue.close_time || 'N/A'}</p>
+                            <div class="flex space-x-2">
+                                <button onclick="editQueue(${queue.id})" class="text-blue-600 hover:text-blue-800 text-sm">Editar</button>
+                                <button onclick="deleteQueue(${queue.id})" class="text-red-600 hover:text-red-700 text-sm">Excluir</button>
+                            </div>
                         </div>
-                        <div>
-                            <p class="text-sm font-medium">${notification.title}</p>
-                            <p class="text-xs text-gray-500">${notification.message}</p>
-                            <p class="text-xs text-gray-400 mt-1">${new Date(notification.created_at).toLocaleString()}</p>
-                        </div>
-                    </div>
-                `;
-                notificationList.appendChild(div);
-            });
+                    `;
+                });
+            }
         }
     } catch (error) {
-        console.error('Erro ao carregar notificações:', error);
-        showError('Erro ao carregar notificações.');
+        console.error('Erro ao carregar filas:', error.response || error);
+        showToast('Falha ao carregar filas.', 'error');
+        if (document.getElementById('queues-container')) {
+            document.getElementById('queues-container').innerHTML = '<p>Nenhuma fila disponível.</p>';
+        }
+    } finally {
+        toggleLoading(false);
+        if (document.getElementById('queues-loading')) {
+            document.getElementById('queues-loading').classList.add('hidden');
+        }
     }
 }
 
-async function fetchSystemAlerts() {
+// Carrega tickets
+async function fetchTickets() {
     try {
-        const response = await axios.get('/api/admin/alerts');
-        const alerts = response.data.slice(0, 3); // Limita a 3 alertas
-        const alertList = document.getElementById('system-alerts');
-        
-        alertList.innerHTML = '';
-        if (alerts.length === 0) {
-            alertList.innerHTML = '<p class="text-gray-500 text-sm">Nenhum alerta no momento.</p>';
-        } else {
-            alerts.forEach(alert => {
-                const typeStyles = {
-                    warning: { bg: 'bg-yellow-50', border: 'border-yellow-100', text: 'text-yellow-800', subtext: 'text-yellow-600', button: 'text-yellow-700 hover:text-yellow-900', iconBg: 'bg-yellow-100', icon: 'text-yellow-600', svg: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />' },
-                    info: { bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-blue-800', subtext: 'text-blue-600', button: 'text-blue-700 hover:text-blue-900', iconBg: 'bg-blue-100', icon: 'text-blue-600', svg: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />' }
-                };
-                const style = typeStyles[alert.type] || typeStyles.info;
-                const div = document.createElement('div');
-                div.className = `flex items-start p-3 ${style.bg} rounded-lg border ${style.border}`;
-                div.innerHTML = `
-                    <div class="${style.iconBg} p-2 rounded-lg mr-3 flex-shrink-0">
-                        <svg class="w-5 h-5 ${style.icon}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            ${style.svg}
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="font-medium ${style.text}">${alert.title}</p>
-                        <p class="text-sm ${style.subtext}">${alert.message}</p>
-                        <button onclick="viewAlertDetails('${alert.id}')" class="text-xs ${style.button} mt-1 font-medium">Ver detalhes</button>
-                    </div>
-                `;
-                alertList.appendChild(div);
-            });
+        toggleLoading(true, 'Carregando tickets...');
+        const ticketsContainer = document.getElementById('tickets-container');
+        const ticketsLoading = document.getElementById('tickets-loading');
+        if (ticketsLoading) ticketsLoading.classList.remove('hidden');
+        if (ticketsContainer) ticketsContainer.innerHTML = '';
+
+        const response = await axios.get('/api/tickets/admin', { timeout: 10000 });
+        console.log('Resposta tickets:', response.data);
+
+        const tickets = response.data || [];
+        if (ticketsContainer) {
+            if (tickets.length === 0) {
+                ticketsContainer.innerHTML = '<p>Nenhum ticket disponível.</p>';
+            } else {
+                tickets.forEach(ticket => {
+                    ticketsContainer.innerHTML += `
+                        <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-semibold">${ticket.ticket_number || 'N/A'}</h3>
+                                <span class="px-2 py-1 rounded-full text-xs ${ticket.status === 'Pendente' ? 'bg-yellow-100 text-yellow-800' : ticket.status === 'Chamado' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}">
+                                    ${ticket.status || 'Desconhecido'}
+                                </span>
+                            </div>
+                            <p class="text-sm text-gray-500 mb-2">Fila: ${ticket.queue_name || 'N/A'}</p>
+                            <p class="text-sm text-gray-500 mb-2">Criado em: ${ticket.created_at ? new Date(ticket.created_at).toLocaleString('pt-BR') : 'N/A'}</p>
+                            <p class="text-sm text-gray-500 mb-4">Prioridade: ${ticket.priority || 'N/A'}</p>
+                            <div class="flex space-x-2">
+                                <button onclick="viewTicket(${ticket.id})" class="text-blue-600 hover:text-blue-800 text-sm">Ver Detalhes</button>
+                                <button onclick="cancelTicket(${ticket.id})" class="text-red-600 hover:text-red-700 text-sm">Cancelar</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
         }
     } catch (error) {
-        console.error('Erro ao carregar alertas:', error);
-        showError('Erro ao carregar alertas do sistema.');
+        console.error('Erro ao carregar tickets:', error.response || error);
+        showToast('Falha ao carregar tickets.', 'error');
+        if (document.getElementById('tickets-container')) {
+            document.getElementById('tickets-container').innerHTML = '<p>Nenhum ticket disponível.</p>';
+        }
+    } finally {
+        toggleLoading(false);
+        if (document.getElementById('tickets-loading')) {
+            document.getElementById('tickets-loading').classList.add('hidden');
+        }
     }
 }
 
-async function viewAlertDetails(alertId) {
+// Busca chamada atual
+async function fetchCurrentCall() {
     try {
-        const response = await axios.get(`/api/admin/alerts/${alertId}`);
-        const alert = response.data;
-        showToast(`Detalhes do alerta: ${alert.title} - ${alert.message}`);
+        const response = await axios.get('/api/call/current', { timeout: 5000 });
+        console.log('Resposta current call:', response.data);
+        updateCurrentTicket(response.data);
     } catch (error) {
-        console.error('Erro ao visualizar alerta:', error);
-        showError('Erro ao carregar detalhes do alerta.');
+        console.error('Erro ao buscar chamada atual:', error.response || error);
+        showToast('Falha ao carregar chamada atual.', 'error');
+        updateCurrentTicket({});
     }
 }
 
-async function fetchUserInfo() {
-    try {
-        const response = await axios.get('/api/admin/user');
-        document.getElementById('user-name').textContent = response.data.name || 'Usuário';
-    } catch (error) {
-        console.error('Erro ao carregar informações do usuário:', error);
-        showError('Erro ao carregar informações do usuário.');
-    }
-}
-
-async function fetchDepartmentInfo() {
-    try {
-        const response = await axios.get('/api/admin/department');
-        document.getElementById('department-name').textContent = response.data.name || 'Departamento';
-    } catch (error) {
-        console.error('Erro ao carregar informações do departamento:', error);
-        showError('Erro ao carregar informações do departamento.');
-    }
-}
-
-function updateCurrentDate() {
-    const today = new Date();
-    document.getElementById('current-date').textContent = today.toLocaleDateString('pt-BR', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
-}
-
+// Configura navegação
 function setupNavigation() {
     const sections = {
         'nav-dashboard': 'dashboard-section',
@@ -307,11 +351,15 @@ function setupNavigation() {
                     if (id === navId) {
                         otherBtn.classList.add('bg-blue-700');
                         otherBtn.classList.remove('hover:bg-blue-600');
-                        section.classList.remove('hidden');
+                        if (section) section.classList.remove('hidden');
+                        // Recarregar dados
+                        if (id === 'nav-dashboard') fetchDashboardData();
+                        if (id === 'nav-queues') fetchQueues();
+                        if (id === 'nav-tickets') fetchTickets();
                     } else {
                         otherBtn.classList.remove('bg-blue-700');
                         otherBtn.classList.add('hover:bg-blue-600');
-                        section.classList.add('hidden');
+                        if (section) section.classList.add('hidden');
                     }
                 });
             });
@@ -321,93 +369,177 @@ function setupNavigation() {
     const sidebarToggle = document.getElementById('sidebar-toggle');
     if (sidebarToggle) {
         sidebarToggle.addEventListener('click', () => {
-            document.getElementById('sidebar').classList.toggle('open');
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar) sidebar.classList.toggle('open');
         });
     }
 
-    const logout = document.getElementById('logout');
-    if (logout) {
-        logout.addEventListener('click', () => {
-            localStorage.clear();
-            window.location.href = '/index.html';
+    const logoutButton = document.getElementById('logout');
+    if (logoutButton) {
+        logoutButton.addEventListener('click', async () => {
+            try {
+                toggleLoading(true, 'Saindo...');
+                await axios.post('/api/logout', {}, { timeout: 5000 });
+                localStorage.removeItem('adminToken');
+                window.location.href = '/index.html';
+            } catch (error) {
+                console.error('Erro ao fazer logout:', error.response || error);
+                showToast('Falha ao sair. Sessão limpa localmente.', 'error');
+                localStorage.removeItem('adminToken');
+                window.location.href = '/index.html';
+            } finally {
+                toggleLoading(false);
+            }
         });
     }
 }
 
+// Configura WebSocket
 function setupSocketListeners() {
     const socket = io(API_BASE, {
-        auth: { token: localStorage.getItem('adminToken') }
+        path: '/socket.io',
+        transports: ['websocket'],
+        reconnectionAttempts: 5,
+        auth: {
+            token: localStorage.getItem('adminToken') || ''
+        }
     });
 
     socket.on('connect', () => {
         console.log('Conectado ao WebSocket');
+        showToast('Conexão em tempo real estabelecida.', 'success');
     });
 
-    socket.on('new_notification', (notification) => {
-        fetchNotifications();
-        showToast(`Nova notificação: ${notification.title}`);
+    socket.on('new_ticket', (data) => {
+        showToast(`Novo ticket: ${data.ticket_number || 'N/A'}`, 'info');
+        if (!document.getElementById('tickets-section')?.classList.contains('hidden')) {
+            fetchTickets();
+        }
+        if (!document.getElementById('dashboard-section')?.classList.contains('hidden')) {
+            fetchDashboardData();
+        }
     });
 
-    socket.on('new_alert', () => {
-        fetchSystemAlerts();
+    socket.on('called_ticket', (data) => {
+        showToast(`Ticket chamado: ${data.ticket_number || 'N/A'}`, 'info');
+        if (!document.getElementById('call-section')?.classList.contains('hidden')) {
+            updateCurrentTicket(data);
+        }
+        if (!document.getElementById('dashboard-section')?.classList.contains('hidden')) {
+            fetchDashboardData();
+        }
     });
 
-    socket.on('ticket_update', () => {
-        fetchTickets();
-        fetchDashboardData();
-    });
-
-    socket.on('queue_update', () => {
-        fetchQueues();
-        fetchDashboardData();
+    socket.on('connect_error', (error) => {
+        console.error('Erro na conexão WebSocket:', error);
+        showToast('Falha na conexão em tempo real.', 'error');
     });
 
     socket.on('disconnect', () => {
-        console.warn('Desconectado do WebSocket');
+        showToast('Conexão perdida. Tentando reconectar...', 'error');
     });
 }
 
-document.getElementById('refresh-data')?.addEventListener('click', async () => {
-    try {
-        await Promise.all([
-            fetchDashboardData(),
-            fetchNotifications(),
-            fetchSystemAlerts(),
-            fetchQueues(),
-            fetchTickets(),
-            fetchCurrentCall()
-        ]);
-        showSuccess('Dados atualizados com sucesso.');
-    } catch (error) {
-        console.error('Erro ao atualizar dados:', error);
-        showError('Erro ao atualizar dados.');
+// Exibe notificações
+function showToast(message, type = 'success') {
+    const toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        console.warn('Toast container não encontrado');
+        return;
     }
-});
 
-document.getElementById('notifications-btn')?.addEventListener('click', () => {
-    const dropdown = document.getElementById('notifications-dropdown');
-    dropdown.classList.toggle('hidden');
-});
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `
+        <div class="flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${
+                    type === 'success' ? 'M5 13l4 4L19 7' :
+                    type === 'warning' ? 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' :
+                    'M6 18L18 6M6 6l12 12'
+                }"/>
+            </svg>
+            ${message}
+        </div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 500);
+    }, 5000);
+}
 
-document.getElementById('quick-call')?.addEventListener('click', async () => {
-    try {
-        const queues = JSON.parse(localStorage.getItem('queues')) || [];
-        if (queues.length === 0) {
-            showError('Nenhuma fila disponível para chamar.');
-            return;
+// Atualiza ticket atual
+function updateCurrentTicket(data) {
+    const currentTicket = document.getElementById('current-ticket');
+    const currentService = document.getElementById('current-service');
+    const currentCounter = document.getElementById('current-counter');
+    const avgWaitTime = document.getElementById('avg-wait-time');
+
+    if (currentTicket) currentTicket.textContent = data.ticket_number || '---';
+    if (currentService) currentService.textContent = data.service || '';
+    if (currentCounter) currentCounter.textContent = data.counter || '';
+    if (avgWaitTime) avgWaitTime.textContent = data.avg_wait_time || 'N/A';
+}
+
+// Ações rápidas
+const quickCallButton = document.getElementById('quick-call');
+if (quickCallButton) {
+    quickCallButton.addEventListener('click', async () => {
+        try {
+            toggleLoading(true, 'Chamando próximo ticket...');
+            const response = await axios.post('/api/call/next', {}, { timeout: 5000 });
+            console.log('Resposta call/next:', response.data);
+            updateCurrentTicket(response.data);
+            showToast('Próximo ticket chamado!', 'success');
+            fetchDashboardData();
+        } catch (error) {
+            console.error('Erro ao chamar próximo:', error.response || error);
+            showToast('Falha ao chamar próximo ticket.', 'error');
+        } finally {
+            toggleLoading(false);
         }
-        const queueId = queues[0].id; // Seleciona a primeira fila
-        await callNext(queueId);
-    } catch (error) {
-        console.error('Erro ao chamar próximo:', error);
-        showError('Erro ao chamar próximo ticket.');
-    }
-});
+    });
+}
 
-document.getElementById('quick-add')?.addEventListener('click', () => {
-    document.getElementById('generate-ticket-btn')?.click();
-});
+const quickAddButton = document.getElementById('quick-add');
+if (quickAddButton) {
+    quickAddButton.addEventListener('click', () => {
+        showToast('Função de adicionar ticket não implementada.', 'warning');
+    });
+}
 
-document.getElementById('quick-report')?.addEventListener('click', () => {
-    document.getElementById('nav-reports')?.click();
-});
+const quickReportButton = document.getElementById('quick-report');
+if (quickReportButton) {
+    quickReportButton.addEventListener('click', () => {
+        showToast('Função de gerar relatório não implementada.', 'warning');
+    });
+}
+
+// Funções placeholder
+function editQueue(id) {
+    console.log('Editar fila:', id);
+    showToast('Função de edição de fila não implementada.', 'warning');
+}
+
+function deleteQueue(id) {
+    console.log('Excluir fila:', id);
+    showToast('Função de exclusão de fila não implementada.', 'warning');
+}
+
+function viewTicket(id) {
+    console.log('Ver ticket:', id);
+    showToast('Função de visualização de ticket não implementada.', 'warning');
+}
+
+function cancelTicket(id) {
+    console.log('Cancelar ticket:', id);
+    showToast('Função de cancelamento de ticket não implementada.', 'warning');
+}
+
+// Exibe erros
+function showError(message, detail = '') {
+    showToast(`${message} ${detail}`, 'error');
+}
