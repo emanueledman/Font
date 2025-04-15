@@ -1694,8 +1694,143 @@
         </div>
     </template>
 
-    <!-- Script para inicialização -->
+       <!-- Scripts de inicialização -->
+       <script>
+        // Inicialização quando o DOM estiver pronto
+        document.addEventListener('DOMContentLoaded', function() {
+            // Carrega dados iniciais do dashboard
+            loadDashboardData();
+            
+            // Configura listeners para os botões de navegação
+            setupNavigation();
+            
+            // Inicializa WebSocket para atualizações em tempo real
+            initWebSocket();
+            
+            // Atualiza a data/hora atual
+            updateCurrentDateTime();
+            setInterval(updateCurrentDateTime, 60000); // Atualiza a cada minuto
+            
+            // Verifica autenticação
+            checkAuthStatus();
+        });
 
-     
+        // Funções principais
+        function loadDashboardData() {
+            // Exibe skeleton loading
+            document.querySelectorAll('.skeleton').forEach(el => {
+                el.style.display = 'block';
+            });
+            
+            // Simula carregamento assíncrono (substituir por chamadas reais)
+            setTimeout(() => {
+                // Dados mockados - substituir por API real
+                document.getElementById('active-queues').textContent = '5';
+                document.getElementById('pending-tickets').textContent = '23';
+                document.getElementById('today-calls').textContent = '112';
+                document.getElementById('active-users').textContent = '8';
+                
+                // Oculta skeletons
+                document.querySelectorAll('.skeleton').forEach(el => {
+                    el.style.display = 'none';
+                });
+                
+                // Inicializa gráficos
+                initCharts();
+            }, 1500);
+        }
+
+        function setupNavigation() {
+            // Botões do sidebar
+            const navButtons = ['dashboard', 'call', 'queues', 'tickets', 'reports', 'settings'];
+            navButtons.forEach(button => {
+                document.getElementById(`nav-${button}`).addEventListener('click', () => {
+                    // Esconde todas as seções
+                    document.querySelectorAll('main > div').forEach(section => {
+                        section.classList.add('hidden');
+                    });
+                    // Mostra apenas a seção clicada
+                    document.getElementById(`${button}-section`).classList.remove('hidden');
+                    
+                    // Atualiza o botão ativo
+                    document.querySelectorAll('#sidebar nav button').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    document.getElementById(`nav-${button}`).classList.add('active');
+                    
+                    // Carrega dados específicos se necessário
+                    if(button === 'queues') loadQueues();
+                    if(button === 'tickets') loadTickets();
+                });
+            });
+            
+            // Logout
+            document.getElementById('logout').addEventListener('click', handleLogout);
+        }
+
+        function initWebSocket() {
+            // Configuração do Socket.IO (substituir pela sua URL)
+            const socket = io('https://your-socket-server.com', {
+                path: '/real-time',
+                transports: ['websocket'],
+                reconnectionAttempts: 5
+            });
+            
+            // Listeners para eventos em tempo real
+            socket.on('new_ticket', (data) => {
+                showToast(`Novo ticket: ${data.ticket_number}`, 'info');
+                if(document.getElementById('tickets-section').classList.contains('hidden') === false) {
+                    loadTickets(); // Recarrega se estiver na seção
+                }
+            });
+            
+            socket.on('called_ticket', (data) => {
+                if(document.getElementById('call-section').classList.contains('hidden') === false) {
+                    updateCurrentTicket(data); // Atualiza a tela de chamada
+                }
+            });
+        }
+
+        function updateCurrentDateTime() {
+            const now = new Date();
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            document.getElementById('current-date').textContent = now.toLocaleDateString('pt-BR', options);
+        }
+
+        // Funções auxiliares
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `
+                <div class="flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${type === 'success' ? 'M5 13l4 4L19 7' : 'M6 18L18 6M6 6l12 12'}"/>
+                    </svg>
+                    ${message}
+                </div>
+            `;
+            
+            document.getElementById('toast-container').appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.add('fade-out');
+                setTimeout(() => toast.remove(), 500);
+            }, 5000);
+        }
+
+        // Adicione outras funções específicas do sistema aqui:
+        // - loadQueues()
+        // - loadTickets()
+        // - initCharts()
+        // - handleLogout()
+        // - updateCurrentTicket()
+    </script>
 </body>
-</html> 
+</html>
