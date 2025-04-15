@@ -958,4 +958,1129 @@
                     </div>
                     <div class="mb-4">
                         <label for="manager-department" class="block text-sm font-medium text-gray-700 mb-1">Departamento*</label>
-                        <select id="manager-department" name="manager-department" required class="p-3 border rounded-lg w-full focus:ring
+                        <select id="manager-department" name="manager-department" required class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                            <option value="">Selecione um departamento</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label for="manager-role" class="block text-sm font-medium text-gray-700 mb-1">Permissão</label>
+                        <select id="manager-role" name="manager-role" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                            <option value="manager">Gestor</option>
+                            <option value="supervisor">Supervisor</option>
+                            <option value="limited">Limitado</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label for="manager-phone" class="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+                        <input type="tel" id="manager-phone" name="manager-phone" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-4">
+                        <label for="manager-status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select id="manager-status" name="manager-status" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                            <option value="active">Ativo</option>
+                            <option value="inactive">Inativo</option>
+                        </select>
+                    </div>
+                    <input type="hidden" id="manager-id" name="manager-id">
+                    <div class="flex justify-end space-x-4">
+                        <button type="button" id="cancel-manager-btn" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">
+                            Cancelar
+                        </button>
+                        <button type="submit" id="submit-manager-btn" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md transition-colors">
+                            Salvar Gestor
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal para Visualizar Todas as Notificações -->
+        <div id="all-notifications-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden z-50">
+            <div class="bg-white rounded-2xl p-8 w-full max-w-3xl shadow-2xl animate-zoom-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-semibold text-gray-800">Todas as Notificações</h3>
+                    <button id="close-notifications-modal" class="text-gray-400 hover:text-gray-500">
+                        <i class="fas fa-times w-6 h-6"></i>
+                    </button>
+                </div>
+                <div class="mb-4">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-search text-gray-400"></i>
+                        </div>
+                        <input type="text" id="notifications-filter" placeholder="Filtrar notificações..." class="pl-10 p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+                <div id="all-notifications-list" class="space-y-4 max-h-[60vh] overflow-y-auto">
+                    <!-- Placeholder para notificações -->
+                </div>
+                <div class="flex justify-end mt-6">
+                    <button id="clear-notifications-btn" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-colors">
+                        Limpar Todas
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para Visualizar Todos os Departamentos -->
+        <div id="all-depts-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden z-50">
+            <div class="bg-white rounded-2xl p-8 w-full max-w-4xl shadow-2xl animate-zoom-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-semibold text-gray-800">Todos os Departamentos</h3>
+                    <button id="close-all-depts-modal" class="text-gray-400 hover:text-gray-500">
+                        <i class="fas fa-times w-6 h-6"></i>
+                    </button>
+                </div>
+                <div class="mb-4">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-search text-gray-400"></i>
+                        </div>
+                        <input type="text" id="all-depts-filter" placeholder="Filtrar departamentos..." class="pl-10 p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-gray-50">
+                                <th class="p-3 text-sm font-semibold text-gray-700">Nome</th>
+                                <th class="p-3 text-sm font-semibold text-gray-700">Setor</th>
+                                <th class="p-3 text-sm font-semibold text-gray-700">Gestor</th>
+                                <th class="p-3 text-sm font-semibold text-gray-700">Status</th>
+                                <th class="p-3 text-sm font-semibold text-gray-700">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="all-depts-table" class="divide-y divide-gray-100">
+                            <!-- Placeholder para departamentos -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="flex justify-between items-center mt-6">
+                    <div class="text-sm text-gray-500">
+                        Mostrando <span id="all-depts-start">1</span> a <span id="all-depts-end">0</span> de <span id="all-depts-total">0</span> departamentos
+                    </div>
+                    <div class="flex space-x-2">
+                        <button id="all-depts-prev" class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 transition-colors" disabled>
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button id="all-depts-next" class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 transition-colors">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Modal para Visualizar Todos os Gestores -->
+        <div id="all-managers-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden z-50">
+            <div class="bg-white rounded-2xl p-8 w-full max-w-4xl shadow-2xl animate-zoom-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-semibold text-gray-800">Todos os Gestores</h3>
+                    <button id="close-all-managers-modal" class="text-gray-400 hover:text-gray-500">
+                        <i class="fas fa-times w-6 h-6"></i>
+                    </button>
+                </div>
+                <div class="mb-4">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-search text-gray-400"></i>
+                        </div>
+                        <input type="text" id="all-managers-filter" placeholder="Filtrar gestores..." class="pl-10 p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-gray-50">
+                                <th class="p-3 text-sm font-semibold text-gray-700">Nome</th>
+                                <th class="p-3 text-sm font-semibold text-gray-700">Email</th>
+                                <th class="p-3 text-sm font-semibold text-gray-700">Departamento</th>
+                                <th class="p-3 text-sm font-semibold text-gray-700">Permissão</th>
+                                <th class="p-3 text-sm font-semibold text-gray-700">Status</th>
+                                <th class="p-3 text-sm font-semibold text-gray-700">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="all-managers-table" class="divide-y divide-gray-100">
+                            <!-- Placeholder para gestores -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="flex justify-between items-center mt-6">
+                    <div class="text-sm text-gray-500">
+                        Mostrando <span id="all-managers-start">1</span> a <span id="all-managers-end">0</span> de <span id="all-managers-total">0</span> gestores
+                    </div>
+                    <div class="flex space-x-2">
+                        <button id="all-managers-prev" class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 transition-colors" disabled>
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button id="all-managers-next" class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 transition-colors">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Confirmação para Exclusão -->
+        <div id="delete-confirm-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden z-50">
+            <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl animate-zoom-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-semibold text-gray-800">Confirmar Exclusão</h3>
+                    <button id="close-delete-modal" class="text-gray-400 hover:text-gray-500">
+                        <i class="fas fa-times w-6 h-6"></i>
+                    </button>
+                </div>
+                <p class="text-gray-600 mb-6">Você tem certeza que deseja excluir <span id="delete-item-name" class="font-medium"></span>? Esta ação não pode ser desfeita.</p>
+                <div class="flex justify-end space-x-4">
+                    <button id="cancel-delete-btn" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">
+                        Cancelar
+                    </button>
+                    <button id="confirm-delete-btn" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-colors">
+                        Excluir
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast para Notificações -->
+        <div id="toast" class="fixed bottom-8 right-8 bg-gray-800 text-white px-6 py-4 rounded-lg shadow-lg flex items-center space-x-3 toast-hidden z-50">
+            <i id="toast-icon" class="fas fa-info-circle"></i>
+            <span id="toast-message">Ação realizada com sucesso!</span>
+            <button id="close-toast" class="ml-auto text-gray-300 hover:text-white">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </main>
+
+    <script>
+        // Configurações iniciais
+        const API_BASE_URL = 'https://api.filafacil.com/v1';
+        let currentPage = {
+            departments: 1,
+            managers: 1,
+            allDepts: 1,
+            allManagers: 1
+        };
+        const ITEMS_PER_PAGE = 9;
+        let socket;
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeSidebar();
+            initializeNavigation();
+            initializeModals();
+            initializeQuickActions();
+            initializeFilters();
+            initializeDashboard();
+            initializeSocket();
+            updateCurrentDate();
+        });
+
+        // Função para atualizar a data atual
+        function updateCurrentDate() {
+            const dateEl = document.getElementById('current-date');
+            const today = new Date();
+            dateEl.textContent = today.toLocaleDateString('pt-BR', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        // Inicializar Sidebar
+        function initializeSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const toggleBtn = document.getElementById('sidebar-toggle');
+            toggleBtn.addEventListener('click', () => {
+                sidebar.classList.toggle('sidebar-collapsed');
+                toggleBtn.querySelector('i').classList.toggle('fa-bars');
+                toggleBtn.querySelector('i').classList.toggle('fa-times');
+            });
+
+            document.getElementById('logout').addEventListener('click', () => {
+                showToast('success', 'Logout realizado com sucesso!');
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 1000);
+            });
+        }
+
+        // Inicializar Navegação
+        function initializeNavigation() {
+            const sections = [
+                'dashboard', 'departments', 'managers', 
+                'reports', 'settings', 'security', 'integrations'
+            ];
+            const navButtons = sections.map(id => document.getElementById(`nav-${id}`));
+
+            navButtons.forEach((btn, index) => {
+                btn.addEventListener('click', () => {
+                    sections.forEach(section => {
+                        document.getElementById(`${section}-section`).classList.add('hidden');
+                    });
+                    document.getElementById(`${sections[index]}-section`).classList.remove('hidden');
+
+                    navButtons.forEach(b => b.classList.remove('nav-active'));
+                    btn.classList.add('nav-active');
+
+                    if (sections[index] === 'dashboard') {
+                        loadDashboardData();
+                    } else if (sections[index] === 'departments') {
+                        loadDepartments(currentPage.departments);
+                    } else if (sections[index] === 'managers') {
+                        loadManagers(currentPage.managers);
+                    }
+                });
+            });
+        }
+
+        // Inicializar Modais
+        function initializeModals() {
+            // Modal de Departamento
+            const deptModal = document.getElementById('dept-modal');
+            const closeDeptModal = document.getElementById('close-dept-modal');
+            const cancelDeptBtn = document.getElementById('cancel-dept-btn');
+            const deptForm = document.getElementById('dept-form');
+
+            document.getElementById('create-dept-btn').addEventListener('click', () => {
+                document.getElementById('dept-modal-title').textContent = 'Novo Departamento';
+                deptForm.reset();
+                document.getElementById('dept-id').value = '';
+                loadManagersForSelect('dept-manager');
+                deptModal.classList.remove('hidden');
+            });
+
+            closeDeptModal.addEventListener('click', () => deptModal.classList.add('hidden'));
+            cancelDeptBtn.addEventListener('click', () => deptModal.classList.add('hidden'));
+
+            deptForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(deptForm);
+                const deptData = Object.fromEntries(formData);
+                showLoading(true, 'Salvando departamento...');
+
+                try {
+                    const method = deptData['dept-id'] ? 'PUT' : 'POST';
+                    const url = deptData['dept-id'] 
+                        ? `${API_BASE_URL}/departments/${deptData['dept-id']}`
+                        : `${API_BASE_URL}/departments`;
+
+                    await axios({
+                        method,
+                        url,
+                        data: deptData,
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                    });
+
+                    showToast('success', `Departamento ${deptData['dept-id'] ? 'atualizado' : 'criado'} com sucesso!`);
+                    deptModal.classList.add('hidden');
+                    loadDepartments(currentPage.departments);
+                } catch (error) {
+                    showToast('error', 'Erro ao salvar departamento.');
+                    console.error(error);
+                } finally {
+                    showLoading(false);
+                }
+            });
+
+            // Modal de Gestor
+            const managerModal = document.getElementById('manager-modal');
+            const closeManagerModal = document.getElementById('close-manager-modal');
+            const cancelManagerBtn = document.getElementById('cancel-manager-btn');
+            const managerForm = document.getElementById('manager-form');
+
+            document.getElementById('create-manager-btn').addEventListener('click', () => {
+                document.getElementById('manager-modal-title').textContent = 'Novo Gestor';
+                managerForm.reset();
+                document.getElementById('manager-id').value = '';
+                document.getElementById('manager-password').required = true;
+                loadDepartmentsForSelect('manager-department');
+                managerModal.classList.remove('hidden');
+            });
+
+            closeManagerModal.addEventListener('click', () => managerModal.classList.add('hidden'));
+            cancelManagerBtn.addEventListener('click', () => managerModal.classList.add('hidden'));
+
+            managerForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(managerForm);
+                const managerData = Object.fromEntries(formData);
+                showLoading(true, 'Salvando gestor...');
+
+                try {
+                    const method = managerData['manager-id'] ? 'PUT' : 'POST';
+                    const url = managerData['manager-id'] 
+                        ? `${API_BASE_URL}/managers/${managerData['manager-id']}`
+                        : `${API_BASE_URL}/managers`;
+
+                    await axios({
+                        method,
+                        url,
+                        data: managerData,
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                    });
+
+                    showToast('success', `Gestor ${managerData['manager-id'] ? 'atualizado' : 'criado'} com sucesso!`);
+                    managerModal.classList.add('hidden');
+                    loadManagers(currentPage.managers);
+                } catch (error) {
+                    showToast('error', 'Erro ao salvar gestor.');
+                    console.error(error);
+                } finally {
+                    showLoading(false);
+                }
+            });
+
+            // Modal de Notificações
+            const notificationsModal = document.getElementById('all-notifications-modal');
+            const closeNotificationsModal = document.getElementById('close-notifications-modal');
+            document.getElementById('view-all-notifications').addEventListener('click', () => {
+                notificationsModal.classList.remove('hidden');
+                loadAllNotifications();
+            });
+            closeNotificationsModal.addEventListener('click', () => notificationsModal.classList.add('hidden'));
+
+            // Modal de Todos os Departamentos
+            const allDeptsModal = document.getElementById('all-depts-modal');
+            const closeAllDeptsModal = document.getElementById('close-all-depts-modal');
+            document.getElementById('view-all-depts-btn').addEventListener('click', () => {
+                allDeptsModal.classList.remove('hidden');
+                loadAllDepartments();
+            });
+            closeAllDeptsModal.addEventListener('click', () => allDeptsModal.classList.add('hidden'));
+
+            // Modal de Todos os Gestores
+            const allManagersModal = document.getElementById('all-managers-modal');
+            const closeAllManagersModal = document.getElementById('close-all-managers-modal');
+            document.getElementById('view-all-managers-btn').addEventListener('click', () => {
+                allManagersModal.classList.remove('hidden');
+                loadAllManagers();
+            });
+            closeAllManagersModal.addEventListener('click', () => allManagersModal.classList.add('hidden'));
+
+            // Modal de Confirmação de Exclusão
+            const deleteModal = document.getElementById('delete-confirm-modal');
+            const closeDeleteModal = document.getElementById('close-delete-modal');
+            const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+            closeDeleteModal.addEventListener('click', () => deleteModal.classList.add('hidden'));
+            cancelDeleteBtn.addEventListener('click', () => deleteModal.classList.add('hidden'));
+        }
+
+        // Inicializar Ações Rápidas
+        function initializeQuickActions() {
+            document.getElementById('quick-create-dept').addEventListener('click', () => {
+                document.getElementById('create-dept-btn').click();
+            });
+
+            document.getElementById('quick-add-manager').addEventListener('click', () => {
+                document.getElementById('create-manager-btn').click();
+            });
+
+            document.getElementById('quick-report').addEventListener('click', () => {
+                document.getElementById('nav-reports').click();
+            });
+        }
+
+        // Inicializar Filtros
+        function initializeFilters() {
+            // Filtro de Departamentos
+            document.getElementById('dept-filter').addEventListener('input', debounce(() => {
+                loadDepartments(1);
+            }, 300));
+
+            document.getElementById('dept-status-filter').addEventListener('change', () => {
+                loadDepartments(1);
+            });
+
+            document.getElementById('dept-sector-filter').addEventListener('change', () => {
+                loadDepartments(1);
+            });
+
+            // Filtro de Gestores
+            document.getElementById('manager-filter').addEventListener('input', debounce(() => {
+                loadManagers(1);
+            }, 300));
+
+            document.getElementById('manager-status-filter').addEventListener('change', () => {
+                loadManagers(1);
+            });
+
+            document.getElementById('manager-dept-filter').addEventListener('change', () => {
+                loadManagers(1);
+            });
+
+            // Filtro de Notificações
+            document.getElementById('notifications-filter').addEventListener('input', debounce(() => {
+                loadAllNotifications();
+            }, 300));
+
+            // Filtro de Todos os Departamentos
+            document.getElementById('all-depts-filter').addEventListener('input', debounce(() => {
+                loadAllDepartments();
+            }, 300));
+
+            // Filtro de Todos os Gestores
+            document.getElementById('all-managers-filter').addEventListener('input', debounce(() => {
+                loadAllManagers();
+            }, 300));
+        }
+
+        // Função de Debounce
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Inicializar Dashboard
+        async function initializeDashboard() {
+            await loadDashboardData();
+            initializeChart();
+        }
+
+        // Carregar Dados do Dashboard
+        async function loadDashboardData() {
+            showLoading(true, 'Carregando dados do dashboard...');
+            try {
+                const [deptsRes, managersRes, ticketsRes, timeRes] = await Promise.all([
+                    axios.get(`${API_BASE_URL}/departments/count`, {
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                    }),
+                    axios.get(`${API_BASE_URL}/managers/count`, {
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                    }),
+                    axios.get(`${API_BASE_URL}/tickets/count`, {
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                    }),
+                    axios.get(`${API_BASE_URL}/tickets/avg-time`, {
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                    })
+                ]);
+
+                document.getElementById('active-depts').textContent = deptsRes.data.count;
+                document.getElementById('active-managers').textContent = managersRes.data.count;
+                document.getElementById('total-tickets').textContent = ticketsRes.data.count;
+                document.getElementById('avg-time').textContent = `${Math.round(timeRes.data.avgTime)} min`;
+
+                updateTrend('active-depts-trend', deptsRes.data.trend);
+                updateTrend('active-managers-trend', managersRes.data.trend);
+                updateTrend('total-tickets-trend', ticketsRes.data.trend);
+                updateTrend('avg-time-trend', timeRes.data.trend);
+            } catch (error) {
+                showToast('error', 'Erro ao carregar dados do dashboard.');
+                console.error(error);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Atualizar Indicador de Tendência
+        function updateTrend(elementId, trend) {
+            const el = document.getElementById(elementId);
+            if (trend > 0) {
+                el.innerHTML = `<i class="fas fa-arrow-up mr-1"></i> +${trend}%`;
+                el.classList.add('bg-green-500');
+            } else if (trend < 0) {
+                el.innerHTML = `<i class="fas fa-arrow-down mr-1"></i> ${trend}%`;
+                el.classList.add('bg-red-500');
+            } else {
+                el.innerHTML = `<i class="fas fa-equals mr-1"></i> Estável`;
+                el.classList.add('bg-gray-500');
+            }
+        }
+
+        // Inicializar Gráfico
+        let activityChart;
+        function initializeChart() {
+            const ctx = document.getElementById('activity-chart').getContext('2d');
+            activityChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Atividade',
+                        data: [],
+                        borderColor: '#2563eb',
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { beginAtZero: true }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+
+            document.querySelectorAll('.chart-period-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.chart-period-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    loadChartData(btn.dataset.period);
+                });
+            });
+
+            loadChartData('today');
+        }
+
+        // Carregar Dados do Gráfico
+        async function loadChartData(period) {
+            document.getElementById('chart-loading').classList.remove('hidden');
+            try {
+                const res = await axios.get(`${API_BASE_URL}/activity`, {
+                    params: { period },
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                });
+
+                activityChart.data.labels = res.data.labels;
+                activityChart.data.datasets[0].data = res.data.values;
+                activityChart.update();
+            } catch (error) {
+                showToast('error', 'Erro ao carregar dados do gráfico.');
+                console.error(error);
+            } finally {
+                document.getElementById('chart-loading').classList.add('hidden');
+            }
+        }
+
+        // Carregar Departamentos
+        async function loadDepartments(page) {
+            currentPage.departments = page;
+            document.getElementById('departments-loading').classList.remove('hidden');
+            document.getElementById('departments-container').innerHTML = '';
+
+            try {
+                const params = {
+                    page,
+                    limit: ITEMS_PER_PAGE,
+                    search: document.getElementById('dept-filter').value,
+                    status: document.getElementById('dept-status-filter').value,
+                    sector: document.getElementById('dept-sector-filter').value
+                };
+
+                const res = await axios.get(`${API_BASE_URL}/departments`, {
+                    params,
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                });
+
+                const container = document.getElementById('departments-container');
+                res.data.departments.forEach(dept => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover-lift transition-all';
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="truncate">
+                                <h3 class="text-lg font-semibold text-gray-800 truncate">${dept.name}</h3>
+                                <p class="text-sm text-gray-500">${dept.sector}</p>
+                            </div>
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${dept.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                ${dept.status === 'active' ? 'Ativo' : 'Inativo'}
+                            </span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-4 line-clamp-2">${dept.description || 'Sem descrição'}</p>
+                        <div class="flex items-center mb-4">
+                            <i class="fas fa-user-tie mr-2 text-gray-400"></i>
+                            <span class="text-sm text-gray-600 truncate">${dept.manager || 'Sem gestor'}</span>
+                        </div>
+                        <div class="flex items-center mb-4">
+                            <i class="fas fa-map-marker-alt mr-2 text-gray-400"></i>
+                            <span class="text-sm text-gray-600 truncate">${dept.location || 'Sem localização'}</span>
+                        </div>
+                        <div class="flex justify-end space-x-2">
+                            <button class="edit-dept-btn p-2 bg-blue-100 hover:bg-blue-200 rounded-lg text-blue-600" data-id="${dept.id}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="delete-dept-btn p-2 bg-red-100 hover:bg-red-200 rounded-lg text-red-600" data-id="${dept.id}" data-name="${dept.name}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+
+                updatePagination('depts', res.data.total, page);
+                initializeDepartmentActions();
+            } catch (error) {
+                showToast('error', 'Erro ao carregar departamentos.');
+                console.error(error);
+            } finally {
+                document.getElementById('departments-loading').classList.add('hidden');
+            }
+        }
+
+        // Carregar Gestores
+        async function loadManagers(page) {
+            currentPage.managers = page;
+            document.getElementById('managers-loading').classList.remove('hidden');
+            document.getElementById('managers-container').innerHTML = '';
+
+            try {
+                const params = {
+                    page,
+                    limit: ITEMS_PER_PAGE,
+                    search: document.getElementById('manager-filter').value,
+                    status: document.getElementById('manager-status-filter').value,
+                    department: document.getElementById('manager-dept-filter').value
+                };
+
+                const res = await axios.get(`${API_BASE_URL}/managers`, {
+                    params,
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                });
+
+                const container = document.getElementById('managers-container');
+                res.data.managers.forEach(manager => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover-lift transition-all';
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold mr-3">
+                                    ${manager.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                </div>
+                                <div class="truncate">
+                                    <h3 class="text-lg font-semibold text-gray-800 truncate">${manager.name}</h3>
+                                    <p class="text-sm text-gray-500 truncate">${manager.email}</p>
+                                </div>
+                            </div>
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${manager.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                ${manager.status === 'active' ? 'Ativo' : 'Inativo'}
+                            </span>
+                        </div>
+                        <div class="flex items-center mb-4">
+                            <i class="fas fa-building mr-2 text-gray-400"></i>
+                            <span class="text-sm text-gray-600 truncate">${manager.department || 'Sem departamento'}</span>
+                        </div>
+                        <div class="flex items-center mb-4">
+                            <i class="fas fa-user-shield mr-2 text-gray-400"></i>
+                            <span class="text-sm text-gray-600">${manager.role}</span>
+                        </div>
+                        <div class="flex justify-end space-x-2">
+                            <button class="edit-manager-btn p-2 bg-blue-100 hover:bg-blue-200 rounded-lg text-blue-600" data-id="${manager.id}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="delete-manager-btn p-2 bg-red-100 hover:bg-red-200 rounded-lg text-red-600" data-id="${manager.id}" data-name="${manager.name}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+
+                updatePagination('managers', res.data.total, page);
+                initializeManagerActions();
+            } catch (error) {
+                showToast('error', 'Erro ao carregar gestores.');
+                console.error(error);
+            } finally {
+                document.getElementById('managers-loading').classList.add('hidden');
+            }
+        }
+
+        // Atualizar Paginação
+        function updatePagination(type, total, page) {
+            const start = (page - 1) * ITEMS_PER_PAGE + 1;
+            const end = Math.min(page * ITEMS_PER_PAGE, total);
+            document.getElementById(`${type}-start`).textContent = start;
+            document.getElementById(`${type}-end`).textContent = end;
+            document.getElementById(`${type}-total`).textContent = total;
+
+            const prevBtn = document.getElementById(`${type}-prev`);
+            const nextBtn = document.getElementById(`${type}-next`);
+            prevBtn.disabled = page === 1;
+            nextBtn.disabled = end >= total;
+
+            prevBtn.onclick = () => {
+                if (type === 'depts') loadDepartments(page - 1);
+                else if (type === 'managers') loadManagers(page - 1);
+                else if (type === 'all-depts') loadAllDepartments(page - 1);
+                else if (type === 'all-managers') loadAllManagers(page - 1);
+            };
+            nextBtn.onclick = () => {
+                if (type === 'depts') loadDepartments(page + 1);
+                else if (type === 'managers') loadManagers(page + 1);
+                else if (type === 'all-depts') loadAllDepartments(page + 1);
+                else if (type === 'all-managers') loadAllManagers(page + 1);
+            };
+        }
+
+        // Ações de Departamentos
+        function initializeDepartmentActions() {
+            document.querySelectorAll('.edit-dept-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const id = btn.dataset.id;
+                    showLoading(true, 'Carregando departamento...');
+                    try {
+                        const res = await axios.get(`${API_BASE_URL}/departments/${id}`, {
+                            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                        });
+                        const dept = res.data;
+
+                        document.getElementById('dept-modal-title').textContent = 'Editar Departamento';
+                        document.getElementById('dept-id').value = dept.id;
+                        document.getElementById('dept-name').value = dept.name;
+                        document.getElementById('dept-sector').value = dept.sector;
+                        document.getElementById('dept-description').value = dept.description || '';
+                        document.getElementById('dept-open-time').value = dept.openTime || '';
+                        document.getElementById('dept-close-time').value = dept.closeTime || '';
+                        document.getElementById('dept-location').value = dept.location || '';
+                        await loadManagersForSelect('dept-manager', dept.managerId);
+                        document.getElementById('dept-modal').classList.remove('hidden');
+                    } catch (error) {
+                        showToast('error', 'Erro ao carregar departamento.');
+                        console.error(error);
+                    } finally {
+                        showLoading(false);
+                    }
+                });
+            });
+
+            document.querySelectorAll('.delete-dept-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.getElementById('delete-item-name').textContent = btn.dataset.name;
+                    document.getElementById('delete-confirm-modal').classList.remove('hidden');
+                    document.getElementById('confirm-delete-btn').onclick = async () => {
+                        showLoading(true, 'Excluindo departamento...');
+                        try {
+                            await axios.delete(`${API_BASE_URL}/departments/${btn.dataset.id}`, {
+                                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                            });
+                            showToast('success', 'Departamento excluído com sucesso!');
+                            loadDepartments(currentPage.departments);
+                        } catch (error) {
+                            showToast('error', 'Erro ao excluir departamento.');
+                            console.error(error);
+                        } finally {
+                            showLoading(false);
+                            document.getElementById('delete-confirm-modal').classList.add('hidden');
+                        }
+                    };
+                });
+            });
+        }
+
+        // Ações de Gestores
+        function initializeManagerActions() {
+            document.querySelectorAll('.edit-manager-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const id = btn.dataset.id;
+                    showLoading(true, 'Carregando gestor...');
+                    try {
+                        const res = await axios.get(`${API_BASE_URL}/managers/${id}`, {
+                            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                        });
+                        const manager = res.data;
+
+                        document.getElementById('manager-modal-title').textContent = 'Editar Gestor';
+                        document.getElementById('manager-id').value = manager.id;
+                        document.getElementById('manager-name').value = manager.name;
+                        document.getElementById('manager-email').value = manager.email;
+                        document.getElementById('manager-password').value = '';
+                        document.getElementById('manager-password').required = false;
+                        document.getElementById('manager-phone').value = manager.phone || '';
+                        document.getElementById('manager-role').value = manager.role;
+                        document.getElementById('manager-status').value = manager.status;
+                        await loadDepartmentsForSelect('manager-department', manager.departmentId);
+                        document.getElementById('manager-modal').classList.remove('hidden');
+                    } catch (error) {
+                        showToast('error', 'Erro ao carregar gestor.');
+                        console.error(error);
+                    } finally {
+                        showLoading(false);
+                    }
+                });
+            });
+
+            document.querySelectorAll('.delete-manager-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.getElementById('delete-item-name').textContent = btn.dataset.name;
+                    document.getElementById('delete-confirm-modal').classList.remove('hidden');
+                    document.getElementById('confirm-delete-btn').onclick = async () => {
+                        showLoading(true, 'Excluindo gestor...');
+                        try {
+                            await axios.delete(`${API_BASE_URL}/managers/${btn.dataset.id}`, {
+                                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                            });
+                            showToast('success', 'Gestor excluído com sucesso!');
+                            loadManagers(currentPage.managers);
+                        } catch (error) {
+                            showToast('error', 'Erro ao excluir gestor.');
+                            console.error(error);
+                        } finally {
+                            showLoading(false);
+                            document.getElementById('delete-confirm-modal').classList.add('hidden');
+                        }
+                    };
+                });
+            });
+        }
+
+        // Carregar Gestores para Select
+        async function loadManagersForSelect(selectId, selectedId = '') {
+            const select = document.getElementById(selectId);
+            select.innerHTML = '<option value="">Nenhum gestor</option>';
+            try {
+                const res = await axios.get(`${API_BASE_URL}/managers`, {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                });
+                res.data.managers.forEach(manager => {
+                    const option = document.createElement('option');
+                    option.value = manager.id;
+                    option.textContent = manager.name;
+                    if (manager.id === selectedId) option.selected = true;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Erro ao carregar gestores para select:', error);
+            }
+        }
+
+        // Carregar Departamentos para Select
+        async function loadDepartmentsForSelect(selectId, selectedId = '') {
+            const select = document.getElementById(selectId);
+            select.innerHTML = '<option value="">Selecione um departamento</option>';
+            try {
+                const res = await axios.get(`${API_BASE_URL}/departments`, {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                });
+                res.data.departments.forEach(dept => {
+                    const option = document.createElement('option');
+                    option.value = dept.id;
+                    option.textContent = dept.name;
+                    if (dept.id === selectedId) option.selected = true;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Erro ao carregar departamentos para select:', error);
+            }
+        }
+
+        // Carregar Todas as Notificações
+        async function loadAllNotifications() {
+            const list = document.getElementById('all-notifications-list');
+            list.innerHTML = '';
+            try {
+                const res = await axios.get(`${API_BASE_URL}/notifications`, {
+                    params: { search: document.getElementById('notifications-filter').value },
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                });
+                res.data.notifications.forEach(notification => {
+                    const item = document.createElement('div');
+                    item.className = 'p-3 bg-gray-50 rounded-lg flex items-center';
+                    item.innerHTML = `
+                        <i class="fas fa-${notification.type === 'success' ? 'check-circle text-green-500' : notification.type === 'error' ? 'exclamation-circle text-red-500' : 'info-circle text-blue-500'} mr-3"></i>
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-gray-800">${notification.message}</p>
+                            <p class="text-xs text-gray-500">${new Date(notification.date).toLocaleString('pt-BR')}</p>
+                        </div>
+                        <button class="text-gray-400 hover:text-gray-600 mark-read-btn" data-id="${notification.id}">
+                            <i class="fas fa-check"></i>
+                        </button>
+                    `;
+                    list.appendChild(item);
+                });
+
+                document.querySelectorAll('.mark-read-btn').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        try {
+                            await axios.post(`${API_BASE_URL}/notifications/${btn.dataset.id}/read`, {}, {
+                                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                            });
+                            loadAllNotifications();
+                        } catch (error) {
+                            console.error('Erro ao marcar notificação como lida:', error);
+                        }
+                    });
+                });
+            } catch (error) {
+                showToast('error', 'Erro ao carregar notificações.');
+                console.error(error);
+            }
+        }
+
+        // Carregar Todos os Departamentos
+        async function loadAllDepartments(page = currentPage.allDepts) {
+            currentPage.allDepts = page;
+            const table = document.getElementById('all-depts-table');
+            table.innerHTML = '';
+            try {
+                const params = {
+                    page,
+                    limit: ITEMS_PER_PAGE,
+                    search: document.getElementById('all-depts-filter').value
+                };
+                const res = await axios.get(`${API_BASE_URL}/departments`, {
+                    params,
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                });
+
+                res.data.departments.forEach(dept => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="p-3 text-sm text-gray-700">${dept.name}</td>
+                        <td class="p-3 text-sm text-gray-700">${dept.sector}</td>
+                        <td class="p-3 text-sm text-gray-700">${dept.manager || 'Nenhum'}</td>
+                        <td class="p-3 text-sm">
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${dept.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                ${dept.status === 'active' ? 'Ativo' : 'Inativo'}
+                            </span>
+                        </td>
+                        <td class="p-3 text-sm">
+                            <button class="edit-dept-btn p-2 bg-blue-100 hover:bg-blue-200 rounded-lg text-blue-600" data-id="${dept.id}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="delete-dept-btn p-2 bg-red-100 hover:bg-red-200 rounded-lg text-red-600" data-id="${dept.id}" data-name="${dept.name}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    table.appendChild(row);
+                });
+
+                updatePagination('all-depts', res.data.total, page);
+                initializeDepartmentActions();
+            } catch (error) {
+                showToast('error', 'Erro ao carregar departamentos.');
+                console.error(error);
+            }
+        }
+
+        // Carregar Todos os Gestores
+        async function loadAllManagers(page = currentPage.allManagers) {
+            currentPage.allManagers = page;
+            const table = document.getElementById('all-managers-table');
+            table.innerHTML = '';
+            try {
+                const params = {
+                    page,
+                    limit: ITEMS_PER_PAGE,
+                    search: document.getElementById('all-managers-filter').value
+                };
+                const res = await axios.get(`${API_BASE_URL}/managers`, {
+                    params,
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                });
+
+                res.data.managers.forEach(manager => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="p-3 text-sm text-gray-700">${manager.name}</td>
+                        <td class="p-3 text-sm text-gray-700">${manager.email}</td>
+                        <td class="p-3 text-sm text-gray-700">${manager.department || 'Nenhum'}</td>
+                        <td class="p-3 text-sm text-gray-700">${manager.role}</td>
+                        <td class="p-3 text-sm">
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${manager.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                ${manager.status === 'active' ? 'Ativo' : 'Inativo'}
+                            </span>
+                        </td>
+                        <td class="p-3 text-sm">
+                            <button class="edit-manager-btn p-2 bg-blue-100 hover:bg-blue-200 rounded-lg text-blue-600" data-id="${manager.id}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="delete-manager-btn p-2 bg-red-100 hover:bg-red-200 rounded-lg text-red-600" data-id="${manager.id}" data-name="${manager.name}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    table.appendChild(row);
+                });
+
+                updatePagination('all-managers', res.data.total, page);
+                initializeManagerActions();
+            } catch (error) {
+                showToast('error', 'Erro ao carregar gestores.');
+                console.error(error);
+            }
+        }
+
+        // Inicializar Socket
+        function initializeSocket() {
+            socket = io(API_BASE_URL, {
+                auth: { token: localStorage.getItem('token') }
+            });
+
+            socket.on('connect', () => {
+                console.log('Conectado ao servidor de notificações');
+            });
+
+            socket.on('notification', (notification) => {
+                showToast(notification.type, notification.message);
+                updateNotificationBadge();
+            });
+
+            socket.on('disconnect', () => {
+                console.log('Desconectado do servidor de notificações');
+            });
+        }
+
+        // Atualizar Badge de Notificações
+        async function updateNotificationBadge() {
+            try {
+                const res = await axios.get(`${API_BASE_URL}/notifications/unread`, {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                });
+                const count = res.data.count;
+                const badge = document.getElementById('notification-count');
+                badge.textContent = count;
+                badge.classList.toggle('hidden', count === 0);
+            } catch (error) {
+                console.error('Erro ao atualizar badge de notificações:', error);
+            }
+        }
+
+        // Exibir Toast
+        function showToast(type, message) {
+            const toast = document.getElementById('toast');
+            const toastIcon = document.getElementById('toast-icon');
+            const toastMessage = document.getElementById('toast-message');
+
+            toastMessage.textContent = message;
+            toast.classList.remove('bg-gray-800', 'bg-green-600', 'bg-red-600');
+            toastIcon.className = 'fas';
+
+            if (type === 'success') {
+                toast.classList.add('bg-green-600');
+                toastIcon.classList.add('fa-check-circle');
+            } else if (type === 'error') {
+                toast.classList.add('bg-red-600');
+                toastIcon.classList.add('fa-exclamation-circle');
+            } else {
+                toast.classList.add('bg-gray-800');
+                toastIcon.classList.add('fa-info-circle');
+            }
+
+            toast.classList.remove('toast-hidden');
+            setTimeout(() => {
+                toast.classList.add('toast-hidden');
+            }, 3000);
+
+            document.getElementById('close-toast').addEventListener('click', () => {
+                toast.classList.add('toast-hidden');
+            });
+        }
+
+        // Exibir/Esconder Loading
+        function showLoading(show, message = 'Carregando...') {
+            const overlay = document.getElementById('loading-overlay');
+            const messageEl = document.getElementById('loading-message');
+            messageEl.textContent = message;
+            overlay.classList.toggle('hidden', !show);
+        }
+    </script>
+</body>
+</html>
