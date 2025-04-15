@@ -3,401 +3,959 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel do Administrador de Instituição - Fila Fácil</title>
+    <title>Painel do Administrador da Instituição - Fila Fácil</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="css/department-admin.css">
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="css/department-admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body { font-family: 'Poppins', sans-serif; }
+        .sidebar-collapsed { width: 5rem; }
+        .sidebar-collapsed .sidebar-text { display: none; }
+        .sidebar-collapsed .sidebar-logo { display: none; }
+        .toast { transition: opacity 0.5s, transform 0.5s; }
+        .toast-hidden { opacity: 0; transform: translateY(100px); }
+        .nav-active { background: linear-gradient(to right, #2563eb, #1e40af); }
+        .glowing-border { box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
+        .hover-lift:hover { transform: translateY(-4px); }
+        .animate-zoom-in { animation: zoomIn 0.5s ease; }
+        @keyframes zoomIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: skeleton-loading 1.5s infinite; }
+        @keyframes skeleton-loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex">
+<body class="bg-gray-50 min-h-screen flex font-sans">
     <!-- Sidebar -->
-    <aside class="bg-blue-700 text-white w-64 flex-shrink-0">
-        <div class="p-4">
-            <h1 class="text-xl font-bold">Fila Fácil</h1>
-            <p class="text-sm mt-1">Painel do Administrador</p>
+    <aside id="sidebar" class="bg-gradient-to-b from-blue-900 to-blue-800 text-white w-64 min-h-screen p-4 flex flex-col transition-all duration-300 ease-in-out">
+        <div class="flex items-center mb-8 py-2 border-b border-blue-700">
+            <div class="logo-container w-10 h-10 mr-2 rounded-full bg-white/10 flex items-center justify-center shadow-lg">
+                <img src="assets/logo-icon.png" alt="Logo" class="w-8 h-8">
+            </div>
+            <h1 class="sidebar-logo text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-200 tracking-tight">Fila Fácil</h1>
+            <button id="sidebar-toggle" class="ml-auto text-white hover:bg-blue-700 p-1 rounded-lg">
+                <i class="fas fa-bars w-6 h-6"></i>
+            </button>
         </div>
-        <nav class="mt-6">
-            <button id="tab-dashboard" class="w-full text-left px-4 py-2 hover:bg-blue-800 flex items-center"><i class="fas fa-tachometer-alt mr-2"></i> Dashboard</button>
-            <button id="tab-departments" class="w-full text-left px-4 py-2 hover:bg-blue-800 flex items-center"><i class="fas fa-building mr-2"></i> Departamentos</button>
-            <button id="tab-managers" class="w-full text-left px-4 py-2 hover:bg-blue-800 flex items-center"><i class="fas fa-users mr-2"></i> Gestores</button>
-            <button id="tab-reports" class="w-full text-left px-4 py-2 hover:bg-blue-800 flex items-center"><i class="fas fa-chart-bar mr-2"></i> Relatórios</button>
-            <button id="tab-settings" class="w-full text-left px-4 py-2 hover:bg-blue-800 flex items-center"><i class="fas fa-cog mr-2"></i> Configurações</button>
-            <button id="logout" class="w-full text-left px-4 py-2 hover:bg-red-600 flex items-center"><i class="fas fa-sign-out-alt mr-2"></i> Sair</button>
+        <nav class="flex-grow">
+            <ul class="space-y-2">
+                <li>
+                    <button id="nav-dashboard" class="nav-btn nav-active w-full flex items-center px-3 py-3 rounded-lg hover:bg-blue-600 transition-all group" title="Dashboard">
+                        <div class="nav-icon bg-blue-600 group-hover:bg-blue-500 p-2 rounded-lg">
+                            <i class="fas fa-tachometer-alt w-5 h-5"></i>
+                        </div>
+                        <span class="sidebar-text ml-2">Dashboard</span>
+                        <span class="notification-badge bg-red-500 animate-pulse ml-auto hidden">3</span>
+                    </button>
+                </li>
+                <li>
+                    <button id="nav-departments" class="nav-btn w-full flex items-center px-3 py-3 rounded-lg hover:bg-blue-600 transition-all group" title="Departamentos">
+                        <div class="nav-icon bg-blue-700/50 group-hover:bg-blue-500 p-2 rounded-lg">
+                            <i class="fas fa-building w-5 h-5"></i>
+                        </div>
+                        <span class="sidebar-text ml-2">Departamentos</span>
+                    </button>
+                </li>
+                <li>
+                    <button id="nav-managers" class="nav-btn w-full flex items-center px-3 py-3 rounded-lg hover:bg-blue-600 transition-all group" title="Gestores">
+                        <div class="nav-icon bg-blue-700/50 group-hover:bg-blue-500 p-2 rounded-lg">
+                            <i class="fas fa-users w-5 h-5"></i>
+                        </div>
+                        <span class="sidebar-text ml-2">Gestores</span>
+                    </button>
+                </li>
+                <li>
+                    <button id="nav-reports" class="nav-btn w-full flex items-center px-3 py-3 rounded-lg hover:bg-blue-600 transition-all group" title="Relatórios">
+                        <div class="nav-icon bg-blue-700/50 group-hover:bg-blue-500 p-2 rounded-lg">
+                            <i class="fas fa-chart-bar w-5 h-5"></i>
+                        </div>
+                        <span class="sidebar-text ml-2">Relatórios</span>
+                    </button>
+                </li>
+                <li>
+                    <button id="nav-settings" class="nav-btn w-full flex items-center px-3 py-3 rounded-lg hover:bg-blue-600 transition-all group" title="Configurações">
+                        <div class="nav-icon bg-blue-700/50 group-hover:bg-blue-500 p-2 rounded-lg">
+                            <i class="fas fa-cog w-5 h-5"></i>
+                        </div>
+                        <span class="sidebar-text ml-2">Configurações</span>
+                    </button>
+                </li>
+                <li>
+                    <button id="nav-security" class="nav-btn w-full flex items-center px-3 py-3 rounded-lg hover:bg-blue-600 transition-all group" title="Segurança">
+                        <div class="nav-icon bg-blue-700/50 group-hover:bg-blue-500 p-2 rounded-lg">
+                            <i class="fas fa-shield-alt w-5 h-5"></i>
+                        </div>
+                        <span class="sidebar-text ml-2">Segurança</span>
+                    </button>
+                </li>
+                <li>
+                    <button id="nav-integrations" class="nav-btn w-full flex items-center px-3 py-3 rounded-lg hover:bg-blue-600 transition-all group" title="Integrações">
+                        <div class="nav-icon bg-blue-700/50 group-hover:bg-blue-500 p-2 rounded-lg">
+                            <i class="fas fa-plug w-5 h-5"></i>
+                        </div>
+                        <span class="sidebar-text ml-2">Integrações</span>
+                    </button>
+                </li>
+            </ul>
         </nav>
+        <div class="mt-auto pt-4 border-t border-blue-700">
+            <div id="user-info" class="flex items-center px-2 py-3 rounded-lg hover:bg-blue-700/50 transition-all cursor-pointer">
+                <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold mr-2">AD</div>
+                <div class="sidebar-text flex-1 min-w-0">
+                    <p id="user-name" class="font-medium truncate">Admin da Instituição</p>
+                    <p id="user-email" class="text-xs text-blue-200 truncate">admin@filafacil.com</p>
+                </div>
+                <button id="user-menu-btn" class="text-blue-200 hover:text-white ml-2">
+                    <i class="fas fa-chevron-down w-5 h-5"></i>
+                </button>
+            </div>
+            <button id="logout" class="w-full flex items-center justify-center px-3 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-lg shadow-lg mt-2 transition-all">
+                <i class="fas fa-sign-out-alt w-5 h-5 mr-2"></i>
+                <span class="sidebar-text">Sair</span>
+            </button>
+        </div>
     </aside>
 
     <!-- Conteúdo Principal -->
-    <main class="flex-grow p-6">
-        <!-- Cabeçalho -->
-        <header class="flex justify-between items-center mb-6">
-            <h2 id="page-title" class="text-2xl font-semibold">Dashboard</h2>
-            <span id="user-email" class="text-gray-600"></span>
-        </header>
-
-        <!-- Seção Dashboard -->
-        <section id="dashboard-section" class="space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-white p-4 rounded-lg shadow">
-                    <h3 class="text-lg font-medium">Departamentos</h3>
-                    <p id="dept-count" class="text-2xl font-bold">0</p>
-                </div>
-                <div class="bg-white p-4 rounded-lg shadow">
-                    <h3 class="text-lg font-medium">Gestores Ativos</h3>
-                    <p id="manager-count" class="text-2xl font-bold">0</p>
-                </div>
-                <div class="bg-white p-4 rounded-lg shadow">
-                    <h3 class="text-lg font-medium">Senhas Hoje</h3>
-                    <p id="ticket-count" class="text-2xl font-bold">0</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- Seção Departamentos -->
-        <section id="departments-section" class="hidden space-y-6">
-            <div class="flex justify-between items-center">
-                <h2 class="text-xl font-semibold">Gerenciar Departamentos</h2>
-                <button onclick="openDepartmentModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
-                    Criar Departamento
-                </button>
-            </div>
-            <div id="departments-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-        </section>
-
-        <!-- Seção Gestores -->
-        <section id="managers-section" class="hidden space-y-6">
-            <div class="flex justify-between items-center">
-                <h2 class="text-xl font-semibold">Gerenciar Gestores</h2>
-                <button onclick="openManagerModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
-                    Criar Gestor
-                </button>
-            </div>
-            <div id="managers-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-        </section>
-
-        <!-- Seção Relatórios -->
-        <section id="reports-section" class="hidden space-y-6">
-            <h2 class="text-xl font-semibold">Relatórios</h2>
-            <div class="flex space-x-4">
-                <input type="date" id="report-date" class="p-2 border rounded-lg">
-                <button onclick="generateReport()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
-                    Gerar Relatório
-                </button>
-            </div>
-            <div id="report-results" class="space-y-4"></div>
-        </section>
-
-        <!-- Seção Configurações -->
-        <section id="settings-section" class="hidden space-y-6">
-            <h2 class="text-xl font-semibold">Configurações</h2>
-            <div class="bg-white p-4 rounded-lg shadow">
-                <label for="institution-name" class="block text-sm font-medium text-gray-700">Nome da Instituição</label>
-                <input type="text" id="institution-name" class="mt-1 p-2 w-full border rounded-lg">
-                <label for="institution-location" class="block text-sm font-medium text-gray-700 mt-4">Localização</label>
-                <input type="text" id="institution-location" class="mt-1 p-2 w-full border rounded-lg">
-                <button onclick="updateInstitution()" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
-                    Atualizar
-                </button>
-            </div>
-        </section>
-    </main>
-
-    <!-- Modal para Criar/Editar Departamento -->
-    <div id="department-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center">
-        <div class="bg-white p-6 rounded-lg w-96">
-            <h3 id="department-modal-title" class="text-lg font-semibold mb-4">Criar Departamento</h3>
-            <input type="hidden" id="department-id">
-            <label for="dept-name" class="block text-sm font-medium text-gray-700">Nome</label>
-            <input type="text" id="dept-name" class="mt-1 p-2 w-full border rounded-lg">
-            <label for="dept-sector" class="block text-sm font-medium text-gray-700 mt-4">Setor</label>
-            <input type="text" id="dept-sector" class="mt-1 p-2 w-full border rounded-lg">
-            <div class="flex justify-end mt-6 space-x-2">
-                <button onclick="closeModal('department-modal')" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg">Cancelar</button>
-                <button onclick="saveDepartment()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">Salvar</button>
+    <main class="flex-grow p-6 bg-gradient-to-br from-gray-50 to-blue-50 transition-all duration-300 ease-in-out">
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-xl p-8 max-w-md w-full mx-4 text-center">
+                <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mx-auto mb-4"></div>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">Carregando...</h3>
+                <p class="text-gray-600" id="loading-message">Por favor, aguarde enquanto carregamos os dados</p>
             </div>
         </div>
-    </div>
 
-    <!-- Modal para Criar/Editar Gestor -->
-    <div id="manager-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center">
-        <div class="bg-white p-6 rounded-lg w-96">
-            <h3 id="manager-modal-title" class="text-lg font-semibold mb-4">Criar Gestor</h3>
-            <input type="hidden" id="manager-id">
-            <label for="manager-name" class="block text-sm font-medium text-gray-700">Nome</label>
-            <input type="text" id="manager-name" class="mt-1 p-2 w-full border rounded-lg">
-            <label for="manager-email" class="block text-sm font-medium text-gray-700 mt-4">Email</label>
-            <input type="email" id="manager-email" class="mt-1 p-2 w-full border rounded-lg">
-            <label for="manager-password" class="block text-sm font-medium text-gray-700 mt-4">Senha</label>
-            <input type="password" id="manager-password" class="mt-1 p-2 w-full border rounded-lg">
-            <label for="manager-department" class="block text-sm font-medium text-gray-700 mt-4">Departamento</label>
-            <select id="manager-department" class="mt-1 p-2 w-full border rounded-lg"></select>
-            <div class="flex justify-end mt-6 space-x-2">
-                <button onclick="closeModal('manager-modal')" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg">Cancelar</button>
-                <button onclick="saveManager()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">Salvar</button>
+        <!-- Dashboard -->
+        <div id="dashboard-section">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                <div class="flex-1">
+                    <h1 class="text-3xl font-bold text-gray-800">Bem-vindo, <span id="institution-name" class="text-blue-600">Instituição</span></h1>
+                    <p class="text-gray-500">Visão geral da instituição - <span id="current-date" class="font-medium">Carregando...</span></p>
+                </div>
+                <div class="mt-4 md:mt-0 flex items-center space-x-3">
+                    <button id="refresh-data" class="p-2 bg-white rounded-lg shadow hover:bg-gray-50 transition-colors" title="Atualizar dados">
+                        <i class="fas fa-sync-alt w-5 h-5 text-gray-600"></i>
+                    </button>
+                    <div class="relative">
+                        <button id="notifications-btn" class="p-2 bg-white rounded-lg shadow hover:bg-gray-50 transition-colors relative">
+                            <i class="fas fa-bell w-5 h-5 text-gray-600"></i>
+                            <span id="notification-count" class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full hidden"></span>
+                        </button>
+                        <div id="notifications-dropdown" class="hidden absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl z-10 border border-gray-200">
+                            <div class="p-4 border-b border-gray-200">
+                                <h3 class="font-semibold text-gray-800">Notificações</h3>
+                            </div>
+                            <div id="notifications-list" class="divide-y divide-gray-100 max-h-80 overflow-y-auto">
+                                <!-- Placeholder para notificações -->
+                            </div>
+                            <div class="p-4 border-t border-gray-200 text-center">
+                                <button id="view-all-notifications" class="text-sm text-blue-600 hover:text-blue-800 font-medium">Ver Todas</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cartões de Métricas -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-xl shadow-lg flex items-center animate-zoom-in hover-lift transition-all">
+                    <div class="p-4 bg-white/10 rounded-lg mr-4 flex-shrink-0">
+                        <i class="fas fa-building fa-2x"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="text-lg font-semibold truncate">Departamentos Ativos</h3>
+                        <div class="flex items-end justify-between">
+                            <p id="active-depts" class="text-3xl font-bold">0</p>
+                            <span id="active-depts-trend" class="text-xs bg-white/20 px-2 py-1 rounded-full"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-xl shadow-lg flex items-center animate-zoom-in delay-100 hover-lift transition-all">
+                    <div class="p-4 bg-white/10 rounded-lg mr-4 flex-shrink-0">
+                        <i class="fas fa-users fa-2x"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="text-lg font-semibold truncate">Gestores Ativos</h3>
+                        <div class="flex items-end justify-between">
+                            <p id="active-managers" class="text-3xl font-bold">0</p>
+                            <span id="active-managers-trend" class="text-xs bg-white/20 px-2 py-1 rounded-full"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white p-6 rounded-xl shadow-lg flex items-center animate-zoom-in delay-200 hover-lift transition-all">
+                    <div class="p-4 bg-white/10 rounded-lg mr-4 flex-shrink-0">
+                        <i class="fas fa-ticket-alt fa-2x"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="text-lg font-semibold truncate">Tickets Totais</h3>
+                        <div class="flex items-end justify-between">
+                            <p id="total-tickets" class="text-3xl font-bold">0</p>
+                            <span id="total-tickets-trend" class="text-xs bg-white/20 px-2 py-1 rounded-full"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-xl shadow-lg flex items-center animate-zoom-in delay-300 hover-lift transition-all">
+                    <div class="p-4 bg-white/10 rounded-lg mr-4 flex-shrink-0">
+                        <i class="fas fa-clock fa-2x"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="text-lg font-semibold truncate">Tempo Médio de Atendimento</h3>
+                        <div class="flex items-end justify-between">
+                            <p id="avg-time" class="text-3xl font-bold">0 min</p>
+                            <span id="avg-time-trend" class="text-xs bg-white/20 px-2 py-1 rounded-full"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráficos e Atividade -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <div class="lg:col-span-2 bg-white rounded-xl shadow-lg p-6 border border-gray-100 glowing-border">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
+                        <h2 class="text-xl font-semibold mb-2 sm:mb-0">Atividade Institucional</h2>
+                        <div class="flex space-x-2">
+                            <button class="chart-period-btn active px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium" data-period="today">Hoje</button>
+                            <button class="chart-period-btn px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium" data-period="week">Semana</button>
+                            <button class="chart-period-btn px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium" data-period="month">Mês</button>
+                        </div>
+                    </div>
+                    <div class="relative h-80">
+                        <canvas id="activity-chart"></canvas>
+                        <div id="chart-loading" class="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center hidden">
+                            <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+                    <h3 class="text-lg font-semibold mb-4">Departamentos Mais Ativos</h3>
+                    <div class="space-y-4" id="top-depts">
+                        <!-- Placeholder para departamentos -->
+                    </div>
+                    <button id="view-all-depts" class="w-full mt-4 text-center text-sm text-blue-600 hover:text-blue-800 font-medium py-2">Ver Todos</button>
+                </div>
+            </div>
+
+            <!-- Alertas e Ações -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+                    <h3 class="text-lg font-semibold mb-4">Alertas da Instituição</h3>
+                    <div class="space-y-3" id="system-alerts">
+                        <!-- Placeholder para alertas -->
+                    </div>
+                </div>
+                <div class="lg:col-span-2 bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+                    <h3 class="text-lg font-semibold mb-4">Ações Rápidas</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        <button id="quick-create-dept" class="p-4 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-100 flex flex-col items-center transition-colors">
+                            <div class="bg-blue-100 p-3 rounded-full mb-2">
+                                <i class="fas fa-plus text-blue-600"></i>
+                            </div>
+                            <span class="font-medium text-blue-800 text-center">Criar Departamento</span>
+                        </button>
+                        <button id="quick-add-manager" class="p-4 bg-green-50 hover:bg-green-100 rounded-lg border border-green-100 flex flex-col items-center transition-colors">
+                            <div class="bg-green-100 p-3 rounded-full mb-2">
+                                <i class="fas fa-user-plus text-green-600"></i>
+                            </div>
+                            <span class="font-medium text-green-800 text-center">Adicionar Gestor</span>
+                        </button>
+                        <button id="quick-report" class="p-4 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-100 flex flex-col items-center transition-colors">
+                            <div class="bg-purple-100 p-3 rounded-full mb-2">
+                                <i class="fas fa-file-alt text-purple-600"></i>
+                            </div>
+                            <span class="font-medium text-purple-800 text-center">Gerar Relatório</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <script>
-        const API_BASE = 'https://fila-facilita2-0.onrender.com';
-        let departments = [];
+        <!-- Departamentos -->
+        <div id="departments-section" class="hidden">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-800">Gerenciar Departamentos</h2>
+                    <p class="text-gray-500">Crie, edite e monitore todos os departamentos da instituição</p>
+                </div>
+                <div class="mt-4 md:mt-0 flex space-x-3">
+                    <button id="export-depts" class="p-2 bg-white rounded-lg shadow hover:bg-gray-50 transition-colors" title="Exportar departamentos">
+                        <i class="fas fa-download w-5 h-5 text-gray-600"></i>
+                    </button>
+                    <button id="create-dept-btn" class="flex items-center px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-md transition-colors">
+                        <i class="fas fa-plus mr-2"></i>
+                        Criar Departamento
+                    </button>
+                    <button id="view-all-depts-btn" class="flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md transition-colors">
+                        <i class="fas fa-list mr-2"></i>
+                        Ver Todos
+                    </button>
+                </div>
+            </div>
 
-        document.addEventListener('DOMContentLoaded', async () => {
-            const token = localStorage.getItem('adminToken');
-            if (!token) {
-                window.location.href = '/index.html';
-                return;
-            }
-
-            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-            axios.defaults.baseURL = API_BASE;
-
-            axios.interceptors.response.use(
-                response => response,
-                error => {
-                    if (error.response?.status === 401) {
-                        localStorage.clear();
-                        window.location.href = '/index.html';
-                    }
-                    return Promise.reject(error);
-                }
-            );
-
-            try {
-                await loadUserInfo();
-                await loadDashboard();
-                setupEventListeners();
-            } catch (error) {
-                console.error('Erro na inicialização:', error);
-                showToast('Erro ao inicializar painel.', 'error');
-            }
-        });
-
-        function setupEventListeners() {
-            const tabs = {
-                'tab-dashboard': 'dashboard-section',
-                'tab-departments': 'departments-section',
-                'tab-managers': 'managers-section',
-                'tab-reports': 'reports-section',
-                'tab-settings': 'settings-section'
-            };
-
-            Object.keys(tabs).forEach(tabId => {
-                document.getElementById(tabId).addEventListener('click', () => {
-                    Object.values(tabs).forEach(section => document.getElementById(section).classList.add('hidden'));
-                    document.getElementById(tabs[tabId]).classList.remove('hidden');
-                    document.getElementById('page-title').textContent = tabId.replace('tab-', '').replace('-', ' ').replace(/^\w/, c => c.toUpperCase());
-                    if (tabId === 'tab-departments') loadDepartments();
-                    if (tabId === 'tab-managers') loadManagers();
-                });
-            });
-
-            document.getElementById('logout').addEventListener('click', () => {
-                localStorage.clear();
-                window.location.href = '/index.html';
-            });
-        }
-
-        async function loadUserInfo() {
-            const { data } = await axios.get('/api/admin/user');
-            document.getElementById('user-email').textContent = data.email;
-        }
-
-        async function loadDashboard() {
-            const [deptRes, managerRes, ticketRes] = await Promise.all([
-                axios.get('/api/admin/institutions/INST_ID/departments'),
-                axios.get('/api/admin/institutions/INST_ID/managers'),
-                axios.get('/api/institutions/INST_ID/calls')
-            ]);
-            document.getElementById('dept-count').textContent = deptRes.data.length;
-            document.getElementById('manager-count').textContent = managerRes.data.length;
-            document.getElementById('ticket-count').textContent = ticketRes.data.calls.length;
-        }
-
-        async function loadDepartments() {
-            const { data } = await axios.get('/api/admin/institutions/INST_ID/departments');
-            departments = data;
-            const list = document.getElementById('departments-list');
-            list.innerHTML = '';
-            data.forEach(dept => {
-                const card = document.createElement('div');
-                card.className = 'bg-white p-4 rounded-lg shadow';
-                card.innerHTML = `
-                    <h3 class="text-lg font-medium">${dept.name}</h3>
-                    <p class="text-gray-600">Setor: ${dept.sector}</p>
-                    <div class="mt-4 flex space-x-2">
-                        <button onclick="editDepartment('${dept.id}')" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded">Editar</button>
-                        <button onclick="deleteDepartment('${dept.id}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded">Excluir</button>
+            <!-- Filtros -->
+            <div class="bg-white rounded-xl shadow-lg p-4 mb-6 border border-gray-100">
+                <div class="flex flex-col md:flex-row md:items-center gap-4">
+                    <div class="relative flex-grow">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-search text-gray-400"></i>
+                        </div>
+                        <input type="text" id="dept-filter" placeholder="Buscar por nome, setor ou localização..." class="pl-10 p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
                     </div>
-                `;
-                list.appendChild(card);
-            });
-        }
-
-        async function loadManagers() {
-            const { data } = await axios.get('/api/admin/institutions/INST_ID/managers');
-            const list = document.getElementById('managers-list');
-            list.innerHTML = '';
-            data.forEach(manager => {
-                const card = document.createElement('div');
-                card.className = 'bg-white p-4 rounded-lg shadow';
-                card.innerHTML = `
-                    <h3 class="text-lg font-medium">${manager.name}</h3>
-                    <p class="text-gray-600">Email: ${manager.email}</p>
-                    <p class="text-gray-600">Departamento: ${manager.department_name}</p>
-                    <div class="mt-4 flex space-x-2">
-                        <button onclick="editManager('${manager.id}')" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded">Editar</button>
-                        <button onclick="deleteManager('${manager.id}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded">Excluir</button>
+                    <div class="flex gap-2">
+                        <select id="dept-status-filter" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                            <option value="all">Todos os departamentos</option>
+                            <option value="active">Ativos</option>
+                            <option value="inactive">Inativos</option>
+                        </select>
+                        <select id="dept-sector-filter" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                            <option value="all">Todos os setores</option>
+                            <option value="finance">Financeiro</option>
+                            <option value="hr">Recursos Humanos</option>
+                            <option value="it">TI</option>
+                            <option value="support">Suporte</option>
+                        </select>
+                        <button id="dept-advanced-filter" class="p-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                            <i class="fas fa-filter text-gray-600"></i>
+                        </button>
                     </div>
-                `;
-                list.appendChild(card);
-            });
-        }
+                </div>
+            </div>
 
-        function openDepartmentModal() {
-            document.getElementById('department-modal').classList.remove('hidden');
-            document.getElementById('department-modal-title').textContent = 'Criar Departamento';
-            document.getElementById('department-id').value = '';
-            document.getElementById('dept-name').value = '';
-            document.getElementById('dept-sector').value = '';
-        }
+            <!-- Lista de Departamentos -->
+            <div id="departments-loading" class="hidden">
+                <div class="flex justify-center items-center py-12">
+                    <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                </div>
+            </div>
+            <div id="departments-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
 
-        function openManagerModal() {
-            document.getElementById('manager-modal').classList.remove('hidden');
-            document.getElementById('manager-modal-title').textContent = 'Criar Gestor';
-            document.getElementById('manager-id').value = '';
-            document.getElementById('manager-name').value = '';
-            document.getElementById('manager-email').value = '';
-            document.getElementById('manager-password').value = '';
-            const select = document.getElementById('manager-department');
-            select.innerHTML = departments.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
-        }
+            <!-- Paginação -->
+            <div class="mt-6 flex items-center justify-between bg-white rounded-xl shadow-lg p-4 border border-gray-100">
+                <div class="text-sm text-gray-500">
+                    Mostrando <span id="depts-start">1</span> a <span id="depts-end">0</span> de <span id="depts-total">0</span> departamentos
+                </div>
+                <div class="flex space-x-2">
+                    <button id="depts-prev" class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 transition-colors" disabled>
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button id="depts-next" class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 transition-colors">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
 
-        function closeModal(modalId) {
-            document.getElementById(modalId).classList.add('hidden');
-        }
+        <!-- Gestores -->
+        <div id="managers-section" class="hidden">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-800">Gerenciar Gestores</h2>
+                    <p class="text-gray-500">Adicione, edite ou remova gestores da instituição</p>
+                </div>
+                <div class="mt-4 md:mt-0 flex space-x-3">
+                    <button id="export-managers" class="p-2 bg-white rounded-lg shadow hover:bg-gray-50 transition-colors" title="Exportar gestores">
+                        <i class="fas fa-download w-5 h-5 text-gray-600"></i>
+                    </button>
+                    <button id="create-manager-btn" class="flex items-center px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-md transition-colors">
+                        <i class="fas fa-user-plus mr-2"></i>
+                        Adicionar Gestor
+                    </button>
+                    <button id="view-all-managers-btn" class="flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md transition-colors">
+                        <i class="fas fa-list mr-2"></i>
+                        Ver Todos
+                    </button>
+                </div>
+            </div>
 
-        async function saveDepartment() {
-            const id = document.getElementById('department-id').value;
-            const name = document.getElementById('dept-name').value;
-            const sector = document.getElementById('dept-sector').value;
-            try {
-                if (id) {
-                    await axios.put(`/api/admin/institutions/INST_ID/departments/${id}`, { name, sector });
-                    showToast('Departamento atualizado com sucesso!', 'success');
-                } else {
-                    await axios.post('/api/admin/institutions/INST_ID/departments', { name, sector });
-                    showToast('Departamento criado com sucesso!', 'success');
-                }
-                closeModal('department-modal');
-                loadDepartments();
-            } catch (error) {
-                showToast('Erro ao salvar departamento.', 'error');
-            }
-        }
-
-        async function saveManager() {
-            const id = document.getElementById('manager-id').value;
-            const name = document.getElementById('manager-name').value;
-            const email = document.getElementById('manager-email').value;
-            const password = document.getElementById('manager-password').value;
-            const department_id = document.getElementById('manager-department').value;
-            try {
-                if (id) {
-                    await axios.put(`/api/admin/institutions/INST_ID/users/${id}`, { name, email, password, department_id });
-                    showToast('Gestor atualizado com sucesso!', 'success');
-                } else {
-                    await axios.post('/api/admin/institutions/INST_ID/managers', { name, email, password, department_id });
-                    showToast('Gestor criado com sucesso!', 'success');
-                }
-                closeModal('manager-modal');
-                loadManagers();
-            } catch (error) {
-                showToast('Erro ao salvar gestor.', 'error');
-            }
-        }
-
-        async function editDepartment(id) {
-            const dept = departments.find(d => d.id === id);
-            document.getElementById('department-modal').classList.remove('hidden');
-            document.getElementById('department-modal-title').textContent = 'Editar Departamento';
-            document.getElementById('department-id').value = dept.id;
-            document.getElementById('dept-name').value = dept.name;
-            document.getElementById('dept-sector').value = dept.sector;
-        }
-
-        async function editManager(id) {
-            const { data } = await axios.get(`/api/admin/institutions/INST_ID/managers`);
-            const manager = data.find(m => m.id === id);
-            document.getElementById('manager-modal').classList.remove('hidden');
-            document.getElementById('manager-modal-title').textContent = 'Editar Gestor';
-            document.getElementById('manager-id').value = manager.id;
-            document.getElementById('manager-name').value = manager.name;
-            document.getElementById('manager-email').value = manager.email;
-            document.getElementById('manager-password').value = '';
-            const select = document.getElementById('manager-department');
-            select.innerHTML = departments.map(d => `<option value="${d.id}" ${d.id === manager.department_id ? 'selected' : ''}>${d.name}</option>`).join('');
-        }
-
-        async function deleteDepartment(id) {
-            if (confirm('Tem certeza que deseja excluir este departamento?')) {
-                try {
-                    await axios.delete(`/api/admin/institutions/INST_ID/departments/${id}`);
-                    showToast('Departamento excluído com sucesso!', 'success');
-                    loadDepartments();
-                } catch (error) {
-                    showToast('Erro ao excluir departamento.', 'error');
-                }
-            }
-        }
-
-        async function deleteManager(id) {
-            if (confirm('Tem certeza que deseja excluir este gestor?')) {
-                try {
-                    await axios.delete(`/api/admin/institutions/INST_ID/users/${id}`);
-                    showToast('Gestor excluído com sucesso!', 'success');
-                    loadManagers();
-                } catch (error) {
-                    showToast('Erro ao excluir gestor.', 'error');
-                }
-            }
-        }
-
-        async function generateReport() {
-            const date = document.getElementById('report-date').value;
-            try {
-                const { data } = await axios.get(`/api/admin/report?date=${date}`);
-                const results = document.getElementById('report-results');
-                results.innerHTML = data.map(r => `
-                    <div class="bg-white p-4 rounded-lg shadow">
-                        <h3 class="text-lg font-medium">${r.service}</h3>
-                        <p>Senhas Emitidas: ${r.issued}</p>
-                        <p>Senhas Atendidas: ${r.attended}</p>
-                        <p>Tempo Médio: ${r.avg_time ? r.avg_time + ' minutos' : 'N/A'}</p>
+            <!-- Filtros -->
+            <div class="bg-white rounded-xl shadow-lg p-4 mb-6 border border-gray-100">
+                <div class="flex flex-col md:flex-row md:items-center gap-4">
+                    <div class="relative flex-grow">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-search text-gray-400"></i>
+                        </div>
+                        <input type="text" id="manager-filter" placeholder="Buscar por nome, email ou departamento..." class="pl-10 p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
                     </div>
-                `).join('');
-            } catch (error) {
-                showToast('Erro ao gerar relatório.', 'error');
-            }
-        }
+                    <div class="flex gap-2">
+                        <select id="manager-status-filter" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                            <option value="all">Todos os gestores</option>
+                            <option value="active">Ativos</option>
+                            <option value="inactive">Inativos</option>
+                        </select>
+                        <select id="manager-dept-filter" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                            <option value="all">Todos os departamentos</option>
+                        </select>
+                        <button id="manager-advanced-filter" class="p-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                            <i class="fas fa-filter text-gray-600"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
 
-        async function updateInstitution() {
-            const name = document.getElementById('institution-name').value;
-            const location = document.getElementById('institution-location').value;
-            try {
-                await axios.put('/api/admin/institutions/INST_ID', { name, location });
-                showToast('Instituição atualizada com sucesso!', 'success');
-            } catch (error) {
-                showToast('Erro ao atualizar instituição.', 'error');
-            }
-        }
+            <!-- Lista de Gestores -->
+            <div id="managers-loading" class="hidden">
+                <div class="flex justify-center items-center py-12">
+                    <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                </div>
+            </div>
+            <div id="managers-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
 
-        function showToast(message, type) {
-            const toast = document.createElement('div');
-            toast.className = `fixed bottom-4 right-4 p-4 rounded-lg shadow ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white`;
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
-        }
-    </script>
-</body>
-</html>
+            <!-- Paginação -->
+            <div class="mt-6 flex items-center justify-between bg-white rounded-xl shadow-lg p-4 border border-gray-100">
+                <div class="text-sm text-gray-500">
+                    Mostrando <span id="managers-start">1</span> a <span id="managers-end">0</span> de <span id="managers-total">0</span> gestores
+                </div>
+                <div class="flex space-x-2">
+                    <button id="managers-prev" class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 transition-colors" disabled>
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button id="managers-next" class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 transition-colors">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Relatórios -->
+        <div id="reports-section" class="hidden">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-800">Relatórios</h2>
+                    <p class="text-gray-500">Analise o desempenho de toda a instituição</p>
+                </div>
+                <div class="mt-4 md:mt-0 flex space-x-3">
+                    <button id="print-report" class="p-2 bg-white rounded-lg shadow hover:bg-gray-50 transition-colors" title="Imprimir relatório">
+                        <i class="fas fa-print w-5 h-5 text-gray-600"></i>
+                    </button>
+                    <button id="export-report-btn" class="flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-colors">
+                        <i class="fas fa-download mr-2"></i>
+                        Exportar
+                    </button>
+                    <button id="view-all-reports-btn" class="flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md transition-colors">
+                        <i class="fas fa-list mr-2"></i>
+                        Ver Todos
+                    </button>
+                </div>
+            </div>
+
+            <!-- Formulário de Relatórios -->
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Período</label>
+                        <select id="report-period" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                            <option value="today">Hoje</option>
+                            <option value="week">Esta semana</option>
+                            <option value="month">Este mês</option>
+                            <option value="quarter">Este trimestre</option>
+                            <option value="year">Este ano</option>
+                            <option value="custom">Personalizado</option>
+                        </select>
+                    </div>
+                    <div id="custom-start-date" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Data Inicial</label>
+                        <input type="date" id="start-date" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div id="custom-end-date" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Data Final</label>
+                        <input type="date" id="end-date" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Relatório</label>
+                        <select id="report-type" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                            <option value="summary">Resumo</option>
+                            <option value="detailed">Detalhado</option>
+                            <option value="comparative">Comparativo</option>
+                            <option value="performance">Desempenho</option>
+                            <option value="audit">Auditoria</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Departamento</label>
+                        <select id="report-dept" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                            <option value="all">Todos os departamentos</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Gestor</label>
+                        <select id="report-manager" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                            <option value="all">Todos os gestores</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Agrupamento</label>
+                        <select id="report-group" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                            <option value="none">Nenhum</option>
+                            <option value="day">Por dia</option>
+                            <option value="week">Por semana</option>
+                            <option value="month">Por mês</option>
+                            <option value="dept">Por departamento</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Formato</label>
+                        <select id="report-format" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                            <option value="table">Tabela</option>
+                            <option value="chart">Gráfico</option>
+                            <option value="both">Ambos</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-4">
+                    <button id="reset-report-btn" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">
+                        Limpar Filtros
+                    </button>
+                    <button id="generate-report-btn" class="flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-md transition-colors">
+                        <i class="fas fa-file-alt mr-2"></i>
+                        Gerar Relatório
+                    </button>
+                </div>
+            </div>
+
+            <!-- Resultados -->
+            <div id="report-results" class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">Resultados do Relatório</h3>
+                    <button id="clear-results-btn" class="text-sm text-blue-600 hover:text-blue-800 font-medium">Limpar Resultados</button>
+                </div>
+                <div id="report-table" class="overflow-x-auto"></div>
+                <div id="report-chart" class="mt-6 h-80"></div>
+            </div>
+        </div>
+
+        <!-- Configurações -->
+        <div id="settings-section" class="hidden">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-800">Configurações</h2>
+                    <p class="text-gray-500">Personalize as configurações globais da instituição</p>
+                </div>
+                <button id="save-settings-btn" class="mt-4 md:mt-0 flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-colors">
+                    <i class="fas fa-save mr-2"></i>
+                    Salvar Alterações
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2">
+                    <!-- Informações da Instituição -->
+                    <div class="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
+                        <h3 class="text-xl font-semibold mb-4">Informações da Instituição</h3>
+                        <form id="institution-form">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label for="inst-name" class="block text-sm font-medium text-gray-700 mb-1">Nome da Instituição*</label>
+                                    <input type="text" id="inst-name" name="inst-name" required class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label for="inst-id" class="block text-sm font-medium text-gray-700 mb-1">ID da Instituição</label>
+                                    <input type="text" id="inst-id" name="inst-id" readonly class="p-3 border rounded-lg w-full bg-gray-100">
+                                </div>
+                            </div>
+                            <div class="mb-4">
+                                <label for="inst-description" class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                                <textarea id="inst-description" name="inst-description" rows="3" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500"></textarea>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label for="inst-email" class="block text-sm font-medium text-gray-700 mb-1">Email de Contato</label>
+                                    <input type="email" id="inst-email" name="inst-email" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label for="inst-phone" class="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+                                    <input type="tel" id="inst-phone" name="inst-phone" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label for="inst-address" class="block text-sm font-medium text-gray-700 mb-1">Endereço</label>
+                                    <input type="text" id="inst-address" name="inst-address" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label for="inst-city" class="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
+                                    <input type="text" id="inst-city" name="inst-city" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label for="inst-latitude" class="block text-sm font-medium text-gray-700 mb-1">Latitude</label>
+                                    <input type="number" step="any" id="inst-latitude" name="inst-latitude" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label for="inst-longitude" class="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
+                                    <input type="number" step="any" id="inst-longitude" name="inst-longitude" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Preferências -->
+                    <div class="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
+                        <h3 class="text-xl font-semibold mb-4">Preferências</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Tema do Painel</label>
+                                    <p class="text-sm text-gray-500">Escolha entre tema claro ou escuro</p>
+                                </div>
+                                <select id="theme-select" class="p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                                    <option value="light">Claro</option>
+                                    <option value="dark">Escuro</option>
+                                    <option value="system">Sistema</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Idioma</label>
+                                    <p class="text-sm text-gray-500">Selecione o idioma da interface</p>
+                                </div>
+                                <select id="language-select" class="p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                                    <option value="pt">Português</option>
+                                    <option value="en">English</option>
+                                    <option value="es">Español</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Notificações no Painel</label>
+                                    <p class="text-sm text-gray-500">Exibir alertas em tempo real</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="notifications-toggle" class="sr-only peer" checked>
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configurações Avançadas -->
+                <div>
+                    <div class="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
+                        <h3 class="text-xl font-semibold mb-4">Configurações Avançadas</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Limite de Departamentos</label>
+                                    <p class="text-sm text-gray-500">Máximo de departamentos permitidos</p>
+                                </div>
+                                <input type="number" id="dept-limit" class="p-2 border rounded-lg w-24 focus:ring-2 focus:ring-blue-500 text-sm" value="50">
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Limite de Gestores</label>
+                                    <p class="text-sm text-gray-500">Máximo de gestores por instituição</p>
+                                </div>
+                                <input type="number" id="manager-limit" class="p-2 border rounded-lg w-24 focus:ring-2 focus:ring-blue-500 text-sm" value="100">
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Timeout de Sessão</label>
+                                    <p class="text-sm text-gray-500">Tempo em minutos antes do logout automático</p>
+                                </div>
+                                <input type="number" id="session-timeout" class="p-2 border rounded-lg w-24 focus:ring-2 focus:ring-blue-500 text-sm" value="30">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Segurança -->
+        <div id="security-section" class="hidden">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-800">Segurança</h2>
+                    <p class="text-gray-500">Gerencie as configurações de segurança da instituição</p>
+                </div>
+                <button id="save-security-btn" class="mt-4 md:mt-0 flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-colors">
+                    <i class="fas fa-save mr-2"></i>
+                    Salvar Alterações
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2">
+                    <!-- Alterar Senha -->
+                    <div class="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
+                        <h3 class="text-xl font-semibold mb-4">Alterar Senha</h3>
+                        <form id="password-form">
+                            <div class="mb-4">
+                                <label for="current-password" class="block text-sm font-medium text-gray-700 mb-1">Senha Atual*</label>
+                                <input type="password" id="current-password" name="current-password" required class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div class="mb-4">
+                                <label for="new-password" class="block text-sm font-medium text-gray-700 mb-1">Nova Senha*</label>
+                                <input type="password" id="new-password" name="new-password" required class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div class="mb-4">
+                                <label for="confirm-password" class="block text-sm font-medium text-gray-700 mb-1">Confirmar Nova Senha*</label>
+                                <input type="password" id="confirm-password" name="confirm-password" required class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <button type="submit" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md transition-colors">Alterar Senha</button>
+                        </form>
+                    </div>
+
+                    <!-- Autenticação de Dois Fatores -->
+                    <div class="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
+                        <h3 class="text-xl font-semibold mb-4">Autenticação de Dois Fatores (2FA)</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Habilitar 2FA</label>
+                                    <p class="text-sm text-gray-500">Aumente a segurança da sua conta</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="2fa-toggle" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                            <div id="2fa-setup" class="hidden">
+                                <div class="mb-4">
+                                    <label for="2fa-method" class="block text-sm font-medium text-gray-700 mb-1">Método de 2FA</label>
+                                    <select id="2fa-method" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                                        <option value="email">Email</option>
+                                        <option value="sms">SMS</option>
+                                        <option value="app">Aplicativo (ex.: Google Authenticator)</option>
+                                    </select>
+                                </div>
+                                <div class="mb-4">
+                                    <label for="2fa-contact" class="block text-sm font-medium text-gray-700 mb-1">Contato para 2FA</label>
+                                    <input type="text" id="2fa-contact" name="2fa-contact" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <button id="setup-2fa-btn" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md transition-colors">Configurar 2FA</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Políticas de Segurança -->
+                <div>
+                    <div class="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
+                        <h3 class="text-xl font-semibold mb-4">Políticas de Segurança</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Exigir Senha Forte</label>
+                                    <p class="text-sm text-gray-500">Mínimo de 12 caracteres, com números e símbolos</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="strong-password-toggle" class="sr-only peer" checked>
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Bloqueio Após Tentativas</label>
+                                    <p class="text-sm text-gray-500">Bloquear após 5 tentativas de login</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="lockout-toggle" class="sr-only peer" checked>
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Expiração de Senha</label>
+                                    <p class="text-sm text-gray-500">Exigir troca a cada 90 dias</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="password-expiry-toggle" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Integrações -->
+        <div id="integrations-section" class="hidden">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-800">Integrações</h2>
+                    <p class="text-gray-500">Conecte a instituição com ferramentas externas</p>
+                </div>
+                <button id="save-integrations-btn" class="mt-4 md:mt-0 flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-colors">
+                    <i class="fas fa-save mr-2"></i>
+                    Salvar Alterações
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
+                        <h3 class="text-xl font-semibold mb-4">Integrações Ativas</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <div class="flex items-center">
+                                    <div class="w-10 h-10 bg-blue-100 rounded-lg mr-3 flex items-center justify-center">
+                                        <i class="fab fa-google text-blue-600"></i>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium">Google</p>
+                                        <p class="text-sm text-gray-500">Autenticação e integração com Google Maps</p>
+                                    </div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="google-integration" class="sr-only peer" checked>
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <div class="flex items-center">
+                                    <div class="w-10 h-10 bg-green-100 rounded-lg mr-3 flex items-center justify-center">
+                                        <i class="fab fa-slack text-green-600"></i>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium">Slack</p>
+                                        <p class="text-sm text-gray-500">Notificações via canais do Slack</p>
+                                    </div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="slack-integration" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <div class="flex items-center">
+                                    <div class="w-10 h-10 bg-purple-100 rounded-lg mr-3 flex items-center justify-center">
+                                        <i class="fas fa-chart-line text-purple-600"></i>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium">Power BI</p>
+                                        <p class="text-sm text-gray-500">Análises avançadas e dashboards</p>
+                                    </div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="powerbi-integration" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuração de API -->
+                <div>
+                    <div class="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
+                        <h3 class="text-xl font-semibold mb-4">Configuração de API</h3>
+                        <div class="space-y-4">
+                            <div class="mb-4">
+                                <label for="api-key" class="block text-sm font-medium text-gray-700 mb-1">Chave de API</label>
+                                <div class="flex">
+                                    <input type="text" id="api-key" class="p-3 border rounded-l-lg w-full focus:ring-2 focus:ring-blue-500" readonly>
+                                    <button id="copy-api-key" class="p-3 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mb-4">
+                                <label for="api-endpoint" class="block text-sm font-medium text-gray-700 mb-1">Endpoint da API</label>
+                                <input type="text" id="api-endpoint" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" readonly value="https://api.filafacil.com/v1">
+                            </div>
+                            <button id="regenerate-api-key" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-colors">
+                                Regerar Chave
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para Criar/Editar Departamento -->
+        <div id="dept-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden z-50">
+            <div class="bg-white rounded-2xl p-8 w-full max-w-lg shadow-2xl animate-zoom-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 id="dept-modal-title" class="text-2xl font-semibold text-gray-800">Novo Departamento</h3>
+                    <button id="close-dept-modal" class="text-gray-400 hover:text-gray-500">
+                        <i class="fas fa-times w-6 h-6"></i>
+                    </button>
+                </div>
+                <form id="dept-form">
+                    <div class="mb-4">
+                        <label for="dept-name" class="block text-sm font-medium text-gray-700 mb-1">Nome do Departamento*</label>
+                        <input type="text" id="dept-name" name="dept-name" required class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-4">
+                        <label for="dept-sector" class="block text-sm font-medium text-gray-700 mb-1">Setor*</label>
+                        <select id="dept-sector" name="dept-sector" required class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                            <option value="">Selecione um setor</option>
+                            <option value="finance">Financeiro</option>
+                            <option value="hr">Recursos Humanos</option>
+                            <option value="it">TI</option>
+                            <option value="support">Suporte</option>
+                            <option value="other">Outro</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label for="dept-description" class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                        <textarea id="dept-description" name="dept-description" rows="3" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label for="dept-open-time" class="block text-sm font-medium text-gray-700 mb-1">Horário de Abertura</label>
+                            <input type="time" id="dept-open-time" name="dept-open-time" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label for="dept-close-time" class="block text-sm font-medium text-gray-700 mb-1">Horário de Fechamento</label>
+                            <input type="time" id="dept-close-time" name="dept-close-time" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="dept-location" class="block text-sm font-medium text-gray-700 mb-1">Localização</label>
+                        <input type="text" id="dept-location" name="dept-location" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-4">
+                        <label for="dept-manager" class="block text-sm font-medium text-gray-700 mb-1">Gestor Responsável</label>
+                        <select id="dept-manager" name="dept-manager" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                            <option value="">Nenhum gestor</option>
+                        </select>
+                    </div>
+                    <input type="hidden" id="dept-id" name="dept-id">
+                    <div class="flex justify-end space-x-4">
+                        <button type="button" id="cancel-dept-btn" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">
+                            Cancelar
+                        </button>
+                        <button type="submit" id="submit-dept-btn" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md transition-colors">
+                            Salvar Departamento
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal para Criar/Editar Gestor -->
+        <div id="manager-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden z-50">
+            <div class="bg-white rounded-2xl p-8 w-full max-w-lg shadow-2xl animate-zoom-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 id="manager-modal-title" class="text-2xl font-semibold text-gray-800">Novo Gestor</h3>
+                    <button id="close-manager-modal" class="text-gray-400 hover:text-gray-500">
+                        <i class="fas fa-times w-6 h-6"></i>
+                    </button>
+                </div>
+                <form id="manager-form">
+                    <div class="mb-4">
+                        <label for="manager-name" class="block text-sm font-medium text-gray-700 mb-1">Nome Completo*</label>
+                        <input type="text" id="manager-name" name="manager-name" required class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-4">
+                        <label for="manager-email" class="block text-sm font-medium text-gray-700 mb-1">Email*</label>
+                        <input type="email" id="manager-email" name="manager-email" required class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-4">
+                        <label for="manager-password" class="block text-sm font-medium text-gray-700 mb-1">Senha*</label>
+                        <input type="password" id="manager-password" name="manager-password" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-4">
+                        <label for="manager-department" class="block text-sm font-medium text-gray-700 mb-1">Departamento*</label>
+                        <select id="manager-department" name="manager-department" required class="p-3 border rounded-lg w-full focus:ring
