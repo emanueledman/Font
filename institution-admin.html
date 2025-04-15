@@ -7,58 +7,397 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="css/department-admin.css">
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="institution-admin.js" defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col">
-    <!-- Cabeçalho -->
-    <header class="bg-blue-600 text-white p-4">
-        <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-2xl font-bold">Painel do Administrador de Instituição</h1>
-            <div>
-                <span id="user-email" class="mr-4"></span>
-                <button id="logout" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Sair</button>
+<body class="bg-gray-100 min-h-screen flex">
+    <!-- Sidebar -->
+    <aside class="bg-blue-700 text-white w-64 flex-shrink-0">
+        <div class="p-4">
+            <h1 class="text-xl font-bold">Fila Fácil</h1>
+            <p class="text-sm mt-1">Painel do Administrador</p>
+        </div>
+        <nav class="mt-6">
+            <button id="tab-dashboard" class="w-full text-left px-4 py-2 hover:bg-blue-800 flex items-center"><i class="fas fa-tachometer-alt mr-2"></i> Dashboard</button>
+            <button id="tab-departments" class="w-full text-left px-4 py-2 hover:bg-blue-800 flex items-center"><i class="fas fa-building mr-2"></i> Departamentos</button>
+            <button id="tab-managers" class="w-full text-left px-4 py-2 hover:bg-blue-800 flex items-center"><i class="fas fa-users mr-2"></i> Gestores</button>
+            <button id="tab-reports" class="w-full text-left px-4 py-2 hover:bg-blue-800 flex items-center"><i class="fas fa-chart-bar mr-2"></i> Relatórios</button>
+            <button id="tab-settings" class="w-full text-left px-4 py-2 hover:bg-blue-800 flex items-center"><i class="fas fa-cog mr-2"></i> Configurações</button>
+            <button id="logout" class="w-full text-left px-4 py-2 hover:bg-red-600 flex items-center"><i class="fas fa-sign-out-alt mr-2"></i> Sair</button>
+        </nav>
+    </aside>
+
+    <!-- Conteúdo Principal -->
+    <main class="flex-grow p-6">
+        <!-- Cabeçalho -->
+        <header class="flex justify-between items-center mb-6">
+            <h2 id="page-title" class="text-2xl font-semibold">Dashboard</h2>
+            <span id="user-email" class="text-gray-600"></span>
+        </header>
+
+        <!-- Seção Dashboard -->
+        <section id="dashboard-section" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="text-lg font-medium">Departamentos</h3>
+                    <p id="dept-count" class="text-2xl font-bold">0</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="text-lg font-medium">Gestores Ativos</h3>
+                    <p id="manager-count" class="text-2xl font-bold">0</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="text-lg font-medium">Senhas Hoje</h3>
+                    <p id="ticket-count" class="text-2xl font-bold">0</p>
+                </div>
             </div>
-        </div>
-    </header>
-    <!-- Conteúdo principal -->
-    <main class="container mx-auto p-4 flex-grow">
-        <!-- Tabs para navegação -->
-        <div class="flex space-x-4 mb-6">
-            <button id="tab-departments" class="px-4 py-2 bg-blue-500 text-white rounded-lg">Departamentos</button>
-            <button id="tab-reports" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg">Relatórios</button>
-            <button id="tab-settings" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg">Configurações</button>
-        </div>
-        <!-- Seção de departamentos -->
-        <div id="departments-section">
-            <h2 class="text-xl font-semibold mb-4">Gerenciar Departamentos</h2>
-            <div id="departments" class="space-y-4"></div>
-            <button onclick="createDepartment()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg mt-4">
-                Criar Novo Departamento
-            </button>
-        </div>
-        <!-- Seção de relatórios -->
-        <div id="reports-section" class="hidden">
-            <h2 class="text-xl font-semibold mb-4">Relatórios</h2>
-            <div class="mb-4">
-                <label for="report-date" class="block text-sm font-medium text-gray-700">Data</label>
-                <input type="date" id="report-date" class="mt-1 p-2 border rounded-lg">
-                <button onclick="generateReport()" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+        </section>
+
+        <!-- Seção Departamentos -->
+        <section id="departments-section" class="hidden space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-semibold">Gerenciar Departamentos</h2>
+                <button onclick="openDepartmentModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+                    Criar Departamento
+                </button>
+            </div>
+            <div id="departments-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </section>
+
+        <!-- Seção Gestores -->
+        <section id="managers-section" class="hidden space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-semibold">Gerenciar Gestores</h2>
+                <button onclick="openManagerModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+                    Criar Gestor
+                </button>
+            </div>
+            <div id="managers-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </section>
+
+        <!-- Seção Relatórios -->
+        <section id="reports-section" class="hidden space-y-6">
+            <h2 class="text-xl font-semibold">Relatórios</h2>
+            <div class="flex space-x-4">
+                <input type="date" id="report-date" class="p-2 border rounded-lg">
+                <button onclick="generateReport()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
                     Gerar Relatório
                 </button>
             </div>
             <div id="report-results" class="space-y-4"></div>
-        </div>
-        <!-- Seção de configurações -->
-        <div id="settings-section" class="hidden">
-            <h2 class="text-xl font-semibold mb-4">Configurações</h2>
-            <div class="mb-4">
+        </section>
+
+        <!-- Seção Configurações -->
+        <section id="settings-section" class="hidden space-y-6">
+            <h2 class="text-xl font-semibold">Configurações</h2>
+            <div class="bg-white p-4 rounded-lg shadow">
                 <label for="institution-name" class="block text-sm font-medium text-gray-700">Nome da Instituição</label>
                 <input type="text" id="institution-name" class="mt-1 p-2 w-full border rounded-lg">
-                <button onclick="updateInstitution()" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+                <label for="institution-location" class="block text-sm font-medium text-gray-700 mt-4">Localização</label>
+                <input type="text" id="institution-location" class="mt-1 p-2 w-full border rounded-lg">
+                <button onclick="updateInstitution()" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
                     Atualizar
                 </button>
             </div>
-        </div>
+        </section>
     </main>
+
+    <!-- Modal para Criar/Editar Departamento -->
+    <div id="department-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center">
+        <div class="bg-white p-6 rounded-lg w-96">
+            <h3 id="department-modal-title" class="text-lg font-semibold mb-4">Criar Departamento</h3>
+            <input type="hidden" id="department-id">
+            <label for="dept-name" class="block text-sm font-medium text-gray-700">Nome</label>
+            <input type="text" id="dept-name" class="mt-1 p-2 w-full border rounded-lg">
+            <label for="dept-sector" class="block text-sm font-medium text-gray-700 mt-4">Setor</label>
+            <input type="text" id="dept-sector" class="mt-1 p-2 w-full border rounded-lg">
+            <div class="flex justify-end mt-6 space-x-2">
+                <button onclick="closeModal('department-modal')" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg">Cancelar</button>
+                <button onclick="saveDepartment()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Criar/Editar Gestor -->
+    <div id="manager-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center">
+        <div class="bg-white p-6 rounded-lg w-96">
+            <h3 id="manager-modal-title" class="text-lg font-semibold mb-4">Criar Gestor</h3>
+            <input type="hidden" id="manager-id">
+            <label for="manager-name" class="block text-sm font-medium text-gray-700">Nome</label>
+            <input type="text" id="manager-name" class="mt-1 p-2 w-full border rounded-lg">
+            <label for="manager-email" class="block text-sm font-medium text-gray-700 mt-4">Email</label>
+            <input type="email" id="manager-email" class="mt-1 p-2 w-full border rounded-lg">
+            <label for="manager-password" class="block text-sm font-medium text-gray-700 mt-4">Senha</label>
+            <input type="password" id="manager-password" class="mt-1 p-2 w-full border rounded-lg">
+            <label for="manager-department" class="block text-sm font-medium text-gray-700 mt-4">Departamento</label>
+            <select id="manager-department" class="mt-1 p-2 w-full border rounded-lg"></select>
+            <div class="flex justify-end mt-6 space-x-2">
+                <button onclick="closeModal('manager-modal')" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg">Cancelar</button>
+                <button onclick="saveManager()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://fila-facilita2-0.onrender.com';
+        let departments = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('adminToken');
+            if (!token) {
+                window.location.href = '/index.html';
+                return;
+            }
+
+            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+            axios.defaults.baseURL = API_BASE;
+
+            axios.interceptors.response.use(
+                response => response,
+                error => {
+                    if (error.response?.status === 401) {
+                        localStorage.clear();
+                        window.location.href = '/index.html';
+                    }
+                    return Promise.reject(error);
+                }
+            );
+
+            try {
+                await loadUserInfo();
+                await loadDashboard();
+                setupEventListeners();
+            } catch (error) {
+                console.error('Erro na inicialização:', error);
+                showToast('Erro ao inicializar painel.', 'error');
+            }
+        });
+
+        function setupEventListeners() {
+            const tabs = {
+                'tab-dashboard': 'dashboard-section',
+                'tab-departments': 'departments-section',
+                'tab-managers': 'managers-section',
+                'tab-reports': 'reports-section',
+                'tab-settings': 'settings-section'
+            };
+
+            Object.keys(tabs).forEach(tabId => {
+                document.getElementById(tabId).addEventListener('click', () => {
+                    Object.values(tabs).forEach(section => document.getElementById(section).classList.add('hidden'));
+                    document.getElementById(tabs[tabId]).classList.remove('hidden');
+                    document.getElementById('page-title').textContent = tabId.replace('tab-', '').replace('-', ' ').replace(/^\w/, c => c.toUpperCase());
+                    if (tabId === 'tab-departments') loadDepartments();
+                    if (tabId === 'tab-managers') loadManagers();
+                });
+            });
+
+            document.getElementById('logout').addEventListener('click', () => {
+                localStorage.clear();
+                window.location.href = '/index.html';
+            });
+        }
+
+        async function loadUserInfo() {
+            const { data } = await axios.get('/api/admin/user');
+            document.getElementById('user-email').textContent = data.email;
+        }
+
+        async function loadDashboard() {
+            const [deptRes, managerRes, ticketRes] = await Promise.all([
+                axios.get('/api/admin/institutions/INST_ID/departments'),
+                axios.get('/api/admin/institutions/INST_ID/managers'),
+                axios.get('/api/institutions/INST_ID/calls')
+            ]);
+            document.getElementById('dept-count').textContent = deptRes.data.length;
+            document.getElementById('manager-count').textContent = managerRes.data.length;
+            document.getElementById('ticket-count').textContent = ticketRes.data.calls.length;
+        }
+
+        async function loadDepartments() {
+            const { data } = await axios.get('/api/admin/institutions/INST_ID/departments');
+            departments = data;
+            const list = document.getElementById('departments-list');
+            list.innerHTML = '';
+            data.forEach(dept => {
+                const card = document.createElement('div');
+                card.className = 'bg-white p-4 rounded-lg shadow';
+                card.innerHTML = `
+                    <h3 class="text-lg font-medium">${dept.name}</h3>
+                    <p class="text-gray-600">Setor: ${dept.sector}</p>
+                    <div class="mt-4 flex space-x-2">
+                        <button onclick="editDepartment('${dept.id}')" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded">Editar</button>
+                        <button onclick="deleteDepartment('${dept.id}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded">Excluir</button>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+        }
+
+        async function loadManagers() {
+            const { data } = await axios.get('/api/admin/institutions/INST_ID/managers');
+            const list = document.getElementById('managers-list');
+            list.innerHTML = '';
+            data.forEach(manager => {
+                const card = document.createElement('div');
+                card.className = 'bg-white p-4 rounded-lg shadow';
+                card.innerHTML = `
+                    <h3 class="text-lg font-medium">${manager.name}</h3>
+                    <p class="text-gray-600">Email: ${manager.email}</p>
+                    <p class="text-gray-600">Departamento: ${manager.department_name}</p>
+                    <div class="mt-4 flex space-x-2">
+                        <button onclick="editManager('${manager.id}')" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded">Editar</button>
+                        <button onclick="deleteManager('${manager.id}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded">Excluir</button>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+        }
+
+        function openDepartmentModal() {
+            document.getElementById('department-modal').classList.remove('hidden');
+            document.getElementById('department-modal-title').textContent = 'Criar Departamento';
+            document.getElementById('department-id').value = '';
+            document.getElementById('dept-name').value = '';
+            document.getElementById('dept-sector').value = '';
+        }
+
+        function openManagerModal() {
+            document.getElementById('manager-modal').classList.remove('hidden');
+            document.getElementById('manager-modal-title').textContent = 'Criar Gestor';
+            document.getElementById('manager-id').value = '';
+            document.getElementById('manager-name').value = '';
+            document.getElementById('manager-email').value = '';
+            document.getElementById('manager-password').value = '';
+            const select = document.getElementById('manager-department');
+            select.innerHTML = departments.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        async function saveDepartment() {
+            const id = document.getElementById('department-id').value;
+            const name = document.getElementById('dept-name').value;
+            const sector = document.getElementById('dept-sector').value;
+            try {
+                if (id) {
+                    await axios.put(`/api/admin/institutions/INST_ID/departments/${id}`, { name, sector });
+                    showToast('Departamento atualizado com sucesso!', 'success');
+                } else {
+                    await axios.post('/api/admin/institutions/INST_ID/departments', { name, sector });
+                    showToast('Departamento criado com sucesso!', 'success');
+                }
+                closeModal('department-modal');
+                loadDepartments();
+            } catch (error) {
+                showToast('Erro ao salvar departamento.', 'error');
+            }
+        }
+
+        async function saveManager() {
+            const id = document.getElementById('manager-id').value;
+            const name = document.getElementById('manager-name').value;
+            const email = document.getElementById('manager-email').value;
+            const password = document.getElementById('manager-password').value;
+            const department_id = document.getElementById('manager-department').value;
+            try {
+                if (id) {
+                    await axios.put(`/api/admin/institutions/INST_ID/users/${id}`, { name, email, password, department_id });
+                    showToast('Gestor atualizado com sucesso!', 'success');
+                } else {
+                    await axios.post('/api/admin/institutions/INST_ID/managers', { name, email, password, department_id });
+                    showToast('Gestor criado com sucesso!', 'success');
+                }
+                closeModal('manager-modal');
+                loadManagers();
+            } catch (error) {
+                showToast('Erro ao salvar gestor.', 'error');
+            }
+        }
+
+        async function editDepartment(id) {
+            const dept = departments.find(d => d.id === id);
+            document.getElementById('department-modal').classList.remove('hidden');
+            document.getElementById('department-modal-title').textContent = 'Editar Departamento';
+            document.getElementById('department-id').value = dept.id;
+            document.getElementById('dept-name').value = dept.name;
+            document.getElementById('dept-sector').value = dept.sector;
+        }
+
+        async function editManager(id) {
+            const { data } = await axios.get(`/api/admin/institutions/INST_ID/managers`);
+            const manager = data.find(m => m.id === id);
+            document.getElementById('manager-modal').classList.remove('hidden');
+            document.getElementById('manager-modal-title').textContent = 'Editar Gestor';
+            document.getElementById('manager-id').value = manager.id;
+            document.getElementById('manager-name').value = manager.name;
+            document.getElementById('manager-email').value = manager.email;
+            document.getElementById('manager-password').value = '';
+            const select = document.getElementById('manager-department');
+            select.innerHTML = departments.map(d => `<option value="${d.id}" ${d.id === manager.department_id ? 'selected' : ''}>${d.name}</option>`).join('');
+        }
+
+        async function deleteDepartment(id) {
+            if (confirm('Tem certeza que deseja excluir este departamento?')) {
+                try {
+                    await axios.delete(`/api/admin/institutions/INST_ID/departments/${id}`);
+                    showToast('Departamento excluído com sucesso!', 'success');
+                    loadDepartments();
+                } catch (error) {
+                    showToast('Erro ao excluir departamento.', 'error');
+                }
+            }
+        }
+
+        async function deleteManager(id) {
+            if (confirm('Tem certeza que deseja excluir este gestor?')) {
+                try {
+                    await axios.delete(`/api/admin/institutions/INST_ID/users/${id}`);
+                    showToast('Gestor excluído com sucesso!', 'success');
+                    loadManagers();
+                } catch (error) {
+                    showToast('Erro ao excluir gestor.', 'error');
+                }
+            }
+        }
+
+        async function generateReport() {
+            const date = document.getElementById('report-date').value;
+            try {
+                const { data } = await axios.get(`/api/admin/report?date=${date}`);
+                const results = document.getElementById('report-results');
+                results.innerHTML = data.map(r => `
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <h3 class="text-lg font-medium">${r.service}</h3>
+                        <p>Senhas Emitidas: ${r.issued}</p>
+                        <p>Senhas Atendidas: ${r.attended}</p>
+                        <p>Tempo Médio: ${r.avg_time ? r.avg_time + ' minutos' : 'N/A'}</p>
+                    </div>
+                `).join('');
+            } catch (error) {
+                showToast('Erro ao gerar relatório.', 'error');
+            }
+        }
+
+        async function updateInstitution() {
+            const name = document.getElementById('institution-name').value;
+            const location = document.getElementById('institution-location').value;
+            try {
+                await axios.put('/api/admin/institutions/INST_ID', { name, location });
+                showToast('Instituição atualizada com sucesso!', 'success');
+            } catch (error) {
+                showToast('Erro ao atualizar instituição.', 'error');
+            }
+        }
+
+        function showToast(message, type) {
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-4 right-4 p-4 rounded-lg shadow ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+    </script>
 </body>
 </html>
