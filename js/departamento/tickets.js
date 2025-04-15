@@ -2,6 +2,7 @@ async function fetchTickets() {
     try {
         const response = await axios.get('/api/tickets/admin');
         renderTickets(response.data);
+        updateNextQueue(response.data);
     } catch (error) {
         console.error('Erro ao buscar tickets:', error);
         showError('Erro ao carregar tickets.', error.response?.data?.error || error.message);
@@ -12,39 +13,81 @@ async function fetchCurrentCall() {
     try {
         const tickets = (await axios.get('/api/tickets/admin')).data;
         let latestCalled = null;
+        let totalWaitTime = 0;
+        let ticketCount = 0;
+
         tickets.forEach(ticket => {
             if (ticket.status === 'Chamado' && (!latestCalled || new Date(ticket.called_at) > new Date(latestCalled.called_at))) {
                 latestCalled = ticket;
+            }
+            if (ticket.wait_time) {
+                totalWaitTime += ticket.wait_time;
+                ticketCount++;
             }
         });
 
         const currentTicket = document.getElementById('current-ticket');
         const currentService = document.getElementById('current-service');
         const currentCounter = document.getElementById('current-counter');
-        const recentCalls = document.getElementById('recent-calls');
+        const ticketCounter = document.getElementById('ticket-counter');
+        const avgWaitTime = document.getElementById('avg-wait-time');
+        const waitBar = document.getElementById('wait-bar');
+        const recentCallsTable = document.getElementById('recent-calls-table');
 
         if (latestCalled) {
             currentTicket.textContent = latestCalled.number;
             currentService.textContent = `Serviço: ${latestCalled.service}`;
             currentCounter.textContent = `Guichê: ${latestCalled.counter || 'N/A'}`;
+            ticketCounter.textContent = '1';
+            ticketCounter.classList.remove('hidden');
         } else {
             currentTicket.textContent = '---';
             currentService.textContent = '';
             currentCounter.textContent = '';
+            ticketCounter.classList.add('hidden');
         }
 
-        recentCalls.innerHTML = '';
+        const avgTime = ticketCount > 0 ? totalWaitTime / ticketCount : 0;
+        avgWaitTime.textContent = avgTime ? `${Math.floor(avgTime / 60)} min ${Math.round(avgTime % 60)} s` : 'N/A';
+        waitBar.style.width = avgTime ? `${Math.min((avgTime / 600) * 100, 100)}%` : '0%';
+
+        recentCallsTable.innerHTML = '';
         const recent = tickets.filter(t => t.status === 'Chamado' || t.status === 'Atendido').slice(0, 4);
         recent.forEach(ticket => {
-            const card = document.createElement('div');
-            card.className = 'card bg-white rounded-xl shadow-lg p-4';
-            card.innerHTML = `
-                <h3 class="text-lg font-semibold text-gray-800">${ticket.number}</h3>
-                <p class="text-gray-600">Serviço: ${ticket.service}</p>
-                <p class="text-gray-600">Status: ${ticket.status}</p>
-                <p class="text-gray-600">Guichê: ${ticket.counter || 'N/A'}</p>
+            const statusColor = ticket.status === 'Atendido' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800';
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="px-4 py-3 whitespace-nowrap">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 h-10 w-10 bg-${ticket.status === 'Atendido' ? 'green' : 'blue'}-100 rounded-lg flex items-center justify-center">
+                            <span class="text-${ticket.status === 'Atendido' ? 'green' : 'blue'}-800 font-bold">${ticket.number}</span>
+                        </div>
+                        <div class="ml-3">
+                            <div class="text-sm font-medium text-gray-900">${ticket.number}</div>
+                            <div class="text-sm text-gray-500">#${ticket.id}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${ticket.service}</td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">${ticket.counter || 'N/A'}</span>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${new Date(ticket.called_at || ticket.issued_at).toLocaleTimeString('pt-BR')}</td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full ${statusColor}">${ticket.status}</span>
+                </td>
             `;
-            recentCalls.appendChild(card);
+            recentCallsTable.appendChild(row);
+        });
+
+        const callFilter = document.getElementById('call-filter');
+        callFilter.innerHTML = '<option value="">Todas as filas</option>';
+        const services = [...new Set(tickets.map(t => t.service))];
+        services.forEach(service => {
+            const option = document.createElement('option');
+            option.value = service;
+            option.textContent = service;
+            callFilter.appendChild(option);
         });
     } catch (error) {
         console.error('Erro ao buscar chamada atual:', error);
@@ -76,6 +119,28 @@ function renderTickets(tickets) {
             ` : ''}
         `;
         container.appendChild(card);
+    });
+}
+
+function updateNextQueue(tickets) {
+    const nextQueue = document.getElementById('next-queue');
+    nextQueue.innerHTML = '';
+    const pending = tickets.filter(t => t.status === 'Pendente').slice(0, 3);
+    if (pending.length === 0) {
+        nextQueue.innerHTML = '<p class="text-gray-500 text-center">Nenhuma senha na fila.</p>';
+        return;
+    }
+    pending.forEach(ticket => {
+        const div = document.createElement('div');
+        div.className = 'p-3 rounded-lg bg-blue-50 border border-blue-100 flex justify-between items-center';
+        div.innerHTML = `
+            <div>
+                <span class="font-bold text-blue-800 text-lg">${ticket.number}</span>
+                <p class="text-sm text-gray-600">${ticket.service}</p>
+            </div>
+            <span class="text-xs text-gray-500">Espera: ${ticket.wait_time ? Math.round(ticket.wait_time / 60) + 'min' : 'N/A'}</span>
+        `;
+        nextQueue.appendChild(div);
     });
 }
 
@@ -123,5 +188,44 @@ document.getElementById('call-next-btn')?.addEventListener('click', async () => 
         showError('Nenhuma fila disponível para chamar.');
         return;
     }
-    await callNext(queues[0].id); // Chama a primeira fila; ajustar conforme lógica
+    await callNext(queues[0].id);
+});
+
+document.getElementById('call-filter')?.addEventListener('change', () => {
+    const filter = document.getElementById('call-filter').value.toLowerCase();
+    document.querySelectorAll('#recent-calls-table tr').forEach(row => {
+        const service = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+        row.style.display = filter === '' || service.includes(filter) ? '' : 'none';
+    });
+});
+
+document.getElementById('refresh-queue')?.addEventListener('click', async () => {
+    await fetchTickets();
+    await fetchCurrentCall();
+});
+
+document.getElementById('view-all-queue')?.addEventListener('click', () => {
+    document.getElementById('nav-tickets').click();
+});
+
+document.getElementById('view-all-calls')?.addEventListener('click', () => {
+    document.getElementById('nav-tickets').click();
+});
+
+document.getElementById('recall-btn')?.addEventListener('click', async () => {
+    try {
+        const tickets = (await axios.get('/api/tickets/admin')).data;
+        const latestCalled = tickets.find(t => t.status === 'Chamado');
+        if (!latestCalled) {
+            showError('Nenhuma senha chamada para rechamar.');
+            return;
+        }
+        await axios.post(`/api/admin/queue/${latestCalled.queue_id}/call`);
+        showSuccess(`Senha ${latestCalled.number} rechamada!`);
+        await fetchTickets();
+        await fetchCurrentCall();
+    } catch (error) {
+        console.error('Erro ao rechamar:', error);
+        showError('Erro ao rechamar senha.', error.response?.data?.error || error.message);
+    }
 });

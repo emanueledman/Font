@@ -396,7 +396,6 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                 <!-- Painel de Chamada Principal -->
                 <div class="lg:col-span-2 bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-xl shadow-2xl p-6 md:p-8 flex flex-col items-center animate-zoom-in relative overflow-hidden">
-                    <!-- Efeito de ondas no fundo -->
                     <div class="absolute -bottom-20 -right-20 w-60 h-60 bg-blue-700/20 rounded-full"></div>
                     <div class="absolute -top-20 -left-20 w-60 h-60 bg-blue-700/20 rounded-full"></div>
                     
@@ -409,7 +408,7 @@
                     
                     <div class="relative mb-2">
                         <p id="current-ticket" class="text-6xl md:text-7xl font-bold animate-pulse text-shadow tracking-wider">---</p>
-                        <div class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold shadow">1</div>
+                        <div id="ticket-counter" class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold shadow hidden"></div>
                     </div>
                     
                     <div class="text-center mb-6">
@@ -435,10 +434,10 @@
                     <div class="w-full mt-6 bg-white/10 rounded-lg p-3 backdrop-blur-sm">
                         <div class="flex justify-between text-xs text-blue-100 mb-1">
                             <span>Tempo de espera médio</span>
-                            <span id="avg-wait-time">4 min 32 s</span>
+                            <span id="avg-wait-time">N/A</span>
                         </div>
                         <div class="w-full bg-white/20 rounded-full h-2">
-                            <div class="bg-green-400 h-2 rounded-full" style="width: 45%"></div>
+                            <div id="wait-bar" class="bg-green-400 h-2 rounded-full" style="width: 0%"></div>
                         </div>
                     </div>
                 </div>
@@ -453,29 +452,7 @@
                             </svg>
                         </button>
                     </div>
-                    <div class="space-y-3" id="next-queue">
-                        <div class="p-3 rounded-lg bg-blue-50 border border-blue-100 flex justify-between items-center">
-                            <div>
-                                <span class="font-bold text-blue-800 text-lg">A-012</span>
-                                <p class="text-sm text-gray-600">Atendimento Geral</p>
-                            </div>
-                            <span class="text-xs text-gray-500">Espera: 4min</span>
-                        </div>
-                        <div class="p-3 rounded-lg bg-gray-50 border border-gray-100 flex justify-between items-center">
-                            <div>
-                                <span class="font-bold text-gray-800 text-lg">A-013</span>
-                                <p class="text-sm text-gray-600">Atendimento Geral</p>
-                            </div>
-                            <span class="text-xs text-gray-500">Espera: 2min</span>
-                        </div>
-                        <div class="p-3 rounded-lg bg-gray-50 border border-gray-100 flex justify-between items-center">
-                            <div>
-                                <span class="font-bold text-gray-800 text-lg">B-005</span>
-                                <p class="text-sm text-gray-600">Caixa</p>
-                            </div>
-                            <span class="text-xs text-gray-500">Espera: 1min</span>
-                        </div>
-                    </div>
+                    <div class="space-y-3" id="next-queue"></div>
                     <button id="view-all-queue" class="w-full mt-4 text-center text-sm text-blue-600 hover:text-blue-800 font-medium py-2">
                         Ver todas as filas →
                     </button>
@@ -488,10 +465,7 @@
                     <h3 class="text-xl font-semibold">Últimas Chamadas</h3>
                     <div class="flex items-center space-x-3">
                         <select id="call-filter" class="p-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500">
-                            <option>Todas as filas</option>
-                            <option>Atendimento Geral</option>
-                            <option>Caixa</option>
-                            <option>Consultas</option>
+                            <option value="">Todas as filas</option>
                         </select>
                         <button id="view-all-calls" class="text-sm text-blue-600 hover:text-blue-800 font-medium">Ver Todas</button>
                     </div>
@@ -507,83 +481,7 @@
                                 <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             </tr>
                         </thead>
-                        <tbody id="recent-calls-table" class="bg-white divide-y divide-gray-200">
-                            <tr>
-                                <td class="px-4 py-3 whitespace-nowrap">
-                                    <div class="flex items-center">
-                                        <div class="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                            <span class="text-blue-800 font-bold">A-012</span>
-                                        </div>
-                                        <div class="ml-3">
-                                            <div class="text-sm font-medium text-gray-900">A-012</div>
-                                            <div class="text-sm text-gray-500">#24567</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">Atendimento Geral</div>
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap">
-                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Guichê 2</span>
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                    10:24 AM
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap">
-                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Em atendimento</span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="px-4 py-3 whitespace-nowrap">
-                                    <div class="flex items-center">
-                                        <div class="flex-shrink-0 h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
-                                            <span class="text-green-800 font-bold">B-005</span>
-                                        </div>
-                                        <div class="ml-3">
-                                            <div class="text-sm font-medium text-gray-900">B-005</div>
-                                            <div class="text-sm text-gray-500">#24566</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">Caixa</div>
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap">
-                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Guichê 1</span>
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                    10:18 AM
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap">
-                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">Finalizado</span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="px-4 py-3 whitespace-nowrap">
-                                    <div class="flex items-center">
-                                        <div class="flex-shrink-0 h-10 w-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-                                            <span class="text-yellow-800 font-bold">P-003</span>
-                                        </div>
-                                        <div class="ml-3">
-                                            <div class="text-sm font-medium text-gray-900">P-003</div>
-                                            <div class="text-sm text-gray-500">#24565</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">Prioritário</div>
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap">
-                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Guichê 3</span>
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                    10:05 AM
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap">
-                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Atendido</span>
-                                </td>
-                            </tr>
-                        </tbody>
+                        <tbody id="recent-calls-table" class="bg-white divide-y divide-gray-200"></tbody>
                     </table>
                 </div>
             </div>
