@@ -1270,6 +1270,28 @@
         });
 
         // Funções principais
+        const loadingOverlay = document.getElementById('loading-overlay');
+    loadingOverlay.classList.remove('hidden');
+    document.getElementById('loading-message').textContent = 'Carregando página...';
+
+    // Carregar dados iniciais
+    Promise.all([
+        loadDashboardData(),
+        checkAuthStatus()
+    ]).then(() => {
+        // Ocultar o spinner quando tudo estiver carregado
+        loadingOverlay.classList.add('hidden');
+        
+        // Continuar com inicializações
+        setupNavigation();
+        initWebSocket();
+        updateCurrentDateTime();
+        setInterval(updateCurrentDateTime, 60000);
+    }).catch(error => {
+        console.error('Erro ao carregar página:', error);
+        showToast('Falha ao carregar a página. Tente novamente.', 'error');
+        loadingOverlay.classList.add('hidden');
+    })
         function loadDashboardData() {
             // Exibe skeleton loading
             document.querySelectorAll('.skeleton').forEach(el => {
