@@ -59,7 +59,7 @@ const redirectUser = (userRole) => {
     }
 
     switch (userRole) {
-        case 'ATTENDANT':
+        case 'attendant':
             window.location.href = '/attendant.html';
             break;
         case 'BRANCH_ADMIN':
