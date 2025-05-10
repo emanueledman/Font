@@ -8,9 +8,62 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-    <link rel="stylesheet" href="css/department-admin.css">
+    <script src="js/attendant.js" defer></script>
+    <style>
+        /* Estilos para toasts */
+        .toast-success { background-color: #10B981; }
+        .toast-warning { background-color: #F59E0B; }
+        .toast-error { background-color: #EF4444; }
 
-    <script src="js/attendant/attendant.js" defer></script>
+        /* Animações */
+        .animate-slide-in {
+            animation: slideIn 0.3s ease-in;
+        }
+        .animate-slide-out {
+            animation: slideOut 0.5s ease-out;
+        }
+        .animate-zoom-in {
+            animation: zoomIn 0.3s ease-in;
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes slideIn {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateY(0); opacity: 1; }
+            to { transform: translateY(100%); opacity: 0; }
+        }
+        @keyframes zoomIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Efeito de sombra no texto */
+        .text-shadow {
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Estilo para badge de notificação */
+        .notification-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: white;
+            margin-left: auto;
+        }
+    </style>
 </head>
 <body class="bg-gray-50 min-h-screen flex font-sans">
     <!-- Sidebar -->
@@ -220,7 +273,6 @@
                 <div class="flex flex-col md:flex-row md:items-center gap-4">
                     <div class="relative flex-grow">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <svg ELEMENTS
                             <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
