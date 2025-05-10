@@ -10,7 +10,6 @@ const sanitizeInput = (input) => {
 
 // Limpa dados sensíveis
 const clearSensitiveData = () => {
-    console.log('Limpando dados sensíveis');
     ['localStorage', 'sessionStorage'].forEach(storageType => {
         const storage = window[storageType];
         ['adminToken', 'userRole', 'queues', 'redirectCount'].forEach(key => storage.removeItem(key));
@@ -39,10 +38,7 @@ const toggleLoading = (show, message = 'Carregando...') => {
 // Exibe notificações
 const showToast = (message, type = 'success') => {
     const toastContainer = document.getElementById('toast-container');
-    if (!toastContainer) {
-        console.warn('Toast container não encontrado');
-        return;
-    }
+    if (!toastContainer) return;
     const toast = document.createElement('div');
     toast.className = `toast toast-${type} text-white px-6 py-3 rounded-lg shadow-lg animate-slide-in`;
     toast.innerHTML = `
@@ -67,15 +63,11 @@ const showToast = (message, type = 'success') => {
 // Configura Axios
 const setupAxios = () => {
     const token = getToken();
-    console.log('Configurando Axios, token:', token ? token.substring(0, 10) + '...' : 'Nenhum token');
-
     if (token) {
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     } else {
-        console.warn('Nenhum token encontrado. Requisições autenticadas podem falhar.');
         showToast('Faça login para acessar todas as funcionalidades.', 'warning');
     }
-
     axios.defaults.baseURL = API_BASE;
     axios.defaults.timeout = 10000;
 
@@ -84,19 +76,17 @@ const setupAxios = () => {
         response => response,
         error => {
             if (error.response?.status === 401) {
-                console.warn('Erro 401 detectado:', error.config.url);
                 authFailedCount++;
                 if (authFailedCount > 3) {
                     showToast('Sessão inválida. Redirecionando para login...', 'error');
                     clearSensitiveData();
                     setTimeout(() => window.location.href = '/index.html', 3000);
                 } else {
-                    showToast('Problema de autenticação. Algumas funções podem estar limitadas.', 'warning');
+                    showToast('Problema de autenticação. Tente novamente.', 'warning');
                 }
             } else if (error.response?.status === 403) {
-                showToast('Acesso não autorizado.', 'error');
+                showToast(error.response.data?.error || 'Acesso não autorizado.', 'error');
             } else if (error.response?.status === 404) {
-                console.warn('Rota não encontrada:', error.config.url);
                 showToast('Funcionalidade indisponível no momento.', 'warning');
             } else if (error.code === 'ECONNABORTED') {
                 showToast('Tempo de conexão excedido.', 'error');
@@ -112,11 +102,9 @@ const setupAxios = () => {
 const initializeWebSocket = () => {
     const token = getToken();
     if (!token) {
-        console.warn('Nenhum token para WebSocket');
         showToast('Conexão em tempo real indisponível.', 'warning');
         return;
     }
-
     try {
         socket = io(API_BASE, {
             transports: ['websocket'],
@@ -124,29 +112,19 @@ const initializeWebSocket = () => {
             reconnectionDelay: 2000,
             query: { token }
         });
-
         socket.on('connect', () => {
-            console.log('Conectado ao WebSocket');
             showToast('Conexão em tempo real estabelecida.', 'success');
         });
-
-        socket.on('connect_error', (error) => {
-            console.error('Erro na conexão WebSocket:', error);
+        socket.on('connect_error', () => {
             showToast('Falha na conexão em tempo real.', 'warning');
         });
-
         socket.on('disconnect', () => {
-            console.warn('Desconectado do WebSocket');
             showToast('Conexão em tempo real perdida.', 'warning');
         });
-
         socket.on('dashboard_update', (data) => {
-            console.log('Atualização do painel recebida:', data);
-            fetchTickets(); // Atualizar tickets quando houver eventos
+            fetchTickets();
         });
-
     } catch (err) {
-        console.error('Erro ao inicializar WebSocket:', err);
         showToast('Falha ao iniciar conexão em tempo real.', 'warning');
     }
 };
@@ -160,7 +138,6 @@ const fetchUserInfo = async () => {
         document.getElementById('user-email').textContent = sanitizeInput(user.email || 'N/A');
         return user;
     } catch (error) {
-        console.error('Erro ao buscar usuário:', error);
         showToast('Não foi possível carregar informações do usuário.', 'warning');
         return null;
     }
@@ -175,8 +152,7 @@ const fetchQueues = async () => {
         renderQueueSelect(queues);
         return queues;
     } catch (error) {
-        console.error('Erro ao buscar filas:', error);
-        showToast('Falha ao carregar filas.', 'warning');
+        showToast(error.response?.data?.error || 'Falha ao carregar filas.', 'warning');
         return [];
     }
 };
@@ -191,8 +167,7 @@ const fetchTickets = async () => {
         renderTicketQueueFilter(tickets);
         return tickets;
     } catch (error) {
-        console.error('Erro ao buscar tickets:', error);
-        showToast('Falha ao carregar tickets.', 'error');
+        showToast(error.response?.data?.error || 'Falha ao carregar tickets.', 'error');
         document.getElementById('tickets').innerHTML = '<tr><td colspan="6" class="p-3 text-gray-500 text-center">Nenhum ticket disponível.</td></tr>';
         return [];
     } finally {
@@ -210,10 +185,23 @@ const fetchRecentCalls = async () => {
         renderCallFilter(calls);
         return calls;
     } catch (error) {
-        console.error('Erro ao buscar chamadas recentes:', error);
-        showToast('Falha ao carregar chamadas recentes.', 'warning');
+        showToast(error.response?.data?.error || 'Falha ao carregar chamadas recentes.', 'warning');
         document.getElementById('recent-calls-table').innerHTML = '<tr><td colspan="5" class="p-3 text-gray-500 text-center">Nenhuma chamada recente.</td></tr>';
         return [];
+    } finally {
+        toggleLoading(false);
+    }
+};
+
+// Chama um ticket
+const callTicket = async (queueId, ticketId) => {
+    try {
+        toggleLoading(true, 'Chamando ticket...');
+        await axios.post('/api/attendant/call-ticket', { queue_id: queueId, ticket_id: ticketId });
+        showToast('Ticket chamado com sucesso.', 'success');
+        fetchTickets();
+    } catch (error) {
+        showToast(error.response?.data?.error || 'Falha ao chamar ticket.', 'error');
     } finally {
         toggleLoading(false);
     }
@@ -228,7 +216,7 @@ const renderQueueSelect = (queues) => {
     queues.forEach(queue => {
         const option = document.createElement('option');
         option.value = queue.id;
-        option.textContent = queue.service;
+        option.textContent = `${queue.service} (${queue.department_name})`;
         select.appendChild(option);
     });
 };
@@ -247,7 +235,7 @@ const renderTickets = (tickets) => {
         tr.dataset.queueId = ticket.queue_id;
         tr.innerHTML = `
             <td class="px-4 py-3">${ticket.number}</td>
-            <td class="px-4 py-3">${ticket.service}</td>
+            <td class="px-4 py-3">${ticket.service} (${ticket.department_name})</td>
             <td class="px-4 py-3">${ticket.status}</td>
             <td class="px-4 py-3">${ticket.counter}</td>
             <td class="px-4 py-3">${new Date(ticket.issued_at).toLocaleString('pt-BR')}</td>
@@ -273,7 +261,7 @@ const renderRecentCalls = (calls) => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td class="px-4 py-3">${call.ticket_number}</td>
-            <td class="px-4 py-3">${call.service}</td>
+            <td class="px-4 py-3">${call.service} (${call.department_name})</td>
             <td class="px-4 py-3">${call.counter}</td>
             <td class="px-4 py-3">${new Date(call.called_at).toLocaleString('pt-BR')}</td>
             <td class="px-4 py-3">
@@ -289,7 +277,7 @@ const renderCallFilter = (calls) => {
     const select = document.getElementById('call-filter');
     if (!select) return;
     select.innerHTML = '<option value="">Todas as filas</option>';
-    const services = [...new Set(calls.map(call => call.service))];
+    const services = [...new Set(calls.map(call => `${call.service} (${call.department_name})`))];
     services.forEach(service => {
         const option = document.createElement('option');
         option.value = service;
@@ -310,7 +298,7 @@ const renderTicketQueueFilter = (tickets) => {
         if (queue) {
             const option = document.createElement('option');
             option.value = queueId;
-            option.textContent = queue.service;
+            option.textContent = `${queue.service} (${queue.department_name})`;
             select.appendChild(option);
         }
     });
@@ -373,46 +361,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     const lastRedirect = sessionStorage.getItem('lastRedirect');
     const now = Date.now();
     if (lastRedirect && (now - parseInt(lastRedirect)) < 3000 && redirectCount > 2) {
-        console.error('Loop de redirecionamento detectado');
         clearSensitiveData();
         showToast('Problema de autenticação. Redirecionando para login...', 'error');
         setTimeout(() => window.location.href = '/index.html', 3000);
         return;
     }
 
-    // Configurar Axios
     setupAxios();
-
-    // Verificar papel do usuário
     const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
-    console.log('Papel do usuário:', userRole || 'Nenhum');
     if (userRole !== 'ATTENDANT') {
-        console.warn('Usuário não é atendente');
         showToast('Acesso restrito a atendentes. Algumas funções podem estar limitadas.', 'warning');
     }
 
-    // Inicializar WebSocket
     initializeWebSocket();
-
     try {
-        // Carregar dados com tolerância a falhas
-        const results = await Promise.allSettled([
+        await Promise.allSettled([
             fetchUserInfo(),
             fetchQueues(),
             fetchTickets(),
             fetchRecentCalls()
         ]);
-
-        results.forEach((result, index) => {
-            if (result.status === 'rejected') {
-                console.error(`Falha na requisição ${index + 1}:`, result.reason);
-            }
-        });
-
         setupEventListeners();
     } catch (error) {
-        console.error('Erro na inicialização:', error);
-        showToast('Erro ao inicializar painel. Algumas funções podem estar limitadas.', 'error');
+        showToast('Erro ao inicializar painel. Verifique sua conexão.', 'error');
     } finally {
         toggleLoading(false);
     }
