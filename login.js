@@ -1,4 +1,4 @@
-const API_BASE = 'https://fila-facilita2-0.onrender.com';
+const API_BASE = 'https://fila-facilita2-0-4uzw.onrender.com';
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('login-form').addEventListener('submit', async (e) => {
@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     localStorage.setItem('managers', JSON.stringify(managers || []));
                     window.location.href = '/institution-admin.html';
                     break;
-                case 'dept_admin':
+                case 'attendant':
                     localStorage.setItem('queues', JSON.stringify(queues || []));
                     window.location.href = '/department-admin.html';
                     break;

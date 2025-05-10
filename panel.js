@@ -1,4 +1,4 @@
-const API_BASE = 'https://fila-facilita2-0.onrender.com';
+const API_BASE = 'https://fila-facilita2-0-4uzw.onrender.com';
 const socket = io(API_BASE, { transports: ['websocket'] });
 
 document.addEventListener('DOMContentLoaded', () => {
