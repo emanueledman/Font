@@ -1,10 +1,21 @@
-// js/attendant.js
 const API_BASE = 'https://fila-facilita2-0-4uzw.onrender.com';
 const socket = io(API_BASE, {
     transports: ['websocket'],
     reconnectionAttempts: 5,
-    auth: { token: localStorage.getItem('attendantToken') || '' }
+    auth: { token: localStorage.getItem('adminToken') || '' }
 });
+
+// Valida o token JWT
+function isValidToken(token) {
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const now = Math.floor(Date.now() / 1000);
+        return payload.exp && payload.exp > now;
+    } catch (e) {
+        console.error('Erro ao validar token:', e);
+        return false;
+    }
+}
 
 // Controla o spinner de carregamento
 function toggleLoading(show, message = 'Carregando...') {
@@ -111,10 +122,15 @@ function updateCurrentDateTime() {
 
 // Configura Axios com token
 function setupAxios() {
-    const token = localStorage.getItem('attendantToken');
-    if (token) {
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    const token = localStorage.getItem('adminToken');
+    if (!token || !isValidToken(token)) {
+        console.warn('Token inválido ou ausente. Redirecionando para login...');
+        localStorage.removeItem('adminToken');
+        showToast('Sessão inválida. Redirecionando para login...', 'warning');
+        setTimeout(() => window.location.href = '/index.html', 2000);
+        return false;
     }
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     axios.defaults.baseURL = API_BASE;
 
     // Interceptor para erros 401
@@ -122,12 +138,14 @@ function setupAxios() {
         response => response,
         error => {
             if (error.response?.status === 401) {
-                showToast('Sessão expirada. Algumas funções podem estar limitadas.', 'warning');
-                localStorage.removeItem('attendantToken');
+                showToast('Sessão expirada. Redirecionando para login...', 'warning');
+                localStorage.removeItem('adminToken');
+                setTimeout(() => window.location.href = '/index.html', 2000);
             }
             return Promise.reject(error);
         }
     );
+    return true;
 }
 
 // Fecha modais
@@ -526,12 +544,12 @@ function setupNavigation() {
             try {
                 toggleLoading(true, 'Saindo...');
                 await axios.post('/api/logout', {}, { timeout: 5000 });
-                localStorage.removeItem('attendantToken');
+                localStorage.removeItem('adminToken');
                 window.location.href = '/index.html';
             } catch (error) {
                 console.error('Erro ao fazer logout:', error.response || error);
                 showToast('Falha ao sair. Sessão limpa localmente.', 'error');
-                localStorage.removeItem('attendantToken');
+                localStorage.removeItem('adminToken');
                 window.location.href = '/index.html';
             } finally {
                 toggleLoading(false);
@@ -678,7 +696,10 @@ function openQrModal() {
 document.addEventListener('DOMContentLoaded', async () => {
     toggleLoading(true, 'Carregando painel...');
 
-    setupAxios();
+    if (!setupAxios()) {
+        toggleLoading(false);
+        return;
+    }
 
     try {
         await Promise.all([
