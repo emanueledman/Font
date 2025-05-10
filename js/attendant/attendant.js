@@ -5,6 +5,13 @@ const socket = io(API_BASE, {
     auth: { token: localStorage.getItem('adminToken') || '' }
 });
 
+// Função para sanitizar entradas e evitar XSS
+const sanitizeInput = (input) => {
+    const div = document.createElement('div');
+    div.textContent = input;
+    return div.innerHTML;
+};
+
 // Valida o token JWT
 function isValidToken(token) {
     try {
@@ -15,6 +22,17 @@ function isValidToken(token) {
         console.error('Erro ao validar token:', e);
         return false;
     }
+}
+
+// Limpa dados sensíveis
+function clearSensitiveData() {
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('institutionId');
+    localStorage.removeItem('branchId');
+    localStorage.removeItem('queues');
 }
 
 // Controla o spinner de carregamento
@@ -125,22 +143,31 @@ function setupAxios() {
     const token = localStorage.getItem('adminToken');
     if (!token || !isValidToken(token)) {
         console.warn('Token inválido ou ausente. Redirecionando para login...');
-        localStorage.removeItem('adminToken');
+        clearSensitiveData();
         showToast('Sessão inválida. Redirecionando para login...', 'warning');
         setTimeout(() => window.location.href = '/index.html', 2000);
         return false;
     }
+
+    // Configurar cabeçalhos globais do Axios
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     axios.defaults.baseURL = API_BASE;
+    axios.defaults.timeout = 10000;
 
-    // Interceptor para erros 401
+    // Interceptor para erros de autenticação
     axios.interceptors.response.use(
         response => response,
         error => {
             if (error.response?.status === 401) {
                 showToast('Sessão expirada. Redirecionando para login...', 'warning');
-                localStorage.removeItem('adminToken');
+                clearSensitiveData();
                 setTimeout(() => window.location.href = '/index.html', 2000);
+            } else if (error.response?.status === 403) {
+                showToast('Acesso não autorizado.', 'error');
+            } else if (error.code === 'ECONNABORTED') {
+                showToast('Tempo de conexão excedido.', 'error');
+            } else if (error.message.includes('Network Error')) {
+                showToast('Falha na conexão com o servidor.', 'error');
             }
             return Promise.reject(error);
         }
@@ -398,8 +425,8 @@ async function fetchUserInfo() {
         console.log('Resposta do perfil:', response.data);
         const userName = document.getElementById('user-name');
         const userEmail = document.getElementById('user-email');
-        if (userName) userName.textContent = response.data.name || 'Atendente';
-        if (userEmail) userEmail.textContent = response.data.email || 'atendente@empresa.com';
+        if (userName) userName.textContent = sanitizeInput(response.data.name || 'Atendente');
+        if (userEmail) userEmail.textContent = sanitizeInput(response.data.email || 'atendente@empresa.com');
     } catch (error) {
         console.error('Erro ao buscar usuário:', error.response || error);
         showToast('Não foi possível carregar informações do usuário.', 'warning');
@@ -486,7 +513,7 @@ async function callNext(queueId) {
 // Rechama ticket
 async function recallTicket() {
     try {
-        toggleLoading(true, 'Rechamando ticket...');
+        toggleLoading (true, 'Rechamando ticket...');
         const response = await axios.post('/api/attendant/recall', {}, { timeout: 5000 });
         showSuccess(`Senha ${response.data.ticket_number} rechamada para o guichê ${response.data.counter}!`);
         await Promise.all([
@@ -544,12 +571,12 @@ function setupNavigation() {
             try {
                 toggleLoading(true, 'Saindo...');
                 await axios.post('/api/logout', {}, { timeout: 5000 });
-                localStorage.removeItem('adminToken');
+                clearSensitiveData();
                 window.location.href = '/index.html';
             } catch (error) {
                 console.error('Erro ao fazer logout:', error.response || error);
                 showToast('Falha ao sair. Sessão limpa localmente.', 'error');
-                localStorage.removeItem('adminToken');
+                clearSensitiveData();
                 window.location.href = '/index.html';
             } finally {
                 toggleLoading(false);
@@ -630,7 +657,7 @@ function setupEventListeners() {
     // Filtro de Fila de Tickets
     document.getElementById('ticket-queue-filter').addEventListener('change', () => {
         const queueId = document.getElementById('ticket-queue-filter').value;
-        document.querySelectorAll('#tickets tr').forEach(row => {
+        document.querySelectorAll('#tickets tr'). forEach(row => {
             const ticketQueueId = row.dataset.queueId;
             row.style.display = queueId === 'all' || ticketQueueId === queueId ? '' : 'none';
         });
@@ -696,7 +723,18 @@ function openQrModal() {
 document.addEventListener('DOMContentLoaded', async () => {
     toggleLoading(true, 'Carregando painel...');
 
+    // Verificar token antes de qualquer inicialização
     if (!setupAxios()) {
+        toggleLoading(false);
+        return;
+    }
+
+    // Verificar se o usuário é um atendente
+    const userRole = localStorage.getItem('userRole');
+    if (userRole !== 'attendant') {
+        showToast('Acesso restrito a atendentes.', 'error');
+        clearSensitiveData();
+        setTimeout(() => window.location.href = '/index.html', 2000);
         toggleLoading(false);
         return;
     }
@@ -717,7 +755,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         setInterval(updateCurrentDateTime, 60000);
     } catch (error) {
         console.error('Erro na inicialização:', error);
-        showToast('Erro ao inicializar painel.', 'error');
+        showToast('Erro ao inicializar painel. Tente novamente.', 'error');
     } finally {
         toggleLoading(false);
     }
