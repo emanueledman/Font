@@ -8,7 +8,7 @@ const sanitizeInput = (input) => {
     return div.innerHTML;
 };
 
-// Valida o token JWT
+// Valida o token JWT (opcional)
 function isValidToken(token) {
     console.log('Validando token:', token); // Log para depuração
     if (!token) {
@@ -16,7 +16,7 @@ function isValidToken(token) {
         return false;
     }
     try {
-        // Verificar formato básico do token (deve ter 3 partes: header.payload.signature)
+        // Verificar formato básico do token
         if (token.split('.').length !== 3) {
             console.warn('Token JWT malformado: não possui 3 partes');
             return false;
@@ -157,23 +157,19 @@ function updateCurrentDateTime() {
 // Configura Axios com token
 function setupAxios() {
     const token = localStorage.getItem('adminToken');
-    console.log('Token recuperado do localStorage:', token); // Log para depuração
+    console.log('Token recuperado do localStorage:', token || 'Nenhum token'); // Log para depuração
+
     if (!token) {
-        console.warn('Token não encontrado no localStorage. Redirecionando para login...');
-        showToast('Sessão não iniciada. Redirecionando para login...', 'warning');
-        setTimeout(() => window.location.href = '/index.html', 2000);
-        return false;
-    }
-    if (!isValidToken(token)) {
-        console.warn('Token inválido. Redirecionando para login...');
+        console.warn('Nenhum token encontrado. Algumas funções podem estar limitadas.');
+        showToast('Faça login para acessar todas as funcionalidades.', 'warning');
+    } else if (!isValidToken(token)) {
+        console.warn('Token inválido. Algumas funções podem estar limitadas.');
+        showToast('Sessão inválida ou expirada. Algumas funções podem estar limitadas.', 'warning');
         clearSensitiveData();
-        showToast('Sessão inválida ou expirada. Redirecionando para login...', 'warning');
-        setTimeout(() => window.location.href = '/index.html', 2000);
-        return false;
+    } else {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
 
-    // Configurar cabeçalhos globais do Axios
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     axios.defaults.baseURL = API_BASE;
     axios.defaults.timeout = 10000;
 
@@ -182,10 +178,9 @@ function setupAxios() {
         response => response,
         error => {
             if (error.response?.status === 401) {
-                console.warn('Erro 401 detectado. Redirecionando para login...');
-                showToast('Sessão expirada. Redirecionando para login...', 'warning');
+                console.warn('Erro 401 detectado. Algumas funções podem estar limitadas.');
+                showToast('Sessão expirada. Algumas funções podem estar limitadas.', 'warning');
                 clearSensitiveData();
-                setTimeout(() => window.location.href = '/index.html', 2000);
             } else if (error.response?.status === 403) {
                 showToast('Acesso não autorizado.', 'error');
             } else if (error.code === 'ECONNABORTED') {
@@ -202,7 +197,7 @@ function setupAxios() {
 // Inicializa WebSocket
 function initializeWebSocket(token) {
     if (!token || !isValidToken(token)) {
-        console.warn('Token inválido para WebSocket. Continuando sem conexão em tempo real.');
+        console.warn('Token inválido ou ausente para WebSocket. Continuando sem conexão em tempo real.');
         showToast('Não foi possível conectar ao servidor em tempo real. Use a atualização manual.', 'warning');
         return;
     }
@@ -212,7 +207,7 @@ function initializeWebSocket(token) {
         transports: ['websocket'],
         reconnectionAttempts: 3,
         reconnectionDelay: 1000,
-        query: { token } // Enviar token como query string
+        query: { token } // Enviar token como query string para alinhar com backend
     });
 
     setupSocketListeners();
@@ -772,36 +767,40 @@ function openQrModal() {
 document.addEventListener('DOMContentLoaded', async () => {
     toggleLoading(true, 'Carregando painel...');
 
-    // Verificar token antes de qualquer inicialização
-    console.log('Iniciando validação do token');
-    if (!setupAxios()) {
-        console.warn('Falha na configuração do Axios. Finalizando inicialização.');
-        toggleLoading(false);
-        return;
-    }
+    // Configurar Axios
+    console.log('Iniciando configuração do Axios');
+    setupAxios();
 
-    // Verificar se o usuário é um atendente
+    // Verificar papel do usuário (opcional, com log para depuração)
     const userRole = localStorage.getItem('userRole');
-    const token = localStorage.getItem('adminToken');
-    console.log('Papel do usuário:', userRole);
-    if (userRole !== 'attendant') {
-        console.warn('Usuário não é atendente. Redirecionando para login...');
-        showToast('Acesso restrito a atendentes.', 'error');
-        clearSensitiveData();
-        setTimeout(() => window.location.href = '/index.html', 2000);
-        toggleLoading(false);
-        return;
+    console.log('Papel do usuário:', userRole || 'Nenhum papel definido');
+    if (userRole && userRole !== 'attendant') {
+        console.warn('Usuário não é atendente. Algumas funções podem estar limitadas.');
+        showToast('Acesso restrito a atendentes. Algumas funções podem estar limitadas.', 'warning');
     }
 
     // Inicializar WebSocket (opcional)
+    const token = localStorage.getItem('adminToken');
     initializeWebSocket(token);
 
     try {
         await Promise.all([
-            fetchUserInfo(),
-            fetchAssignedQueues(),
-            fetchCurrentTicket(),
-            fetchRecentCalls()
+            fetchUserInfo().catch(err => {
+                console.error('Erro em fetchUserInfo:', err);
+                return null;
+            }),
+            fetchAssignedQueues().catch(err => {
+                console.error('Erro em fetchAssignedQueues:', err);
+                return null;
+            }),
+            fetchCurrentTicket().catch(err => {
+                console.error('Erro em fetchCurrentTicket:', err);
+                return null;
+            }),
+            fetchRecentCalls().catch(err => {
+                console.error('Erro em fetchRecentCalls:', err);
+                return null;
+            })
         ]);
 
         await fetchTickets();
@@ -811,7 +810,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         setInterval(updateCurrentDateTime, 60000);
     } catch (error) {
         console.error('Erro na inicialização:', error);
-        showToast('Erro ao inicializar painel. Tente novamente.', 'error');
+        showToast('Erro ao inicializar painel. Algumas funções podem estar limitadas.', 'error');
     } finally {
         toggleLoading(false);
     }
