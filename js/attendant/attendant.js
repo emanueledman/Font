@@ -1,9 +1,5 @@
 const API_BASE = 'https://fila-facilita2-0-4uzw.onrender.com';
-const socket = io(API_BASE, {
-    transports: ['websocket'],
-    reconnectionAttempts: 5,
-    auth: { token: localStorage.getItem('adminToken') || '' }
-});
+let socket = null; // Inicializar socket como null
 
 // Função para sanitizar entradas e evitar XSS
 const sanitizeInput = (input) => {
@@ -173,6 +169,24 @@ function setupAxios() {
         }
     );
     return true;
+}
+
+// Inicializa WebSocket
+function initializeWebSocket(token) {
+    if (!token || !isValidToken(token)) {
+        console.warn('Token inválido para WebSocket. Não inicializando conexão.');
+        showToast('Não foi possível conectar ao servidor em tempo real.', 'error');
+        return;
+    }
+
+    socket = io(API_BASE, {
+        transports: ['websocket'],
+        reconnectionAttempts: 3, // Reduzir tentativas de reconexão
+        reconnectionDelay: 1000,
+        auth: { token }
+    });
+
+    setupSocketListeners();
 }
 
 // Fecha modais
@@ -513,7 +527,7 @@ async function callNext(queueId) {
 // Rechama ticket
 async function recallTicket() {
     try {
-        toggleLoading (true, 'Rechamando ticket...');
+        toggleLoading(true, 'Rechamando ticket...');
         const response = await axios.post('/api/attendant/recall', {}, { timeout: 5000 });
         showSuccess(`Senha ${response.data.ticket_number} rechamada para o guichê ${response.data.counter}!`);
         await Promise.all([
@@ -572,11 +586,13 @@ function setupNavigation() {
                 toggleLoading(true, 'Saindo...');
                 await axios.post('/api/logout', {}, { timeout: 5000 });
                 clearSensitiveData();
+                if (socket) socket.disconnect();
                 window.location.href = '/index.html';
             } catch (error) {
                 console.error('Erro ao fazer logout:', error.response || error);
                 showToast('Falha ao sair. Sessão limpa localmente.', 'error');
                 clearSensitiveData();
+                if (socket) socket.disconnect();
                 window.location.href = '/index.html';
             } finally {
                 toggleLoading(false);
@@ -587,6 +603,8 @@ function setupNavigation() {
 
 // Configura WebSocket
 function setupSocketListeners() {
+    if (!socket) return;
+
     socket.on('connect', () => {
         console.log('Conectado ao WebSocket');
         showToast('Conexão em tempo real estabelecida.', 'success');
@@ -612,12 +630,14 @@ function setupSocketListeners() {
         ]);
     });
 
-    socket.on('connect_error', () => {
-        showToast('Falha na conexão em tempo real. Tentando reconectar...', 'error');
+    socket.on('connect_error', (error) => {
+        console.error('Erro na conexão WebSocket:', error);
+        showToast('Falha na conexão em tempo real. Verifique sua conexão.', 'error');
     });
 
     socket.on('disconnect', () => {
-        showToast('Conexão perdida. Tentando reconectar...', 'error');
+        console.warn('Desconectado do WebSocket');
+        showToast('Conexão em tempo real perdida.', 'error');
     });
 }
 
@@ -657,7 +677,7 @@ function setupEventListeners() {
     // Filtro de Fila de Tickets
     document.getElementById('ticket-queue-filter').addEventListener('change', () => {
         const queueId = document.getElementById('ticket-queue-filter').value;
-        document.querySelectorAll('#tickets tr'). forEach(row => {
+        document.querySelectorAll('#tickets tr').forEach(row => {
             const ticketQueueId = row.dataset.queueId;
             row.style.display = queueId === 'all' || ticketQueueId === queueId ? '' : 'none';
         });
@@ -731,6 +751,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Verificar se o usuário é um atendente
     const userRole = localStorage.getItem('userRole');
+    const token = localStorage.getItem('adminToken');
     if (userRole !== 'attendant') {
         showToast('Acesso restrito a atendentes.', 'error');
         clearSensitiveData();
@@ -738,6 +759,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         toggleLoading(false);
         return;
     }
+
+    // Inicializar WebSocket apenas após validação
+    initializeWebSocket(token);
 
     try {
         await Promise.all([
@@ -748,7 +772,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         ]);
 
         await fetchTickets();
-        setupSocketListeners();
         setupNavigation();
         setupEventListeners();
         updateCurrentDateTime();
