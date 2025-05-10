@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Redirecionar com base no papel
             switch (user_role) {
-                case 'inst_admin':
+                case 'sys_admin':
                     localStorage.setItem('departments', JSON.stringify(departments || []));
                     localStorage.setItem('managers', JSON.stringify(managers || []));
                     window.location.href = '/institution-admin.html';
