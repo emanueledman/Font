@@ -10,18 +10,38 @@ const sanitizeInput = (input) => {
 
 // Valida o token JWT
 function isValidToken(token) {
+    console.log('Validando token:', token); // Log para depuração
+    if (!token) {
+        console.warn('Token ausente');
+        return false;
+    }
     try {
+        // Verificar formato básico do token (deve ter 3 partes: header.payload.signature)
+        if (token.split('.').length !== 3) {
+            console.warn('Token JWT malformado: não possui 3 partes');
+            return false;
+        }
         const payload = JSON.parse(atob(token.split('.')[1]));
+        console.log('Payload do token:', payload); // Log para depuração
         const now = Math.floor(Date.now() / 1000);
-        return payload.exp && payload.exp > now;
+        if (!payload.exp) {
+            console.warn('Token sem campo exp');
+            return false;
+        }
+        if (payload.exp <= now) {
+            console.warn('Token expirado:', payload.exp, 'vs', now);
+            return false;
+        }
+        return true;
     } catch (e) {
-        console.error('Erro ao validar token:', e);
+        console.error('Erro ao validar token:', e.message);
         return false;
     }
 }
 
 // Limpa dados sensíveis
 function clearSensitiveData() {
+    console.log('Limpando dados sensíveis do localStorage');
     localStorage.removeItem('adminToken');
     localStorage.removeItem('userId');
     localStorage.removeItem('userRole');
@@ -137,10 +157,17 @@ function updateCurrentDateTime() {
 // Configura Axios com token
 function setupAxios() {
     const token = localStorage.getItem('adminToken');
-    if (!token || !isValidToken(token)) {
-        console.warn('Token inválido ou ausente. Redirecionando para login...');
+    console.log('Token recuperado do localStorage:', token); // Log para depuração
+    if (!token) {
+        console.warn('Token não encontrado no localStorage. Redirecionando para login...');
+        showToast('Sessão não iniciada. Redirecionando para login...', 'warning');
+        setTimeout(() => window.location.href = '/index.html', 2000);
+        return false;
+    }
+    if (!isValidToken(token)) {
+        console.warn('Token inválido. Redirecionando para login...');
         clearSensitiveData();
-        showToast('Sessão inválida. Redirecionando para login...', 'warning');
+        showToast('Sessão inválida ou expirada. Redirecionando para login...', 'warning');
         setTimeout(() => window.location.href = '/index.html', 2000);
         return false;
     }
@@ -155,6 +182,7 @@ function setupAxios() {
         response => response,
         error => {
             if (error.response?.status === 401) {
+                console.warn('Erro 401 detectado. Redirecionando para login...');
                 showToast('Sessão expirada. Redirecionando para login...', 'warning');
                 clearSensitiveData();
                 setTimeout(() => window.location.href = '/index.html', 2000);
@@ -745,7 +773,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     toggleLoading(true, 'Carregando painel...');
 
     // Verificar token antes de qualquer inicialização
+    console.log('Iniciando validação do token');
     if (!setupAxios()) {
+        console.warn('Falha na configuração do Axios. Finalizando inicialização.');
         toggleLoading(false);
         return;
     }
@@ -753,7 +783,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Verificar se o usuário é um atendente
     const userRole = localStorage.getItem('userRole');
     const token = localStorage.getItem('adminToken');
+    console.log('Papel do usuário:', userRole);
     if (userRole !== 'attendant') {
+        console.warn('Usuário não é atendente. Redirecionando para login...');
         showToast('Acesso restrito a atendentes.', 'error');
         clearSensitiveData();
         setTimeout(() => window.location.href = '/index.html', 2000);
