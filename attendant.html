@@ -321,110 +321,199 @@
 
 <script>
 const API_BASE = 'https://fila-facilita2-0-4uzw.onrender.com';
-const socket = io(API_BASE, { transports: ['websocket'], reconnectionAttempts: 5 });
+const socket = io(API_BASE, {
+    transports: ['websocket'],
+    reconnectionAttempts: 5,
+    auth: { token: localStorage.getItem('attendantToken') || '' }
+});
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Mostrar spinner
+    toggleLoading(true, 'Carregando painel...');
+
     const token = localStorage.getItem('attendantToken');
+    console.log('Token usado:', token || 'Nenhum token');
+
     if (!token) {
-        window.location.href = '/index.html';
-        return;
+        console.warn('Nenhum token encontrado. Algumas funções podem estar limitadas.');
+        showToast('Faça login para acessar todas as funcionalidades.', 'warning');
+    } else {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
 
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     axios.defaults.baseURL = API_BASE;
 
+    // Interceptor para erros 401
     axios.interceptors.response.use(
         response => response,
         error => {
             if (error.response?.status === 401) {
-                localStorage.clear();
-                window.location.href = '/index.html';
+                showToast('Sessão expirada. Algumas funções podem estar limitadas.', 'warning');
+                localStorage.removeItem('attendantToken');
             }
             return Promise.reject(error);
         }
     );
 
     try {
-        await fetchUserInfo();
-        await fetchAssignedQueues();
-        await fetchCurrentTicket();
-        await fetchRecentCalls();
+        await Promise.all([
+            fetchUserInfo().catch(err => {
+                console.error('Erro em fetchUserInfo:', err);
+                return null;
+            }),
+            fetchAssignedQueues().catch(err => {
+                console.error('Erro em fetchAssignedQueues:', err);
+                return null;
+            }),
+            fetchCurrentTicket().catch(err => {
+                console.error('Erro em fetchCurrentTicket:', err);
+                return null;
+            }),
+            fetchRecentCalls().catch(err => {
+                console.error('Erro em fetchRecentCalls:', err);
+                return null;
+            })
+        ]);
+
+        await fetchTickets();
         setupSocketListeners();
-        setupEventListeners();
+        setupNavigation();
         updateCurrentDateTime();
         setInterval(updateCurrentDateTime, 60000);
+
+        // Configurar botão de atualizar
+        const refreshButton = document.getElementById('refresh-queue');
+        if (refreshButton) {
+            refreshButton.addEventListener('click', async () => {
+                const queueId = document.getElementById('queue-select').value;
+                if (!queueId) {
+                    showToast('Selecione uma fila para atualizar.', 'warning');
+                    return;
+                }
+                toggleLoading(true, 'Atualizando dados da fila...');
+                try {
+                    await fetchNextInQueue(queueId);
+                    showToast('Dados da fila atualizados com sucesso!', 'success');
+                } catch (error) {
+                    console.error('Erro ao atualizar:', error);
+                    showToast('Falha ao atualizar dados.', 'error');
+                } finally {
+                    toggleLoading(false);
+                }
+            });
+        }
     } catch (error) {
         console.error('Erro na inicialização:', error);
-        showError('Erro ao inicializar painel.', error.response?.data?.error || error.message);
+        showToast('Erro ao inicializar painel.', 'error');
+    } finally {
+        toggleLoading(false);
     }
 });
 
-// Funções de Busca
-async function fetchUserInfo() {
-    try {
-        const response = await axios.get('/api/attendant/user');
-        document.getElementById('user-email').textContent = response.data.email;
-        document.getElementById('user-name').textContent = response.data.name;
-    } catch (error) {
-        console.error('Erro ao buscar usuário:', error);
-        showError('Erro ao carregar informações do usuário.');
+// Função para controlar o spinner
+function toggleLoading(show, message = 'Carregando...') {
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const loadingMessage = document.getElementById('loading-message');
+    
+    if (loadingOverlay && loadingMessage) {
+        if (show) {
+            loadingMessage.textContent = message;
+            loadingOverlay.classList.remove('hidden');
+        } else {
+            loadingOverlay.classList.add('hidden');
+        }
     }
 }
 
+// Busca informações do usuário
+async function fetchUserInfo() {
+    try {
+        const response = await axios.get('/api/attendant/user', { timeout: 5000 });
+        console.log('Resposta do perfil:', response.data);
+        const userName = document.getElementById('user-name');
+        const userEmail = document.getElementById('user-email');
+        if (userName) userName.textContent = response.data.name || 'Atendente';
+        if (userEmail) userEmail.textContent = response.data.email || 'atendente@empresa.com';
+    } catch (error) {
+        console.error('Erro ao buscar usuário:', error.response || error);
+        showToast('Não foi possível carregar informações do usuário.', 'warning');
+    }
+}
+
+// Busca filas atribuídas
 async function fetchAssignedQueues() {
     try {
-        const response = await axios.get('/api/attendant/queues');
+        toggleLoading(true, 'Carregando filas...');
+        const response = await axios.get('/api/attendant/queues', { timeout: 10000 });
+        console.log('Resposta queues:', response.data);
         renderQueueSelect(response.data);
         localStorage.setItem('queues', JSON.stringify(response.data));
     } catch (error) {
-        console.error('Erro ao buscar filas:', error);
-        showError('Erro ao carregar filas.', error.response?.data?.error || error.message);
+        console.error('Erro ao buscar filas:', error.response || error);
+        showToast('Falha ao carregar filas.', 'error');
+    } finally {
+        toggleLoading(false);
     }
 }
 
+// Busca ticket atual
 async function fetchCurrentTicket() {
     try {
-        const response = await axios.get('/api/attendant/current-ticket');
+        const response = await axios.get('/api/attendant/current-ticket', { timeout: 5000 });
+        console.log('Resposta current ticket:', response.data);
         updateCurrentTicket(response.data);
     } catch (error) {
-        console.error('Erro ao buscar ticket atual:', error);
-        showError('Erro ao carregar ticket atual.');
+        console.error('Erro ao buscar ticket atual:', error.response || error);
+        showToast('Falha ao carregar ticket atual.', 'error');
+        updateCurrentTicket({});
     }
 }
 
+// Busca chamadas recentes
 async function fetchRecentCalls() {
     try {
-        const response = await axios.get('/api/attendant/recent-calls');
+        const response = await axios.get('/api/attendant/recent-calls', { timeout: 10000 });
+        console.log('Resposta recent calls:', response.data);
         renderRecentCalls(response.data);
         renderCallFilter(response.data);
     } catch (error) {
-        console.error('Erro ao buscar chamadas recentes:', error);
-        showError('Erro ao carregar chamadas recentes.');
+        console.error('Erro ao buscar chamadas recentes:', error.response || error);
+        showToast('Falha ao carregar chamadas recentes.', 'error');
     }
 }
 
+// Busca tickets
 async function fetchTickets() {
     try {
-        const response = await axios.get('/api/attendant/tickets');
+        toggleLoading(true, 'Carregando tickets...');
+        const response = await axios.get('/api/attendant/tickets', { timeout: 10000 });
+        console.log('Resposta tickets:', response.data);
         renderTickets(response.data);
         renderTicketQueueFilter(response.data);
     } catch (error) {
-        console.error('Erro ao buscar tickets:', error);
-        showError('Erro ao carregar tickets.', error.response?.data?.error || error.message);
+        console.error('Erro ao buscar tickets:', error.response || error);
+        showToast('Falha ao carregar tickets.', 'error');
+    } finally {
+        toggleLoading(false);
     }
 }
 
+// Busca próximos na fila
 async function fetchNextInQueue(queueId) {
     try {
-        const response = await axios.get(`/api/attendant/queue/${queueId}/next`);
+        toggleLoading(true, 'Carregando próximos na fila...');
+        const response = await axios.get(`/api/attendant/queue/${queueId}/next`, { timeout: 10000 });
+        console.log('Resposta next in queue:', response.data);
         renderNextQueue(response.data);
     } catch (error) {
-        console.error('Erro ao buscar próximos na fila:', error);
-        showError('Erro ao carregar próximos na fila.');
+        console.error('Erro ao buscar próximos na fila:', error.response || error);
+        showToast('Falha ao carregar próximos na fila.', 'error');
+    } finally {
+        toggleLoading(false);
     }
 }
 
-// Funções de Renderização
+// Renderiza seletor de filas
 function renderQueueSelect(queues) {
     const select = document.getElementById('queue-select');
     select.innerHTML = '<option value="">Selecione uma fila</option>';
@@ -440,6 +529,7 @@ function renderQueueSelect(queues) {
     });
 }
 
+// Atualiza ticket atual
 function updateCurrentTicket(data) {
     const ticketEl = document.getElementById('current-ticket');
     const serviceEl = document.getElementById('current-service');
@@ -459,10 +549,11 @@ function updateCurrentTicket(data) {
     ticketEl.textContent = data.ticket_number;
     serviceEl.textContent = data.service;
     counterEl.textContent = `Guichê ${data.counter}`;
-    waitTimeEl.textContent = data.avg_wait_time ? `${data.avg_wait_time.toFixed(2)} min` : 'N/A';
-    waitBarEl.style.width = data.avg_wait_time ? `${Math.min((data.avg_wait_time / 30) * 100, 100)}%` : '0%';
+    waitTimeEl.textContent = data.avg_wait_time ? `${Math.floor(data.avg_wait_time / 60)} min ${Math.round(data.avg_wait_time % 60)} s` : 'N/A';
+    waitBarEl.style.width = data.avg_wait_time ? `${Math.min((data.avg_wait_time / 600) * 100, 100)}%` : '0%';
 }
 
+// Renderiza próximos na fila
 function renderNextQueue(tickets) {
     const container = document.getElementById('next-queue');
     container.innerHTML = '';
@@ -484,6 +575,7 @@ function renderNextQueue(tickets) {
     });
 }
 
+// Renderiza chamadas recentes
 function renderRecentCalls(calls) {
     const tbody = document.getElementById('recent-calls-table');
     tbody.innerHTML = '';
@@ -492,34 +584,35 @@ function renderRecentCalls(calls) {
         return;
     }
     calls.forEach(call => {
+        const statusColor = call.status === 'Atendido' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800';
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td class="p-3">${call.ticket_number}</td>
-            <td class="p-3">${call.service}</td>
-            <td class="p-3">Guichê ${call.counter}</td>
-            <td class="p-3">${new Date(call.called_at).toLocaleString('pt-BR')}</td>
-            <td class="p-3">${call.status}</td>
+            <td class="px-4 py-3">${call.ticket_number}</td>
+            <td class="px-4 py-3">${call.service}</td>
+            <td class="px-4 py-3">Guichê ${call.counter}</td>
+            <td class="px-4 py-3">${new Date(call.called_at).toLocaleString('pt-BR')}</td>
+            <td class="px-4 py-3">
+                <span class="px-2 py-1 text-xs font-semibold rounded-full ${statusColor}">${call.status}</span>
+            </td>
         `;
         tbody.appendChild(tr);
     });
 }
 
+// Renderiza filtro de chamadas
 function renderCallFilter(calls) {
     const select = document.getElementById('call-filter');
     select.innerHTML = '<option value="">Todas as filas</option>';
-    const queues = [...new Set(calls.map(call => call.queue_id))];
-    const queueData = JSON.parse(localStorage.getItem('queues')) || [];
-    queues.forEach(queueId => {
-        const queue = queueData.find(q => q.id === queueId);
-        if (queue) {
-            const option = document.createElement('option');
-            option.value = queueId;
-            option.textContent = queue.service;
-            select.appendChild(option);
-        }
+    const services = [...new Set(calls.map(call => call.service))];
+    services.forEach(service => {
+        const option = document.createElement('option');
+        option.value = service;
+        option.textContent = service;
+        select.appendChild(option);
     });
 }
 
+// Renderiza tickets
 function renderTickets(tickets) {
     const tbody = document.getElementById('tickets');
     tbody.innerHTML = '';
@@ -529,13 +622,14 @@ function renderTickets(tickets) {
     }
     tickets.forEach(ticket => {
         const tr = document.createElement('tr');
+        tr.dataset.queueId = ticket.queue_id;
         tr.innerHTML = `
-            <td class="p-3">${ticket.number}</td>
-            <td class="p-3">${ticket.service}</td>
-            <td class="p-3">${ticket.status}</td>
-            <td class="p-3">${ticket.counter ? `Guichê ${ticket.counter}` : 'N/A'}</td>
-            <td class="p-3">${new Date(ticket.issued_at).toLocaleString('pt-BR')}</td>
-            <td class="p-3">
+            <td class="px-4 py-3">${ticket.number}</td>
+            <td class="px-4 py-3">${ticket.service}</td>
+            <td class="px-4 py-3">${ticket.status}</td>
+            <td class="px-4 py-3">${ticket.counter ? `Guichê ${ticket.counter}` : 'N/A'}</td>
+            <td class="px-4 py-3">${new Date(ticket.issued_at).toLocaleString('pt-BR')}</td>
+            <td class="px-4 py-3">
                 ${ticket.status === 'Pendente' ? `<button onclick="callTicket('${ticket.queue_id}', '${ticket.id}')" class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-sm">Chamar</button>` : ''}
                 ${ticket.status === 'Chamado' ? `<button onclick="completeTicket('${ticket.id}')" class="bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded text-sm">Finalizar</button>` : ''}
             </td>
@@ -544,6 +638,7 @@ function renderTickets(tickets) {
     });
 }
 
+// Renderiza filtro de filas para tickets
 function renderTicketQueueFilter(tickets) {
     const select = document.getElementById('ticket-queue-filter');
     select.innerHTML = '<option value="all">Todas as filas</option>';
@@ -560,105 +655,196 @@ function renderTicketQueueFilter(tickets) {
     });
 }
 
-// Ações de Atendimento
+// Ações de atendimento
 async function callTicket(queueId, ticketId) {
     try {
-        const response = await axios.post(`/api/attendant/queue/${queueId}/call`, { ticket_id: ticketId });
+        toggleLoading(true, 'Chamando ticket...');
+        const response = await axios.post(`/api/attendant/queue/${queueId}/call`, { ticket_id: ticketId }, { timeout: 5000 });
         showSuccess(`Senha ${response.data.ticket_number} chamada para o guichê ${response.data.counter}!`);
         await fetchCurrentTicket();
         await fetchRecentCalls();
         await fetchNextInQueue(queueId);
         await fetchTickets();
     } catch (error) {
-        console.error('Erro ao chamar ticket:', error);
-        showError('Erro ao chamar ticket.', error.response?.data?.error || error.message);
+        console.error('Erro ao chamar ticket:', error.response || error);
+        showToast('Falha ao chamar ticket.', 'error');
+    } finally {
+        toggleLoading(false);
     }
 }
 
 async function callNext(queueId) {
     if (!queueId) {
-        showError('Selecione uma fila antes de chamar.');
+        showToast('Selecione uma fila antes de chamar.', 'warning');
         return;
     }
     try {
-        const response = await axios.post(`/api/attendant/queue/${queueId}/call`);
+        toggleLoading(true, 'Chamando próximo ticket...');
+        const response = await axios.post(`/api/attendant/queue/${queueId}/call`, {}, { timeout: 5000 });
         showSuccess(`Senha ${response.data.ticket_number} chamada para o guichê ${response.data.counter}!`);
         await fetchCurrentTicket();
         await fetchRecentCalls();
         await fetchNextInQueue(queueId);
         await fetchTickets();
     } catch (error) {
-        console.error('Erro ao chamar próxima senha:', error);
-        showError('Erro ao chamar próxima senha.', error.response?.data?.error || error.message);
+        console.error('Erro ao chamar próxima senha:', error.response || error);
+        showToast('Falha ao chamar próxima senha.', 'error');
+    } finally {
+        toggleLoading(false);
     }
 }
 
 async function recallTicket() {
     try {
-        const response = await axios.post('/api/attendant/recall');
+        toggleLoading(true, 'Rechamando ticket...');
+        const response = await axios.post('/api/attendant/recall', {}, { timeout: 5000 });
         showSuccess(`Senha ${response.data.ticket_number} rechamada para o guichê ${response.data.counter}!`);
         await fetchCurrentTicket();
         await fetchRecentCalls();
     } catch (error) {
-        console.error('Erro ao rechamar ticket:', error);
-        showError('Erro ao rechamar ticket.', error.response?.data?.error || error.message);
+        console.error('Erro ao rechamar ticket:', error.response || error);
+        showToast('Falha ao rechamar ticket.', 'error');
+    } finally {
+        toggleLoading(false);
     }
 }
 
 async function completeTicket(ticketId) {
     try {
-        const response = await axios.post(`/api/attendant/ticket/${ticketId}/complete`);
+        toggleLoading(true, 'Finalizando atendimento...');
+        const response = await axios.post(`/api/attendant/ticket/${ticketId}/complete`, {}, { timeout: 5000 });
         showSuccess('Atendimento finalizado com sucesso!');
         await fetchCurrentTicket();
         await fetchRecentCalls();
         await fetchTickets();
     } catch (error) {
-        console.error('Erro ao finalizar ticket:', error);
-        showError('Erro ao finalizar ticket.', error.response?.data?.error || error.message);
+        console.error('Erro ao finalizar ticket:', error.response || error);
+        showToast('Falha ao finalizar ticket.', 'error');
+    } finally {
+        toggleLoading(false);
     }
 }
 
 async function validateQrCode(qrCode) {
     try {
-        const response = await axios.post('/api/ticket/validate', { qr_code: qrCode });
+        toggleLoading(true, 'Validando QR code...');
+        const response = await axios.post('/api/ticket/validate', { qr_code: qrCode }, { timeout: 5000 });
         showSuccess(`Presença validada para ticket ${response.data.ticket_id}!`);
         await fetchTickets();
+        await fetchCurrentTicket();
     } catch (error) {
-        console.error('Erro ao validar QR code:', error);
-        showError('Erro ao validar QR code.', error.response?.data?.error || error.message);
+        console.error('Erro ao validar QR code:', error.response || error);
+        showToast('Falha ao validar QR code.', 'error');
+    } finally {
+        toggleLoading(false);
     }
 }
 
-// Configuração de Eventos
-function setupEventListeners() {
-    // Logout
-    document.getElementById('logout').addEventListener('click', () => {
-        localStorage.clear();
-        window.location.href = '/index.html';
-    });
-
-    // Tabs
-    const tabs = {
+// Configura navegação
+function setupNavigation() {
+    const sections = {
         'nav-call': 'call-section',
         'nav-tickets': 'tickets-section'
     };
-    Object.keys(tabs).forEach(tabId => {
-        document.getElementById(tabId).addEventListener('click', () => {
-            Object.keys(tabs).forEach(id => {
-                const btn = document.getElementById(id);
-                const section = document.getElementById(tabs[id]);
-                if (id === tabId) {
-                    btn.classList.add('bg-blue-500', 'text-white');
-                    btn.classList.remove('bg-gray-300', 'text-gray-700');
-                    section.classList.remove('hidden');
-                } else {
-                    btn.classList.add('bg-gray-300', 'text-gray-700');
-                    btn.classList.remove('bg-blue-500', 'text-white');
-                    section.classList.add('hidden');
-                }
+
+    Object.keys(sections).forEach(navId => {
+        const btn = document.getElementById(navId);
+        if (btn) {
+            btn.addEventListener('click', () => {
+                Object.keys(sections).forEach(id => {
+                    const otherBtn = document.getElementById(id);
+                    const section = document.getElementById(sections[id]);
+                    if (id === navId) {
+                        otherBtn.classList.add('bg-blue-700', 'text-white');
+                        otherBtn.classList.remove('hover:bg-blue-600');
+                        if (section) section.classList.remove('hidden');
+                        if (id === 'nav-tickets') fetchTickets();
+                    } else {
+                        otherBtn.classList.remove('bg-blue-700', 'text-white');
+                        otherBtn.classList.add('hover:bg-blue-600');
+                        if (section) section.classList.add('hidden');
+                    }
+                });
             });
-            if (tabId === 'nav-tickets') fetchTickets();
+        }
+    });
+
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', () => {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar) sidebar.classList.toggle('w-20', 'w-64');
         });
+    }
+
+    const logoutButton = document.getElementById('logout');
+    if (logoutButton) {
+        logoutButton.addEventListener('click', async () => {
+            try {
+                toggleLoading(true, 'Saindo...');
+                await axios.post('/api/logout', {}, { timeout: 5000 });
+                localStorage.removeItem('attendantToken');
+                window.location.href = '/index.html';
+            } catch (error) {
+                console.error('Erro ao fazer logout:', error.response || error);
+                showToast('Falha ao sair. Sessão limpa localmente.', 'error');
+                localStorage.removeItem('attendantToken');
+                window.location.href = '/index.html';
+            } finally {
+                toggleLoading(false);
+            }
+        });
+    }
+}
+
+// Configura WebSocket
+function setupSocketListeners() {
+    socket.on('connect', () => {
+        console.log('Conectado ao WebSocket');
+        showToast('Conexão em tempo real estabelecida.', 'success');
+    });
+
+    socket.on('ticket_called', async data => {
+        showToast(`Ticket ${data.ticket_number} chamado por outro atendente.`, 'info');
+        await fetchCurrentTicket();
+        await fetchRecentCalls();
+        const queueId = document.getElementById('queue-select').value;
+        if (queueId) await fetchNextInQueue(queueId);
+        await fetchTickets();
+    });
+
+    socket.on('ticket_completed', async data => {
+        showToast(`Ticket ${data.ticket_number} finalizado.`, 'info');
+        await fetchCurrentTicket();
+        await fetchRecentCalls();
+        await fetchTickets();
+    });
+
+    socket.on('connect_error', () => {
+        showToast('Falha na conexão em tempo real. Tentando reconectar...', 'error');
+    });
+
+    socket.on('disconnect', () => {
+        showToast('Conexão perdida. Tentando reconectar...', 'error');
+    });
+}
+
+// Configura eventos
+function setupEventListeners() {
+    // Modal de QR Code
+    document.getElementById('validate-qr-btn').addEventListener('click', openQrModal);
+    document.getElementById('validate-qr-btn-tickets').addEventListener('click', openQrModal);
+    document.getElementById('cancel-qr-btn').addEventListener('click', () => {
+        document.getElementById('qr-modal').classList.add('hidden');
+    });
+    document.getElementById('close-qr-modal').addEventListener('click', () => {
+        document.getElementById('qr-modal').classList.add('hidden');
+    });
+    document.getElementById('qr-form').addEventListener('submit', async e => {
+        e.preventDefault();
+        const qrCode = document.getElementById('qr_code').value;
+        await validateQrCode(qrCode);
+        document.getElementById('qr-modal').classList.add('hidden');
     });
 
     // Filtro de Tickets
@@ -690,7 +876,7 @@ function setupEventListeners() {
     });
 
     // Seleção de Fila
-    document.getElementById('queue-select').addEventListener('change', async (e) => {
+    document.getElementById('queue-select').addEventListener('change', async e => {
         const queueId = e.target.value;
         if (queueId) {
             await fetchNextInQueue(queueId);
@@ -710,30 +896,8 @@ function setupEventListeners() {
         if (currentTicket !== '---') {
             completeTicket(currentTicket);
         } else {
-            showError('Nenhum ticket ativo para finalizar.');
+            showToast('Nenhum ticket ativo para finalizar.', 'warning');
         }
-    });
-
-    // Atualizar Fila
-    document.getElementById('refresh-queue').addEventListener('click', () => {
-        const queueId = document.getElementById('queue-select').value;
-        if (queueId) fetchNextInQueue(queueId);
-    });
-
-    // Modal de QR Code
-    document.getElementById('validate-qr-btn').addEventListener('click', openQrModal);
-    document.getElementById('validate-qr-btn-tickets').addEventListener('click', openQrModal);
-    document.getElementById('cancel-qr-btn').addEventListener('click', () => {
-        document.getElementById('qr-modal').classList.add('hidden');
-    });
-    document.getElementById('close-qr-modal').addEventListener('click', () => {
-        document.getElementById('qr-modal').classList.add('hidden');
-    });
-    document.getElementById('qr-form').addEventListener('submit', async e => {
-        e.preventDefault();
-        const qrCode = document.getElementById('qr_code').value;
-        await validateQrCode(qrCode);
-        document.getElementById('qr-modal').classList.add('hidden');
     });
 
     // Modal de Erro
@@ -745,34 +909,38 @@ function setupEventListeners() {
     });
 }
 
-// WebSocket
-function setupSocketListeners() {
-    socket.on('ticket_called', async data => {
-        showToast(`Ticket ${data.ticket_number} chamado por outro atendente.`);
-        await fetchCurrentTicket();
-        await fetchRecentCalls();
-        const queueId = document.getElementById('queue-select').value;
-        if (queueId) await fetchNextInQueue(queueId);
-        await fetchTickets();
-    });
+// Exibe notificações
+function showToast(message, type = 'success') {
+    const toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        console.warn('Toast container não encontrado');
+        return;
+    }
 
-    socket.on('ticket_completed', async data => {
-        showToast(`Ticket ${data.ticket_number} finalizado.`);
-        await fetchCurrentTicket();
-        await fetchRecentCalls();
-        await fetchTickets();
-    });
-
-    socket.on('connect_error', () => {
-        showError('Erro de conexão com o servidor. Tentando reconectar...');
-    });
-
-    socket.on('reconnect', () => {
-        showSuccess('Conexão restabelecida!');
-    });
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type} text-white px-6 py-3 rounded-lg shadow-lg animate-slide-in`;
+    toast.innerHTML = `
+        <div class="flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${
+                    type === 'success' ? 'M5 13l4 4L19 7' :
+                    type === 'warning' ? 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' :
+                    'M6 18L18 6M6 6l12 12'
+                }"/>
+            </svg>
+            ${message}
+        </div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.classList.add('animate-slide-out');
+        setTimeout(() => toast.remove(), 500);
+    }, 5000);
 }
 
-// Feedback Visual
+// Exibe erros
 function showError(title, message = '') {
     const modal = document.getElementById('error-modal');
     document.getElementById('error-modal-title').textContent = title;
@@ -785,28 +953,19 @@ function showError(title, message = '') {
     modal.classList.remove('hidden');
 }
 
+// Exibe sucesso
 function showSuccess(message) {
-    showToast(message, 'bg-green-500');
+    showToast(message, 'success');
 }
 
-function showToast(message, bgColor = 'bg-blue-500') {
-    const container = document.getElementById('toast-container');
-    const toast = document.createElement('div');
-    toast.className = `text-white px-4 py-2 rounded-lg shadow-lg ${bgColor} animate-slide-in`;
-    toast.textContent = message;
-    container.appendChild(toast);
-    setTimeout(() => {
-        toast.classList.add('animate-slide-out');
-        setTimeout(() => toast.remove(), 500);
-    }, 3000);
-}
-
+// Abre modal de QR code
 function openQrModal() {
     const modal = document.getElementById('qr-modal');
     document.getElementById('qr-form').reset();
     modal.classList.remove('hidden');
 }
 
+// Atualiza data atual
 function updateCurrentDateTime() {
     const now = new Date();
     const options = {
@@ -833,3 +992,4 @@ function updateCurrentDateTime() {
 .animate-slide-in { animation: slide-in 0.3s ease-out; }
 .animate-slide-out { animation: slide-out 0.3s ease-in; }
 </style>
+
