@@ -174,16 +174,17 @@ function setupAxios() {
 // Inicializa WebSocket
 function initializeWebSocket(token) {
     if (!token || !isValidToken(token)) {
-        console.warn('Token inválido para WebSocket. Não inicializando conexão.');
-        showToast('Não foi possível conectar ao servidor em tempo real.', 'error');
+        console.warn('Token inválido para WebSocket. Continuando sem conexão em tempo real.');
+        showToast('Não foi possível conectar ao servidor em tempo real. Use a atualização manual.', 'warning');
         return;
     }
 
+    console.log('Inicializando WebSocket com token:', token); // Log para depuração
     socket = io(API_BASE, {
         transports: ['websocket'],
-        reconnectionAttempts: 3, // Reduzir tentativas de reconexão
+        reconnectionAttempts: 3,
         reconnectionDelay: 1000,
-        auth: { token }
+        query: { token } // Enviar token como query string
     });
 
     setupSocketListeners();
@@ -632,12 +633,12 @@ function setupSocketListeners() {
 
     socket.on('connect_error', (error) => {
         console.error('Erro na conexão WebSocket:', error);
-        showToast('Falha na conexão em tempo real. Verifique sua conexão.', 'error');
+        showToast('Falha na conexão em tempo real. Use a atualização manual.', 'warning');
     });
 
     socket.on('disconnect', () => {
         console.warn('Desconectado do WebSocket');
-        showToast('Conexão em tempo real perdida.', 'error');
+        showToast('Conexão em tempo real perdida. Use a atualização manual.', 'warning');
     });
 }
 
@@ -760,7 +761,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    // Inicializar WebSocket apenas após validação
+    // Inicializar WebSocket (opcional)
     initializeWebSocket(token);
 
     try {
