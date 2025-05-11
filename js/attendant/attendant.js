@@ -7,7 +7,7 @@ const sanitizeInput = (input) => {
     if (typeof input !== 'string') return '';
     const div = document.createElement('div');
     div.textContent = input;
-    return div.innerHTML.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return div.innerHTML.replace(/</g, '<').replace(/>/g, '>');
 };
 
 // Valida código QR
@@ -384,29 +384,47 @@ const renderNextQueue = async () => {
     const container = document.getElementById('next-queue');
     if (!container) return;
     container.innerHTML = '';
+    const queueSelect = document.getElementById('queue-select');
+    const selectedQueueId = queueSelect.value;
     const queues = JSON.parse(localStorage.getItem('queues')) || [];
+    
     if (!queues.length) {
-        container.innerHTML = '<p class="text-gray-500 text-center">Nenhuma fila disponível.</p>';
+        container.innerHTML = '<p class="text-gray-500 text-center col-span-full">Nenhuma fila disponível.</p>';
         return;
     }
+
     try {
-        for (const queue of queues) {
+        const filteredQueues = selectedQueueId ? queues.filter(queue => queue.id === selectedQueueId) : queues;
+        
+        for (const queue of filteredQueues) {
             const response = await axios.get(`/api/attendant/tickets?queue_id=${queue.id}&status=pending`);
             const tickets = response.data.slice(0, 3); // Mostrar até 3 tickets pendentes
-            const div = document.createElement('div');
-            div.className = 'bg-gray-50 p-3 rounded-lg';
-            div.innerHTML = `
-                <h4 class="text-sm font-medium text-gray-700">${sanitizeInput(queue.service)} (${sanitizeInput(queue.department_name)})</h4>
-                <ul class="mt-2 space-y-1">
-                    ${tickets.length ? tickets.map(ticket => `
-                        <li class="text-sm text-gray-600">${sanitizeInput(ticket.number)} - ${new Date(ticket.issued_at).toLocaleTimeString('pt-BR')}</li>
-                    `).join('') : '<li class="text-sm text-gray-500">Nenhum ticket pendente</li>'}
-                </ul>
-            `;
-            container.appendChild(div);
+            if (tickets.length) {
+                tickets.forEach(ticket => {
+                    const div = document.createElement('div');
+                    div.className = 'bg-gray-50 rounded-lg p-4 border border-gray-100 animate-zoom-in hover:shadow-lg transition-all';
+                    div.innerHTML = `
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-sm font-semibold text-gray-800">${sanitizeInput(ticket.number)}</h4>
+                            <span class="text-xs text-gray-500">${new Date(ticket.issued_at).toLocaleTimeString('pt-BR')}</span>
+                        </div>
+                        <p class="text-sm text-gray-600"><span class="font-medium">Serviço:</span> ${sanitizeInput(queue.service)}</p>
+                        <p class="text-sm text-gray-600"><span class="font-medium">Departamento:</span> ${sanitizeInput(queue.department_name)}</p>
+                    `;
+                    container.appendChild(div);
+                });
+            } else {
+                const div = document.createElement('div');
+                div.className = 'bg-gray-50 rounded-lg p-4 border border-gray-100';
+                div.innerHTML = `
+                    <h4 class="text-sm font-medium text-gray-700">${sanitizeInput(queue.service)} (${sanitizeInput(queue.department_name)})</h4>
+                    <p class="text-sm text-gray-500 mt-2">Nenhum ticket pendente</p>
+                `;
+                container.appendChild(div);
+            }
         }
     } catch (error) {
-        container.innerHTML = '<p class="text-gray-500 text-center">Erro ao carregar próximos tickets.</p>';
+        container.innerHTML = '<p class="text-gray-500 text-center col-span-full">Erro ao carregar próximos tickets.</p>';
     }
 };
 
@@ -633,6 +651,12 @@ const setupEventListeners = () => {
                 row.style.display = filter === '' || service === filter ? '' : 'none';
             });
         });
+    }
+
+    // Atualizar "Próximos na Fila" quando a fila selecionada mudar
+    const queueSelect = document.getElementById('queue-select');
+    if (queueSelect) {
+        queueSelect.addEventListener('change', renderNextQueue);
     }
 };
 
