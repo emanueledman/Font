@@ -70,45 +70,6 @@ const showToast = (message, type = 'success') => {
     }, 5000);
 };
 
-// Exibe modal de erro
-const showErrorModal = (title, message, type = 'error') => {
-    const modal = document.getElementById('error-modal');
-    const titleEl = document.getElementById('error-modal-title');
-    const messageEl = document.getElementById('error-message');
-    const iconEl = document.getElementById('error-icon');
-    if (modal && titleEl && messageEl && iconEl) {
-        titleEl.textContent = sanitizeInput(title);
-        messageEl.textContent = sanitizeInput(message);
-        iconEl.className = `p-3 rounded-full mr-4 flex-shrink-0 ${
-            type === 'error' ? 'bg-red-100' : 'bg-green-100'
-        }`;
-        iconEl.innerHTML = `
-            <svg class="w-6 h-6 ${type === 'error' ? 'text-red-600' : 'text-green-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${
-                    type === 'error' ? 'M6 18L18 6M6 6l12 12' : 'M5 13l4 4L19 7'
-                }" />
-            </svg>
-        `;
-        modal.classList.remove('hidden');
-    }
-};
-
-// Fecha modal de erro
-const setupErrorModalClose = () => {
-    const closeModalBtn = document.getElementById('close-error-btn');
-    const closeModalIcon = document.getElementById('close-error-modal');
-    if (closeModalBtn) {
-        closeModalBtn.addEventListener('click', () => {
-            document.getElementById('error-modal')?.classList.add('hidden');
-        });
-    }
-    if (closeModalIcon) {
-        closeModalIcon.addEventListener('click', () => {
-            document.getElementById('error-modal')?.classList.add('hidden');
-        });
-    }
-};
-
 // Debounce para evitar atualizações excessivas
 const debounce = (func, wait) => {
     let timeout;
@@ -149,7 +110,7 @@ const setupAxios = () => {
         response => response,
         async error => {
             if (error.response?.status === 401 || error.response?.status === 403) {
-                showErrorModal('Sessão Expirada', 'Sua sessão expirou. Você será redirecionado para a página de login em breve.', 'error');
+                showToast('Sessão expirada. Redirecionando para login...', 'error');
                 setTimeout(() => {
                     clearSensitiveData();
                     if (socket) socket.disconnect();
@@ -178,7 +139,7 @@ const initializeWebSocket = () => {
     const token = getToken();
     const institution_id = localStorage.getItem('institution_id') || '';
     if (!token || !institution_id) {
-        showErrorModal('Erro de Autenticação', 'Token ou instituição não encontrados. Você será redirecionado para a página de login.', 'error');
+        showToast('Token ou instituição não encontrados. Redirecionando para login...', 'error');
         setTimeout(() => {
             window.location.href = '/index.html';
         }, 3000);
@@ -229,10 +190,10 @@ const initializeWebSocket = () => {
 const fetchUserInfo = async () => {
     try {
         const email = localStorage.getItem('email') || 'N/A';
-        document.getElementById('user-name').textContent = sanitizeInput(email);
+        document.getElementById('user-name').textContent = sanitizeInput(email.split('@')[0]);
         document.getElementById('user-email').textContent = sanitizeInput(email);
         const userInitials = email.split('@')[0].slice(0, 2).toUpperCase();
-        document.querySelector('#user-info .bg-indigo-500').textContent = userInitials;
+        document.querySelector('#user-info .bg-indigo-500').textContent = userInitials || 'JD';
         return { email };
     } catch (error) {
         showToast('Não foi possível carregar informações do usuário.', 'warning');
@@ -247,15 +208,11 @@ const loadDashboard = async () => {
         const institutionId = localStorage.getItem('institution_id');
         const branchId = localStorage.getItem('branch_id');
 
-        // Tentar usar dados do localStorage primeiro
-        const storedQueues = localStorage.getItem('queues');
-        let queuesData = storedQueues ? JSON.parse(storedQueues) : [];
-
-        // Atualizar com dados do backend
+        // Buscar filas do backend
         const queuesRes = await axios.get('/api/admin/queues', {
             params: { branch_id: branchId }
         });
-        queuesData = queuesRes.data.queues;
+        const queuesData = queuesRes.data.queues || [];
         localStorage.setItem('queues', JSON.stringify(queuesData));
 
         // Contar filas ativas
@@ -279,18 +236,18 @@ const loadDashboard = async () => {
         // Renderizar visão geral das filas
         const queuesOverview = document.getElementById('queues-overview');
         if (queuesOverview) {
-            queuesOverview.innerHTML = queuesData.slice(0, 5).map(queue => `
+            queuesOverview.innerHTML = queuesData.length ? queuesData.slice(0, 5).map(queue => `
                 <div class="queue-card bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200">
                     <div class="flex items-center justify-between">
                         <h4 class="font-medium text-gray-800">${sanitizeInput(queue.service)}</h4>
                         <span class="text-xs px-2 py-1 rounded-full ${queue.status === 'Aberto' ? 'bg-green-100 text-green-800' : queue.status === 'Fechado' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">${sanitizeInput(queue.status)}</span>
                     </div>
                     <p class="text-sm text-gray-600 mt-1">Departamento: ${sanitizeInput(queue.department)}</p>
-                    <p class="text-sm text-gray-600">Senhas ativas: ${queue.active_tickets}</p>
+                    <p class="text-sm text-gray-600">Senhas ativas: ${queue.active_tickets || 0}</p>
                     <p class="text-sm text-gray-600">Tempo médio: ${queue.avg_wait_time || 'N/A'}</p>
                     <button class="call-next-btn mt-2 w-full px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" data-queue-id="${queue.id}" ${queue.status !== 'Aberto' ? 'disabled' : ''}>Chamar Próximo</button>
                 </div>
-            `).join('');
+            `).join('') : '<p class="text-gray-500 text-center">Nenhuma fila disponível.</p>';
         }
     } catch (error) {
         showToast(error.response?.data?.error || 'Falha ao carregar painel.', 'error');
@@ -311,7 +268,7 @@ const loadQueues = async () => {
                 branch_id: branchId
             }
         });
-        const queues = response.data.queues;
+        const queues = response.data.queues || [];
         localStorage.setItem('queues', JSON.stringify(queues));
         renderQueues(queues);
         renderQueueFilters(queues);
@@ -331,7 +288,7 @@ const loadDepartments = async () => {
         const response = await axios.get(`/api/admin/institutions/${institutionId}/departments`, {
             params: { page: 1, per_page: 20 }
         });
-        const departments = response.data.departments;
+        const departments = response.data.departments || [];
         renderDepartments(departments);
         renderDepartmentFilters(departments);
     } catch (error) {
@@ -350,7 +307,7 @@ const loadAttendants = async () => {
         const response = await axios.get(`/api/admin/institutions/${institutionId}/department_admins`, {
             params: { page: 1, per_page: 20 }
         });
-        const attendants = response.data.attendants;
+        const attendants = response.data.attendants || [];
         renderAttendants(attendants);
         renderAttendantFilters(attendants);
     } catch (error) {
@@ -399,7 +356,7 @@ const renderQueues = (queues) => {
             </div>
             <p class="text-sm text-gray-600">Prefixo: ${sanitizeInput(queue.prefix)}</p>
             <p class="text-sm text-gray-600">Departamento: ${sanitizeInput(queue.department)}</p>
-            <p class="text-sm text-gray-600">Senhas ativas: ${queue.active_tickets}/${queue.daily_limit}</p>
+            <p class="text-sm text-gray-600">Senhas ativas: ${queue.active_tickets || 0}/${queue.daily_limit || 'N/A'}</p>
             <p class="text-sm text-gray-600">Tempo médio: ${queue.avg_wait_time || 'N/A'}</p>
             <div class="flex space-x-2 mt-4">
                 <button class="call-next-btn flex-1 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" data-queue-id="${queue.id}" ${queue.status !== 'Aberto' ? 'disabled' : ''}>Chamar Próximo</button>
@@ -464,7 +421,7 @@ const renderAttendants = (attendants) => {
                 </div>
             </div>
             <p class="text-sm text-gray-600">Departamento: ${sanitizeInput(attendant.department_name || 'N/A')}</p>
-            <p class="text-sm text-gray-600">Filial: ${sanitizeInput(attendant.branch_name || 'N/A')}</p>
+            <p class="text-sm text-gray-600">Papel: ${sanitizeInput(attendant.role === 'ATTENDANT' ? 'Atendente' : 'Administrador de Filial')}</p>
             <div class="flex space-x-2 mt-4">
                 <button class="edit-attendant-btn flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300" data-user-id="${attendant.id}">Editar</button>
                 <button class="delete-attendant-btn flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700" data-user-id="${attendant.id}">Excluir</button>
@@ -679,14 +636,16 @@ const loadQueueDepartmentFilter = async () => {
     try {
         const institutionId = localStorage.getItem('institution_id');
         const response = await axios.get(`/api/admin/institutions/${institutionId}/departments`);
-        const departments = response.data.departments;
+        const departments = response.data.departments || [];
         const queueDepartmentFilter = document.getElementById('queue-department-filter');
         if (queueDepartmentFilter) {
             queueDepartmentFilter.innerHTML = '<option value="all">Todos os departamentos</option>' +
                 departments.map(dept => `<option value="${dept.id}">${sanitizeInput(dept.name)}</option>`).join('');
         }
+        return departments;
     } catch (error) {
         showToast(error.response?.data?.error || 'Falha ao carregar departamentos.', 'error');
+        return [];
     }
 };
 
@@ -706,7 +665,7 @@ const setupEventListeners = () => {
         sidebarToggle.addEventListener('click', () => {
             sidebar.classList.toggle('w-20');
             sidebar.classList.toggle('md:w-64');
-            document.querySelectorAll('.hidden.md\\:block').forEach(el => {
+            document.querySelectorAll('.hidden-md').forEach(el => {
                 el.classList.toggle('hidden');
             });
         });
@@ -762,7 +721,7 @@ const setupEventListeners = () => {
     const queueStatusFilter = document.getElementById('queue-status-filter');
     if (queueStatusFilter) {
         queueStatusFilter.addEventListener('change', () => {
-            const status = queueStatusFilter.value;
+            const status = queueStatusFilter.value === 'open' ? 'Aberto' : queueStatusFilter.value === 'closed' ? 'Fechado' : 'all';
             document.querySelectorAll('#queues-container > div').forEach(card => {
                 const cardStatus = card.querySelector('span').textContent;
                 card.style.display = status === 'all' || cardStatus === status ? '' : 'none';
@@ -1024,7 +983,6 @@ const setupEventListeners = () => {
 document.addEventListener('DOMContentLoaded', async () => {
     setupAxios();
     updateCurrentDate();
-    setupErrorModalClose();
     initializeWebSocket();
     await fetchUserInfo();
     await loadDashboard();
