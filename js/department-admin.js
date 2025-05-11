@@ -1,25 +1,10 @@
-// Configurar interceptor do Axios
 const API_BASE = 'https://fila-facilita2-0-4uzw.onrender.com';
 
 axios.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
-        if (token) {
-            config.headers['Authorization'] = `Bearer ${token}`;
-        }
+        if (token) config.headers['Authorization'] = `Bearer ${token}`;
         return config;
-    },
-    (error) => Promise.reject(error)
-);
-
-axios.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        if (error.response && error.response.status === 401) {
-            console.log('Authentication error:', error.response.data?.error);
-            Utils.showToast(error.response.data?.error || 'Erro de autenticação. Por favor, faça login novamente.', 'error');
-        }
-        return Promise.reject(error);
     }
 );
 
@@ -35,28 +20,16 @@ class AuthManager {
         if (email) {
             document.getElementById('user-name').textContent = name;
             document.getElementById('user-email').textContent = email;
-        } else {
-            console.warn('No email found in storage');
-            Utils.showToast('Dados do usuário não encontrados. Faça login novamente.', 'error');
         }
     }
 
     async handleLogout() {
-        try {
-            await axios.post(`${API_BASE}/api/auth/logout`);
-            localStorage.removeItem('adminToken');
-            sessionStorage.removeItem('adminToken');
-            localStorage.removeItem('userRole');
-            sessionStorage.removeItem('userRole');
-            localStorage.removeItem('email');
-            sessionStorage.removeItem('email');
-            localStorage.removeItem('branchId');
-            sessionStorage.removeItem('branchId');
-            window.location.href = '/index.html';
-        } catch (error) {
-            console.error('Logout failed:', error);
-            Utils.showToast('Erro ao fazer logout', 'error');
-        }
+        await axios.post(`${API_BASE}/api/auth/logout`);
+        ['adminToken', 'userRole', 'email', 'branchId'].forEach(key => {
+            localStorage.removeItem(key);
+            sessionStorage.removeItem(key);
+        });
+        window.location.href = '/index.html';
     }
 }
 
@@ -75,21 +48,15 @@ const Utils = {
     showToast(message, type = 'success') {
         const toast = document.importNode(document.getElementById('toast-template').content, true);
         const toastElement = toast.querySelector('.toast');
-        toastElement.classList.add(`bg-${type === 'success' ? 'green' : 'red'}-100`, `text-${type === 'success' ? 'green' : 'red'}-800`);
-        toast.querySelector('.toast-title').textContent = type === 'success' ? 'Sucesso' : 'Erro';
+        toastElement.classList.add(`bg-${type === 'success' ? 'green' : type === 'info' ? 'blue' : 'red'}-100`, `text-${type === 'success' ? 'green' : type === 'info' ? 'blue' : 'red'}-800`);
+        toast.querySelector('.toast-title').textContent = type === 'success' ? 'Sucesso' : type === 'info' ? 'Info' : 'Erro';
         toast.querySelector('.toast-message').textContent = message;
-        
-        const container = document.getElementById('toast-container');
-        container.appendChild(toast);
-        
+        document.getElementById('toast-container').appendChild(toast);
         setTimeout(() => {
             toastElement.classList.add('opacity-0');
             setTimeout(() => toastElement.remove(), 300);
         }, 5000);
-        
-        toast.querySelector('.toast-close').addEventListener('click', () => {
-            toastElement.remove();
-        });
+        toast.querySelector('.toast-close').addEventListener('click', () => toastElement.remove());
     },
 
     showLoading(show = true, message = 'Carregando...') {
@@ -119,54 +86,38 @@ class QueueManager {
     async loadQueues() {
         const container = document.getElementById('queues-container');
         const loading = document.getElementById('queues-loading');
-        
         container.innerHTML = '';
         loading.classList.remove('hidden');
-        
-        try {
-            const response = await axios.get(`${API_BASE}/api/queues?page=${this.currentPage}&per_page=${this.perPage}`);
-            this.queues = response.data.queues;
-            
-            loading.classList.add('hidden');
-            
-            this.queues.forEach(queue => {
-                const queueCard = document.createElement('div');
-                queueCard.className = 'bg-white rounded-xl shadow-lg p-6 border border-gray-100';
-                queueCard.innerHTML = `
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-semibold">${queue.service}</h3>
-                        <span class="px-2 py-1 text-xs font-medium rounded-full ${queue.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
-                            ${queue.status === 'active' ? 'Ativa' : 'Inativa'}
-                        </span>
-                    </div>
-                    <p class="text-sm text-gray-500 mb-2">Prefixo: ${queue.prefix}</p>
-                    <p class="text-sm text-gray-500 mb-2">Tickets pendentes: ${queue.pending_tickets}</p>
-                    <p class="text-sm text-gray-500 mb-4">Horário: ${queue.open_time} - ${queue.close_time}</p>
-                    <div class="flex space-x-2">
-                        <button class="edit-queue-btn px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm" data-id="${queue.id}">Editar</button>
-                        <button class="delete-queue-btn px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm" data-id="${queue.id}">Excluir</button>
-                    </div>
-                `;
-                container.appendChild(queueCard);
-            });
-
-            this.updatePagination(response.data.total);
-            this.setupQueueActions();
-        } catch (error) {
-            console.error('Failed to load queues:', error);
-            Utils.showToast('Erro ao carregar filas', 'error');
-        }
+        const response = await axios.get(`${API_BASE}/api/branch_admin/queues?page=${this.currentPage}&per_page=${this.perPage}`);
+        this.queues = response.data.queues;
+        loading.classList.add('hidden');
+        this.queues.forEach(queue => {
+            const queueCard = document.createElement('div');
+            queueCard.className = 'bg-white rounded-xl shadow-lg p-6 border border-gray-100';
+            queueCard.innerHTML = `
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">${queue.service}</h3>
+                    <span class="px-2 py-1 text-xs font-medium rounded-full ${queue.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                        ${queue.status === 'active' ? 'Ativa' : 'Inativa'}
+                    </span>
+                </div>
+                <p class="text-sm text-gray-500 mb-2">Prefixo: ${queue.prefix}</p>
+                <p class="text-sm text-gray-500 mb-2">Tickets pendentes: ${queue.pending_tickets}</p>
+                <p class="text-sm text-gray-500 mb-4">Horário: ${queue.open_time} - ${queue.close_time}</p>
+                <div class="flex space-x-2">
+                    <button class="edit-queue-btn px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm" data-id="${queue.id}">Editar</button>
+                    <button class="delete-queue-btn px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm" data-id="${queue.id}">Excluir</button>
+                </div>
+            `;
+            container.appendChild(queueCard);
+        });
+        this.updatePagination(response.data.total);
+        this.setupQueueActions();
     }
 
     setupQueueActions() {
-        document.querySelectorAll('.edit-queue-btn').forEach(btn => {
-            btn.addEventListener('click', () => this.openQueueModal(btn.dataset.id));
-        });
-
-        document.querySelectorAll('.delete-queue-btn').forEach(btn => {
-            btn.addEventListener('click', () => this.deleteQueue(btn.dataset.id));
-        });
-
+        document.querySelectorAll('.edit-queue-btn').forEach(btn => btn.addEventListener('click', () => this.openQueueModal(btn.dataset.id)));
+        document.querySelectorAll('.delete-queue-btn').forEach(btn => btn.addEventListener('click', () => this.deleteQueue(btn.dataset.id)));
         document.getElementById('create-queue-btn').addEventListener('click', () => this.openQueueModal());
     }
 
@@ -174,7 +125,6 @@ class QueueManager {
         const modal = document.getElementById('queue-modal');
         const form = document.getElementById('queue-form');
         const title = document.getElementById('queue-modal-title');
-        
         if (queueId) {
             title.textContent = 'Editar Fila';
             const queue = this.queues.find(q => q.id === queueId);
@@ -186,24 +136,16 @@ class QueueManager {
             form.num_counters.value = queue.num_counters;
             form.queue_description.value = queue.description || '';
             form.queue_id.value = queue.id;
-            
-            queue.working_days.forEach(day => {
-                form.querySelector(`input[name="working_days"][value="${day}"]`).checked = true;
-            });
+            queue.working_days.forEach(day => form.querySelector(`input[name="working_days"][value="${day}"]`).checked = true);
         } else {
             title.textContent = 'Nova Fila';
             form.reset();
             form.queue_id.value = '';
-            form.querySelectorAll('input[name="working_days"]').forEach(checkbox => {
-                checkbox.checked = ['0', '6'].includes(checkbox.value) ? false : true;
-            });
+            form.querySelectorAll('input[name="working_days"]').forEach(checkbox => checkbox.checked = ['0', '6'].includes(checkbox.value) ? false : true);
         }
-
         modal.classList.remove('hidden');
-        
         document.getElementById('close-queue-modal').addEventListener('click', () => modal.classList.add('hidden'));
         document.getElementById('cancel-queue-btn').addEventListener('click', () => modal.classList.add('hidden'));
-        
         form.onsubmit = async (e) => {
             e.preventDefault();
             await this.saveQueue();
@@ -223,36 +165,21 @@ class QueueManager {
             description: form.queue_description.value,
             working_days: Array.from(form.querySelectorAll('input[name="working_days"]:checked')).map(cb => parseInt(cb.value))
         };
-
-        try {
-            Utils.showLoading(true, 'Salvando fila...');
-            const response = await axios.post(`${API_BASE}/api/queues`, data);
-            Utils.showLoading(false);
-            
-            document.getElementById('queue-modal').classList.add('hidden');
-            Utils.showToast(data.id ? 'Fila atualizada com sucesso' : 'Fila criada com sucesso', 'success');
-            this.loadQueues();
-        } catch (error) {
-            console.error('Failed to save queue:', error);
-            Utils.showLoading(false);
-            Utils.showToast('Erro ao salvar fila', 'error');
-        }
+        Utils.showLoading(true, 'Salvando fila...');
+        await axios.post(`${API_BASE}/api/branch_admin/queues`, data);
+        Utils.showLoading(false);
+        document.getElementById('queue-modal').classList.add('hidden');
+        Utils.showToast('Fila salva com sucesso', 'success');
+        this.loadQueues();
     }
 
     async deleteQueue(queueId) {
         if (!confirm('Tem certeza que deseja excluir esta fila?')) return;
-
-        try {
-            Utils.showLoading(true, 'Excluindo fila...');
-            await axios.delete(`${API_BASE}/api/queues/${queueId}`);
-            Utils.showLoading(false);
-            Utils.showToast('Fila excluída com sucesso', 'success');
-            this.loadQueues();
-        } catch (error) {
-            console.error('Failed to delete queue:', error);
-            Utils.showLoading(false);
-            Utils.showToast('Erro ao excluir fila', 'error');
-        }
+        Utils.showLoading(true, 'Excluindo fila...');
+        await axios.delete(`${API_BASE}/api/branch_admin/queues/${queueId}`);
+        Utils.showLoading(false);
+        Utils.showToast('Fila excluída com sucesso', 'success');
+        this.loadQueues();
     }
 
     updatePagination(total) {
@@ -261,21 +188,17 @@ class QueueManager {
         const totalEl = document.getElementById('queues-total');
         const prevBtn = document.getElementById('queues-prev');
         const nextBtn = document.getElementById('queues-next');
-
         start.textContent = (this.currentPage - 1) * this.perPage + 1;
         end.textContent = Math.min(this.currentPage * this.perPage, total);
         totalEl.textContent = total;
-
         prevBtn.disabled = this.currentPage === 1;
         nextBtn.disabled = this.currentPage * this.perPage >= total;
-
         prevBtn.onclick = () => {
             if (this.currentPage > 1) {
                 this.currentPage--;
                 this.loadQueues();
             }
         };
-
         nextBtn.onclick = () => {
             if (this.currentPage * this.perPage < total) {
                 this.currentPage++;
@@ -296,43 +219,33 @@ class TicketManager {
     async loadTickets() {
         const container = document.getElementById('tickets-container');
         const loading = document.getElementById('tickets-loading');
-        
         container.innerHTML = '';
         loading.classList.remove('hidden');
-        
-        try {
-            const response = await axios.get(`${API_BASE}/api/tickets?page=${this.currentPage}&per_page=${this.perPage}`);
-            this.tickets = response.data.tickets;
-            
-            loading.classList.add('hidden');
-            
-            this.tickets.forEach(ticket => {
-                const ticketCard = document.createElement('div');
-                ticketCard.className = 'bg-white rounded-xl shadow-lg p-6 border border-gray-100';
-                ticketCard.innerHTML = `
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-semibold">${ticket.number}</h3>
-                        <span class="px-2 py-1 text-xs font-medium rounded-full ${this.getStatusColor(ticket.status)}">
-                            ${ticket.status}
-                        </span>
-                    </div>
-                    <p class="text-sm text-gray-500 mb-2">Fila: ${ticket.queue_name}</p>
-                    <p class="text-sm text-gray-500 mb-2">Criado: ${Utils.formatDate(ticket.created_at)}</p>
-                    <p class="text-sm text-gray-500 mb-4">Prioridade: ${ticket.priority}</p>
-                    <div class="flex space-x-2">
-                        <button class="edit-ticket-btn px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm" data-id="${ticket.id}">Editar</button>
-                        <button class="delete-ticket-btn px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm" data-id="${ticket.id}">Excluir</button>
-                    </div>
-                `;
-                container.appendChild(ticketCard);
-            });
-
-            this.updatePagination(response.data.total);
-            this.setupTicketActions();
-        } catch (error) {
-            console.error('Failed to load tickets:', error);
-            Utils.showToast('Erro ao carregar tickets', 'error');
-        }
+        const response = await axios.get(`${API_BASE}/api/branch_admin/tickets?page=${this.currentPage}&per_page=${this.perPage}`);
+        this.tickets = response.data.tickets;
+        loading.classList.add('hidden');
+        this.tickets.forEach(ticket => {
+            const ticketCard = document.createElement('div');
+            ticketCard.className = 'bg-white rounded-xl shadow-lg p-6 border border-gray-100';
+            ticketCard.innerHTML = `
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">${ticket.number}</h3>
+                    <span class="px-2 py-1 text-xs font-medium rounded-full ${this.getStatusColor(ticket.status)}">
+                        ${ticket.status}
+                    </span>
+                </div>
+                <p class="text-sm text-gray-500 mb-2">Fila: ${ticket.queue_name}</p>
+                <p class="text-sm text-gray-500 mb-2">Criado: ${Utils.formatDate(ticket.created_at)}</p>
+                <p class="text-sm text-gray-500 mb-4">Prioridade: ${ticket.priority}</p>
+                <div class="flex space-x-2">
+                    <button class="edit-ticket-btn px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm" data-id="${ticket.id}">Editar</button>
+                    <button class="delete-ticket-btn px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm" data-id="${ticket.id}">Excluir</button>
+                </div>
+            `;
+            container.appendChild(ticketCard);
+        });
+        this.updatePagination(response.data.total);
+        this.setupTicketActions();
     }
 
     getStatusColor(status) {
@@ -346,14 +259,8 @@ class TicketManager {
     }
 
     setupTicketActions() {
-        document.querySelectorAll('.edit-ticket-btn').forEach(btn => {
-            btn.addEventListener('click', () => this.openTicketModal(btn.dataset.id));
-        });
-
-        document.querySelectorAll('.delete-ticket-btn').forEach(btn => {
-            btn.addEventListener('click', () => this.deleteTicket(btn.dataset.id));
-        });
-
+        document.querySelectorAll('.edit-ticket-btn').forEach(btn => btn.addEventListener('click', () => this.openTicketModal(btn.dataset.id)));
+        document.querySelectorAll('.delete-ticket-btn').forEach(btn => btn.addEventListener('click', () => this.deleteTicket(btn.dataset.id)));
         document.getElementById('generate-ticket-btn').addEventListener('click', () => this.openTicketModal());
         document.getElementById('validate-qr-btn').addEventListener('click', () => this.openQRModal());
     }
@@ -361,7 +268,6 @@ class TicketManager {
     async openTicketModal(ticketId = null) {
         const modal = document.getElementById('ticket-modal');
         const form = document.getElementById('ticket-form');
-        
         if (ticketId) {
             const ticket = this.tickets.find(t => t.id === ticketId);
             form['ticket-queue'].value = ticket.queue_id;
@@ -370,12 +276,9 @@ class TicketManager {
         } else {
             form.reset();
         }
-
         modal.classList.remove('hidden');
-        
         document.getElementById('close-ticket-modal').addEventListener('click', () => modal.classList.add('hidden'));
         document.getElementById('cancel-ticket-btn').addEventListener('click', () => modal.classList.add('hidden'));
-        
         form.onsubmit = async (e) => {
             e.preventDefault();
             await this.saveTicket();
@@ -389,48 +292,30 @@ class TicketManager {
             priority: form['ticket-priority'].value,
             notes: form['ticket-notes'].value
         };
-
-        try {
-            Utils.showLoading(true, 'Gerando ticket...');
-            const response = await axios.post(`${API_BASE}/api/tickets`, data);
-            Utils.showLoading(false);
-            
-            document.getElementById('ticket-modal').classList.add('hidden');
-            Utils.showToast('Ticket gerado com sucesso', 'success');
-            this.loadTickets();
-        } catch (error) {
-            console.error('Failed to save ticket:', error);
-            Utils.showLoading(false);
-            Utils.showToast('Erro ao gerar ticket', 'error');
-        }
+        Utils.showLoading(true, 'Gerando ticket...');
+        await axios.post(`${API_BASE}/api/branch_admin/tickets`, data);
+        Utils.showLoading(false);
+        document.getElementById('ticket-modal').classList.add('hidden');
+        Utils.showToast('Ticket gerado com sucesso', 'success');
+        this.loadTickets();
     }
 
     async deleteTicket(ticketId) {
         if (!confirm('Tem certeza que deseja excluir este ticket?')) return;
-
-        try {
-            Utils.showLoading(true, 'Excluindo ticket...');
-            await axios.delete(`${API_BASE}/api/tickets/${ticketId}`);
-            Utils.showLoading(false);
-            Utils.showToast('Ticket excluído com sucesso', 'success');
-            this.loadTickets();
-        } catch (error) {
-            console.error('Failed to delete ticket:', error);
-            Utils.showLoading(false);
-            Utils.showToast('Erro ao excluir ticket', 'error');
-        }
+        Utils.showLoading(true, 'Excluindo ticket...');
+        await axios.delete(`${API_BASE}/api/branch_admin/tickets/${ticketId}`);
+        Utils.showLoading(false);
+        Utils.showToast('Ticket excluído com sucesso', 'success');
+        this.loadTickets();
     }
 
     async openQRModal() {
         const modal = document.getElementById('qr-modal');
         const form = document.getElementById('qr-form');
-        
         form.reset();
         modal.classList.remove('hidden');
-        
         document.getElementById('close-qr-modal').addEventListener('click', () => modal.classList.add('hidden'));
         document.getElementById('cancel-qr-btn').addEventListener('click', () => modal.classList.add('hidden'));
-        
         form.onsubmit = async (e) => {
             e.preventDefault();
             await this.validateQR();
@@ -440,19 +325,11 @@ class TicketManager {
     async validateQR() {
         const form = document.getElementById('qr-form');
         const qrCode = form.qr_code.value;
-
-        try {
-            Utils.showLoading(true, 'Validando QR Code...');
-            const response = await axios.post(`${API_BASE}/api/tickets/validate-qr`, { qr_code: qrCode });
-            Utils.showLoading(false);
-            
-            document.getElementById('qr-modal').classList.add('hidden');
-            Utils.showToast('QR Code validado com sucesso', 'success');
-        } catch (error) {
-            console.error('Failed to validate QR:', error);
-            Utils.showLoading(false);
-            Utils.showToast('Erro ao validar QR Code', 'error');
-        }
+        Utils.showLoading(true, 'Validando QR Code...');
+        await axios.post(`${API_BASE}/api/branch_admin/tickets/validate-qr`, { qr_code: qrCode });
+        Utils.showLoading(false);
+        document.getElementById('qr-modal').classList.add('hidden');
+        Utils.showToast('QR Code validado com sucesso', 'success');
     }
 
     updatePagination(total) {
@@ -461,21 +338,17 @@ class TicketManager {
         const totalEl = document.getElementById('tickets-total');
         const prevBtn = document.getElementById('tickets-prev');
         const nextBtn = document.getElementById('tickets-next');
-
         start.textContent = (this.currentPage - 1) * this.perPage + 1;
         end.textContent = Math.min(this.currentPage * this.perPage, total);
         totalEl.textContent = total;
-
         prevBtn.disabled = this.currentPage === 1;
         nextBtn.disabled = this.currentPage * this.perPage >= total;
-
         prevBtn.onclick = () => {
             if (this.currentPage > 1) {
                 this.currentPage--;
                 this.loadTickets();
             }
         };
-
         nextBtn.onclick = () => {
             if (this.currentPage * this.perPage < total) {
                 this.currentPage++;
@@ -499,7 +372,6 @@ class ReportManager {
         const group = document.getElementById('report-group').value;
         const startDate = document.getElementById('start-date').value;
         const endDate = document.getElementById('end-date').value;
-
         const params = new URLSearchParams({
             period,
             type,
@@ -508,19 +380,11 @@ class ReportManager {
             group,
             ...(period === 'custom' && { start_date: startDate, end_date: endDate })
         });
-
-        try {
-            Utils.showLoading(true, 'Gerando relatório...');
-            const response = await axios.get(`${API_BASE}/api/reports?${params}`);
-            Utils.showLoading(false);
-            
-            this.renderReport(response.data);
-            Utils.showToast('Relatório gerado com sucesso', 'success');
-        } catch (error) {
-            console.error('Failed to generate report:', error);
-            Utils.showLoading(false);
-            Utils.showToast('Erro ao gerar relatório', 'error');
-        }
+        Utils.showLoading(true, 'Gerando relatório...');
+        const response = await axios.get(`${API_BASE}/api/branch_admin/reports?${params}`);
+        Utils.showLoading(false);
+        this.renderReport(response.data);
+        Utils.showToast('Relatório gerado com sucesso', 'success');
     }
 
     renderReport(data) {
@@ -544,14 +408,12 @@ class ReportManager {
                 </div>
             </div>
         `;
-
         this.initChart(data.chart_data);
     }
 
     initChart(data) {
         const ctx = document.getElementById('report-chart').getContext('2d');
         if (this.chart) this.chart.destroy();
-
         this.chart = new Chart(ctx, {
             type: 'line',
             data: {
@@ -567,11 +429,7 @@ class ReportManager {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
+                scales: { y: { beginAtZero: true } }
             }
         });
     }
@@ -584,30 +442,22 @@ class SettingsManager {
     }
 
     async loadSettings() {
-        try {
-            const response = await axios.get(`${API_BASE}/api/settings`);
-            this.settings = response.data;
-            
-            document.getElementById('dept-name').value = this.settings.department.name;
-            document.getElementById('dept-id').value = this.settings.department.id;
-            document.getElementById('dept-description').value = this.settings.department.description || '';
-            document.getElementById('dept-email').value = this.settings.department.email || '';
-            document.getElementById('dept-phone').value = this.settings.department.phone || '';
-            document.getElementById('dept-location').value = this.settings.department.location || '';
-            
-            document.getElementById('theme-select').value = this.settings.display.theme;
-            document.getElementById('density-select').value = this.settings.display.density;
-            document.getElementById('notifications-toggle').checked = this.settings.notifications.panel;
-            document.getElementById('email-notifications-toggle').checked = this.settings.notifications.email;
-            
-            document.getElementById('call-interval').value = this.settings.call.interval;
-            document.getElementById('call-attempts').value = this.settings.call.attempts;
-            document.getElementById('max-wait-time').value = this.settings.call.max_wait;
-            document.getElementById('call-sound').value = this.settings.call.sound;
-        } catch (error) {
-            console.error('Failed to load settings:', error);
-            Utils.showToast('Erro ao carregar configurações', 'error');
-        }
+        const response = await axios.get(`${API_BASE}/api/branch_admin/settings`);
+        this.settings = response.data;
+        document.getElementById('dept-name').value = this.settings.department.name;
+        document.getElementById('dept-id').value = this.settings.department.id;
+        document.getElementById('dept-description').value = this.settings.department.description || '';
+        document.getElementById('dept-email').value = this.settings.department.email || '';
+        document.getElementById('dept-phone').value = this.settings.department.phone || '';
+        document.getElementById('dept-location').value = this.settings.department.location || '';
+        document.getElementById('theme-select').value = this.settings.display.theme;
+        document.getElementById('density-select').value = this.settings.display.density;
+        document.getElementById('notifications-toggle').checked = this.settings.notifications.panel;
+        document.getElementById('email-notifications-toggle').checked = this.settings.notifications.email;
+        document.getElementById('call-interval').value = this.settings.call.interval;
+        document.getElementById('call-attempts').value = this.settings.call.attempts;
+        document.getElementById('max-wait-time').value = this.settings.call.max_wait;
+        document.getElementById('call-sound').value = this.settings.call.sound;
     }
 
     async saveSettings() {
@@ -635,17 +485,10 @@ class SettingsManager {
                 sound: document.getElementById('call-sound').value
             }
         };
-
-        try {
-            Utils.showLoading(true, 'Salvando configurações...');
-            const response = await axios.post(`${API_BASE}/api/settings`, data);
-            Utils.showLoading(false);
-            Utils.showToast('Configurações salvas com sucesso', 'success');
-        } catch (error) {
-            console.error('Failed to save settings:', error);
-            Utils.showLoading(false);
-            Utils.showToast('Erro ao salvar configurações', 'error');
-        }
+        Utils.showLoading(true, 'Salvando configurações...');
+        await axios.post(`${API_BASE}/api/branch_admin/settings`, data);
+        Utils.showLoading(false);
+        Utils.showToast('Configurações salvas com sucesso', 'success');
     }
 
     async addMember() {
@@ -656,70 +499,47 @@ class SettingsManager {
             role: form['member-role'].value,
             permissions: Array.from(form.querySelectorAll('input[name="member-permissions"]:checked')).map(cb => cb.value)
         };
-
-        try {
-            Utils.showLoading(true, 'Adicionando membro...');
-            const response = await axios.post(`${API_BASE}/api/members`, data);
-            Utils.showLoading(false);
-            document.getElementById('member-modal').classList.add('hidden');
-            Utils.showToast('Membro adicionado com sucesso', 'success');
-            this.loadMembers();
-        } catch (error) {
-            console.error('Failed to add member:', error);
-            Utils.showLoading(false);
-            Utils.showToast('Erro ao adicionar membro', 'error');
-        }
+        Utils.showLoading(true, 'Adicionando membro...');
+        await axios.post(`${API_BASE}/api/branch_admin/members`, data);
+        Utils.showLoading(false);
+        document.getElementById('member-modal').classList.add('hidden');
+        Utils.showToast('Membro adicionado com sucesso', 'success');
+        this.loadMembers();
     }
 
     async loadMembers() {
         const container = document.getElementById('team-members');
         container.innerHTML = '';
-        
-        try {
-            const response = await axios.get(`${API_BASE}/api/members`);
-            response.data.forEach(member => {
-                const memberCard = document.createElement('div');
-                memberCard.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100';
-                memberCard.innerHTML = `
-                    <div class="flex items-center">
-                        <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold mr-3">${member.name[0]}</div>
-                        <div>
-                            <p class="font-medium">${member.name}</p>
-                            <p class="text-xs text-gray-500">${member.role}</p>
-                        </div>
+        const response = await axios.get(`${API_BASE}/api/branch_admin/members`);
+        response.data.forEach(member => {
+            const memberCard = document.createElement('div');
+            memberCard.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100';
+            memberCard.innerHTML = `
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold mr-3">${member.name[0]}</div>
+                    <div>
+                        <p class="font-medium">${member.name}</p>
+                        <p class="text-xs text-gray-500">${member.role}</p>
                     </div>
-                    <button class="delete-member-btn text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50" data-id="${member.id}">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                    </button>
-                `;
-                container.appendChild(memberCard);
-            });
-
-            document.querySelectorAll('.delete-member-btn').forEach(btn => {
-                btn.addEventListener('click', () => this.deleteMember(btn.dataset.id));
-            });
-        } catch (error) {
-            console.error('Failed to load members:', error);
-            Utils.showToast('Erro ao carregar membros', 'error');
-        }
+                </div>
+                <button class="delete-member-btn text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50" data-id="${member.id}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </button>
+            `;
+            container.appendChild(memberCard);
+        });
+        document.querySelectorAll('.delete-member-btn').forEach(btn => btn.addEventListener('click', () => this.deleteMember(btn.dataset.id)));
     }
 
     async deleteMember(memberId) {
         if (!confirm('Tem certeza que deseja remover este membro?')) return;
-
-        try {
-            Utils.showLoading(true, 'Removendo membro...');
-            await axios.delete(`${API_BASE}/api/members/${memberId}`);
-            Utils.showLoading(false);
-            Utils.showToast('Membro removido com sucesso', 'success');
-            this.loadMembers();
-        } catch (error) {
-            console.error('Failed to delete member:', error);
-            Utils.showLoading(false);
-            Utils.showToast('Erro ao remover membro', 'error');
-        }
+        Utils.showLoading(true, 'Removendo membro...');
+        await axios.delete(`${API_BASE}/api/branch_admin/members/${memberId}`);
+        Utils.showLoading(false);
+        Utils.showToast('Membro removido com sucesso', 'success');
+        this.loadMembers();
     }
 }
 
@@ -731,69 +551,54 @@ class DashboardManager {
     }
 
     async loadDashboardData() {
-        const skeletonAreas = [
-            'active-queues', 'pending-tickets', 'today-calls', 'active-users',
-            'top-queues', 'system-alerts'
-        ];
-
+        const skeletonAreas = ['active-queues', 'pending-tickets', 'today-calls', 'active-users', 'top-queues', 'system-alerts'];
         skeletonAreas.forEach(area => {
             const el = document.getElementById(area);
             el.innerHTML = '';
             el.appendChild(Utils.createSkeletonLoading());
         });
-
-        try {
-            const [queuesRes, ticketsRes, callsRes, usersRes, topQueuesRes, alertsRes] = await Promise.all([
-                axios.get(`${API_BASE}/api/queues/active`),
-                axios.get(`${API_BASE}/api/tickets/pending`),
-                axios.get(`${API_BASE}/api/calls/today`),
-                axios.get(`${API_BASE}/api/users/active`),
-                axios.get(`${API_BASE}/api/queues/top`),
-                axios.get(`${API_BASE}/api/alerts`)
-            ]);
-
-            document.getElementById('active-queues').textContent = queuesRes.data.count;
-            document.getElementById('pending-tickets').textContent = ticketsRes.data.count;
-            document.getElementById('today-calls').textContent = callsRes.data.count;
-            document.getElementById('active-users').textContent = usersRes.data.count;
-
-            const topQueues = document.getElementById('top-queues');
-            topQueues.innerHTML = topQueuesRes.data.map(queue => `
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="font-medium">${queue.service}</p>
-                        <p class="text-sm text-gray-500">${queue.tickets} tickets</p>
-                    </div>
-                    <span class="text-sm ${queue.trend === 'up' ? 'text-green-500' : 'text-red-500'}">
-                        ${queue.trend === 'up' ? '↑' : '↓'} ${queue.change}%
-                    </span>
+        const [queuesRes, ticketsRes, callsRes, usersRes, topQueuesRes, alertsRes] = await Promise.all([
+            axios.get(`${API_BASE}/api/branch_admin/queues/active`),
+            axios.get(`${API_BASE}/api/branch_admin/tickets/active`),
+            axios.get(`${API_BASE}/api/branch_admin/calls/today`),
+            axios.get(`${API_BASE}/api/branch_admin/users/active`),
+            axios.get(`${API_BASE}/api/branch_admin/queues/top`),
+            axios.get(`${API_BASE}/api/branch_admin/alerts`)
+        ]);
+        document.getElementById('active-queues').textContent = queuesRes.data.count;
+        document.getElementById('pending-tickets').textContent = ticketsRes.data.count;
+        document.getElementById('today-calls').textContent = callsRes.data.count;
+        document.getElementById('active-users').textContent = usersRes.data.count;
+        const topQueues = document.getElementById('top-queues');
+        topQueues.innerHTML = topQueuesRes.data.map(queue => `
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="font-medium">${queue.service}</p>
+                    <p class="text-sm text-gray-500">${queue.tickets} tickets</p>
                 </div>
-            `).join('');
-
-            const alerts = document.getElementById('system-alerts');
-            alerts.innerHTML = alertsRes.data.map(alert => `
-                <div class="flex items-center p-3 bg-${alert.type === 'warning' ? 'yellow' : 'red'}-50 rounded-lg">
-                    <svg class="w-5 h-5 text-${alert.type === 'warning' ? 'yellow' : 'red'}-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div>
-                        <p class="text-sm font-medium">${alert.message}</p>
-                        <p class="text-xs text-gray-500">${Utils.formatDate(alert.created_at)}</p>
-                    </div>
+                <span class="text-sm ${queue.trend === 'up' ? 'text-green-500' : 'text-red-500'}">
+                    ${queue.trend === 'up' ? '↑' : '↓'} ${queue.change}%
+                </span>
+            </div>
+        `).join('');
+        const alerts = document.getElementById('system-alerts');
+        alerts.innerHTML = alertsRes.data.map(alert => `
+            <div class="flex items-center p-3 bg-${alert.type === 'warning' ? 'yellow' : 'red'}-50 rounded-lg">
+                <svg class="w-5 h-5 text-${alert.type === 'warning' ? 'yellow' : 'red'}-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                    <p class="text-sm font-medium">${alert.message}</p>
+                    <p class="text-xs text-gray-500">${Utils.formatDate(alert.created_at)}</p>
                 </div>
-            `).join('');
-
-            this.initActivityChart();
-        } catch (error) {
-            console.error('Failed to load dashboard:', error);
-            Utils.showToast('Erro ao carregar dashboard', 'error');
-        }
+            </div>
+        `).join('');
+        this.initActivityChart();
     }
 
     initActivityChart() {
         const ctx = document.getElementById('activity-chart').getContext('2d');
         if (this.activityChart) this.activityChart.destroy();
-
         this.activityChart = new Chart(ctx, {
             type: 'line',
             data: {
@@ -809,14 +614,9 @@ class DashboardManager {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
+                scales: { y: { beginAtZero: true } }
             }
         });
-
         document.querySelectorAll('.chart-period-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.chart-period-btn').forEach(b => b.classList.remove('active'));
@@ -838,24 +638,21 @@ class DashboardManager {
 
     initWebSocket() {
         this.socket = io(`${API_BASE}`, {
-            path: '/',
+            path: '/real-time',
             transports: ['websocket'],
             reconnectionAttempts: 5
         });
-
         this.socket.on('new_ticket', (data) => {
             Utils.showToast(`Novo ticket: ${data.ticket_number}`, 'info');
             if (!document.getElementById('tickets-section').classList.contains('hidden')) {
                 ticketManager.loadTickets();
             }
         });
-
         this.socket.on('called_ticket', (data) => {
             if (!document.getElementById('call-section').classList.contains('hidden')) {
                 this.updateCurrentTicket(data);
             }
         });
-
         this.socket.on('queue_update', () => {
             if (!document.getElementById('queues-section').classList.contains('hidden')) {
                 queueManager.loadQueues();
@@ -868,10 +665,8 @@ class DashboardManager {
         document.getElementById('current-service').textContent = data.service;
         document.getElementById('current-counter').textContent = `Guichê ${data.counter}`;
         document.getElementById('avg-wait-time').textContent = `${data.avg_wait_time} min`;
-        
         const waitBar = document.getElementById('wait-bar');
         waitBar.style.width = `${Math.min((data.avg_wait_time / 30) * 100, 100)}%`;
-        
         const nextQueue = document.getElementById('next-queue');
         nextQueue.innerHTML = data.next_tickets.map(ticket => `
             <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -897,11 +692,8 @@ function setupNavigation() {
     const navButtons = ['dashboard', 'call', 'queues', 'tickets', 'reports', 'settings'];
     navButtons.forEach(button => {
         document.getElementById(`nav-${button}`).addEventListener('click', () => {
-            document.querySelectorAll('main > div').forEach(section => {
-                section.classList.add('hidden');
-            });
+            document.querySelectorAll('main > div').forEach(section => section.classList.add('hidden'));
             document.getElementById(`${button}-section`).classList.remove('hidden');
-            
             document.querySelectorAll('#sidebar nav button').forEach(btn => {
                 btn.classList.remove('active', 'bg-blue-700/90');
                 btn.classList.add('bg-blue-700/50');
@@ -909,7 +701,6 @@ function setupNavigation() {
             const activeBtn = document.getElementById(`nav-${button}`);
             activeBtn.classList.add('active', 'bg-blue-700/90');
             activeBtn.classList.remove('bg-blue-700/50');
-            
             switch (button) {
                 case 'dashboard': dashboardManager.loadDashboardData(); break;
                 case 'queues': queueManager.loadQueues(); break;
@@ -919,16 +710,12 @@ function setupNavigation() {
             }
         });
     });
-
     document.getElementById('logout').addEventListener('click', () => authManager.handleLogout());
-    
     document.getElementById('sidebar-toggle').addEventListener('click', () => {
         const sidebar = document.getElementById('sidebar');
         sidebar.classList.toggle('w-20');
         sidebar.classList.toggle('w-64');
-        document.querySelectorAll('#sidebar .hidden.md\\:block').forEach(el => {
-            el.classList.toggle('hidden');
-        });
+        document.querySelectorAll('#sidebar .hidden.md\\:block').forEach(el => el.classList.toggle('hidden'));
     });
 }
 
@@ -947,47 +734,28 @@ function updateCurrentDateTime() {
 
 document.addEventListener('DOMContentLoaded', () => {
     if (window.location.pathname.includes('index.html')) return;
-
     authManager.setUserInfo();
     dashboardManager.loadDashboardData();
     setupNavigation();
     dashboardManager.initWebSocket();
     updateCurrentDateTime();
     setInterval(updateCurrentDateTime, 60000);
-
     document.getElementById('generate-report-btn').addEventListener('click', () => reportManager.generateReport());
     document.getElementById('save-settings-btn').addEventListener('click', () => settingsManager.saveSettings());
-    document.getElementById('add-member-btn').addEventListener('click', () => {
-        document.getElementById('member-modal').classList.remove('hidden');
-    });
+    document.getElementById('add-member-btn').addEventListener('click', () => document.getElementById('member-modal').classList.remove('hidden'));
     document.getElementById('member-form').addEventListener('submit', (e) => {
         e.preventDefault();
         settingsManager.addMember();
     });
-    document.getElementById('close-member-modal').addEventListener('click', () => {
-        document.getElementById('member-modal').classList.add('hidden');
-    });
-    document.getElementById('cancel-member-btn').addEventListener('click', () => {
-        document.getElementById('member-modal').classList.add('hidden');
-    });
-
+    document.getElementById('close-member-modal').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
+    document.getElementById('cancel-member-btn').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
     document.getElementById('refresh-data').addEventListener('click', () => dashboardManager.loadDashboardData());
     document.getElementById('call-next-btn').addEventListener('click', async () => {
-        try {
-            const response = await axios.post(`${API_BASE}/api/calls/next`);
-            dashboardManager.updateCurrentTicket(response.data);
-        } catch (error) {
-            console.error('Failed to call next ticket:', error);
-            Utils.showToast('Erro ao chamar próximo ticket', 'error');
-        }
+        const response = await axios.post(`${API_BASE}/api/branch_admin/calls/next`);
+        dashboardManager.updateCurrentTicket(response.data);
     });
     document.getElementById('recall-btn').addEventListener('click', async () => {
-        try {
-            const response = await axios.post(`${API_BASE}/api/calls/recall`);
-            dashboardManager.updateCurrentTicket(response.data);
-        } catch (error) {
-            console.error('Failed to recall ticket:', error);
-            Utils.showToast('Erro ao rechamar ticket', 'error');
-        }
+        const response = await axios.post(`${API_BASE}/api/branch_admin/calls/recall`);
+        dashboardManager.updateCurrentTicket(response.data);
     });
 });
