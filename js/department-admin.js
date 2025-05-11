@@ -14,8 +14,11 @@ axios.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response && error.response.status === 401) {
-            console.log('Authentication error:', error.response.data?.error);
-            Utils.showToast(error.response.data?.error || 'Erro de autenticação. Por favor, faça login novamente.', 'error');
+            Utils.showToast('Erro de autenticação. Verifique sua sessão.', 'error');
+        } else if (error.response && error.response.status === 404) {
+            Utils.showToast('Recurso não encontrado.', 'warning');
+        } else if (error.code === 'ECONNABORTED' || error.message.includes('Network Error')) {
+            Utils.showToast('Problema na conexão com o servidor.', 'error');
         }
         return Promise.reject(error);
     }
@@ -30,13 +33,16 @@ class AuthManager {
     // Exibe os dados do usuário armazenados (sem verificar com o backend)
     setUserInfo() {
         const email = localStorage.getItem('email') || sessionStorage.getItem('email');
-        const name = email ? email.split('@')[0] : 'Usuário'; // Usa parte do email como nome, se disponível
+        const name = email ? email.split('@')[0] : 'Usuário'; // Usa parte do email como nome
         if (email) {
             document.getElementById('user-name').textContent = name;
             document.getElementById('user-email').textContent = email;
+            // Define iniciais do usuário
+            const userInitials = name.slice(0, 2).toUpperCase();
+            document.querySelector('#user-info .bg-indigo-500')?.textContent = userInitials;
         } else {
             console.warn('No email found in storage');
-            Utils.showToast('Dados do usuário não encontrados. Faça login novamente.', 'error');
+            Utils.showToast('Dados do usuário não encontrados.', 'warning');
         }
     }
 
@@ -392,7 +398,7 @@ class TicketManager {
             const response = await axios.post('https://fila-facilita2-0-4uzw.onrender.com/api/tickets', data);
             Utils.showLoading(false);
             
-            document.getElementById('ticket-modal').classList.add('hidden');
+            document.getElementById('ticket-modal').List.add('hidden');
             Utils.showToast('Ticket gerado com sucesso', 'success');
             this.loadTickets();
         } catch (error) {
@@ -834,10 +840,24 @@ class DashboardManager {
     }
 
     initWebSocket() {
+        const token = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
+        const institution_id = localStorage.getItem('institution_id') || '';
         this.socket = io('https://fila-facilita2-0-4uzw.onrender.com', {
             path: '/real-time',
             transports: ['websocket'],
-            reconnectionAttempts: 5
+            reconnectionAttempts: 5,
+            query: { token, institution_id }
+        });
+
+        this.socket.on('connect', () => {
+            this.socket.emit('join_room', { room: institution_id });
+            console.log('WebSocket conectado:', this.socket.id, 'Room:', institution_id);
+            Utils.showToast('Conexão em tempo real estabelecida.', 'success');
+        });
+
+        this.socket.on('connect_error', (error) => {
+            console.error('Erro na conexão WebSocket:', error);
+            Utils.showToast('Problema na conexão em tempo real. Tentando reconectar...', 'warning');
         });
 
         this.socket.on('new_ticket', (data) => {
