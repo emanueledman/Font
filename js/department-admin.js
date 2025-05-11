@@ -27,21 +27,16 @@ class AuthManager {
         this.user = null;
     }
 
-    async checkAuthStatus() {
-        try {
-            const response = await axios.get('https://fila-facilita2-0-4uzw.onrender.com/api/auth/status');
-            this.user = response.data.user;
-            if (this.user) {
-                document.getElementById('user-name').textContent = this.user.name;
-                document.getElementById('user-email').textContent = this.user.email;
-                return true;
-            }
-            console.warn('No user data returned from auth status');
-            return false;
-        } catch (error) {
-            console.error('Auth check failed:', error);
-            Utils.showToast('Falha na verificação de autenticação. Tente novamente.', 'error');
-            return false;
+    // Exibe os dados do usuário armazenados (sem verificar com o backend)
+    setUserInfo() {
+        const email = localStorage.getItem('email') || sessionStorage.getItem('email');
+        const name = email ? email.split('@')[0] : 'Usuário'; // Usa parte do email como nome, se disponível
+        if (email) {
+            document.getElementById('user-name').textContent = name;
+            document.getElementById('user-email').textContent = email;
+        } else {
+            console.warn('No email found in storage');
+            Utils.showToast('Dados do usuário não encontrados. Faça login novamente.', 'error');
         }
     }
 
@@ -52,6 +47,8 @@ class AuthManager {
             sessionStorage.removeItem('adminToken');
             localStorage.removeItem('userRole');
             sessionStorage.removeItem('userRole');
+            localStorage.removeItem('email');
+            sessionStorage.removeItem('email');
             window.location.href = '/index.html';
         } catch (error) {
             console.error('Logout failed:', error);
@@ -233,6 +230,7 @@ class QueueManager {
             Utils.showToast(data.id ? 'Fila atualizada com sucesso' : 'Fila criada com sucesso', 'success');
             this.loadQueues();
         } catch (error) {
+            console.error('Failed to save queue:', error);
             Utils.showLoading(false);
             Utils.showToast('Erro ao salvar fila', 'error');
         }
@@ -248,6 +246,7 @@ class QueueManager {
             Utils.showToast('Fila excluída com sucesso', 'success');
             this.loadQueues();
         } catch (error) {
+            console.error('Failed to delete queue:', error);
             Utils.showLoading(false);
             Utils.showToast('Erro ao excluir fila', 'error');
         }
@@ -397,6 +396,8 @@ class TicketManager {
             Utils.showToast('Ticket gerado com sucesso', 'success');
             this.loadTickets();
         } catch (error) {
+            console.error('Failed to save ticket:', error);
+            Utils.showLoading(false);
             Utils.showToast('Erro ao gerar ticket', 'error');
         }
     }
@@ -411,6 +412,7 @@ class TicketManager {
             Utils.showToast('Ticket excluído com sucesso', 'success');
             this.loadTickets();
         } catch (error) {
+            console.error('Failed to delete ticket:', error);
             Utils.showLoading(false);
             Utils.showToast('Erro ao excluir ticket', 'error');
         }
@@ -444,6 +446,7 @@ class TicketManager {
             document.getElementById('qr-modal').classList.add('hidden');
             Utils.showToast('QR Code validado com sucesso', 'success');
         } catch (error) {
+            console.error('Failed to validate QR:', error);
             Utils.showLoading(false);
             Utils.showToast('Erro ao validar QR Code', 'error');
         }
@@ -511,6 +514,7 @@ class ReportManager {
             this.renderReport(response.data);
             Utils.showToast('Relatório gerado com sucesso', 'success');
         } catch (error) {
+            console.error('Failed to generate report:', error);
             Utils.showLoading(false);
             Utils.showToast('Erro ao gerar relatório', 'error');
         }
@@ -631,10 +635,11 @@ class SettingsManager {
 
         try {
             Utils.showLoading(true, 'Salvando configurações...');
-            await axios.post('https://fila-facilita2-0-4uzw.onrender.com/api/settings', data);
+            const response = await axios.post('https://fila-facilita2-0-4uzw.onrender.com/api/settings', data);
             Utils.showLoading(false);
             Utils.showToast('Configurações salvas com sucesso', 'success');
         } catch (error) {
+            console.error('Failed to save settings:', error);
             Utils.showLoading(false);
             Utils.showToast('Erro ao salvar configurações', 'error');
         }
@@ -651,12 +656,13 @@ class SettingsManager {
 
         try {
             Utils.showLoading(true, 'Adicionando membro...');
-            await axios.post('https://fila-facilita2-0-4uzw.onrender.com/api/members', data);
+            const response = await axios.post('https://fila-facilita2-0-4uzw.onrender.com/api/members', data);
             Utils.showLoading(false);
             document.getElementById('member-modal').classList.add('hidden');
             Utils.showToast('Membro adicionado com sucesso', 'success');
             this.loadMembers();
         } catch (error) {
+            console.error('Failed to add member:', error);
             Utils.showLoading(false);
             Utils.showToast('Erro ao adicionar membro', 'error');
         }
@@ -707,6 +713,7 @@ class SettingsManager {
             Utils.showToast('Membro removido com sucesso', 'success');
             this.loadMembers();
         } catch (error) {
+            console.error('Failed to delete member:', error);
             Utils.showLoading(false);
             Utils.showToast('Erro ao remover membro', 'error');
         }
@@ -935,11 +942,11 @@ function updateCurrentDateTime() {
     document.getElementById('current-date').textContent = now.toLocaleDateString('pt-BR', options);
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
     if (window.location.pathname.includes('index.html')) return;
 
-    // Tenta carregar o dashboard mesmo se a autenticação falhar
-    await authManager.checkAuthStatus();
+    // Carrega os dados do usuário do storage e inicializa a aplicação
+    authManager.setUserInfo();
     dashboardManager.loadDashboardData();
     setupNavigation();
     dashboardManager.initWebSocket();
@@ -968,6 +975,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const response = await axios.post('https://fila-facilita2-0-4uzw.onrender.com/api/calls/next');
             dashboardManager.updateCurrentTicket(response.data);
         } catch (error) {
+            console.error('Failed to call next ticket:', error);
             Utils.showToast('Erro ao chamar próximo ticket', 'error');
         }
     });
@@ -976,6 +984,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const response = await axios.post('https://fila-facilita2-0-4uzw.onrender.com/api/calls/recall');
             dashboardManager.updateCurrentTicket(response.data);
         } catch (error) {
+            console.error('Failed to recall ticket:', error);
             Utils.showToast('Erro ao rechamar ticket', 'error');
         }
     });
