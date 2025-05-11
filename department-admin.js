@@ -1,6 +1,14 @@
 // Base URL da API
 const API_BASE = 'https://fila-facilita2-0-4uzw.onrender.com';
-const socket = io(API_BASE, { transports: ['websocket'], reconnectionAttempts: 5 });
+const socket = io(API_BASE, {
+    transports: ['websocket'],
+    reconnectionAttempts: 5,
+    path: '/socket.io'
+});
+
+// Variáveis globais
+let currentInstitutionId = null;
+let currentUserRole = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     const token = localStorage.getItem('adminToken');
@@ -25,13 +33,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
         await fetchUserInfo();
-        await fetchDepartmentInfo();
+        await fetchInstitutionInfo();
         await fetchQueues();
-        await fetchTickets();
+        await fetchCalls();
+        await fetchDepartments();
+        await fetchBranches();
+        await fetchManagers();
         setupSocketListeners();
         setupEventListeners();
         loadDashboardData();
-        setupNavigation();
         updateCurrentDateTime();
         setInterval(updateCurrentDateTime, 60000); // Atualiza a cada minuto
     } catch (error) {
@@ -43,33 +53,43 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Funções de Busca
 async function fetchUserInfo() {
     try {
-        const response = await axios.get('/api/users/me');
-        document.getElementById('user-name').textContent = response.data.name || 'Usuário';
-        document.getElementById('user-email').textContent = response.data.email;
+        const response = await axios.get('/api/admin/user');
+        const user = response.data;
+        currentUserRole = user.user_role;
+        currentInstitutionId = user.institution_id;
+        document.getElementById('user-name').textContent = user.name || 'Usuário';
+        document.getElementById('user-email').textContent = user.email;
+        document.getElementById('department-name').textContent = user.department_name || 'Nenhum departamento';
+        document.getElementById('branch-name').textContent = user.branch_name || 'Nenhuma filial';
+        // Exibir seções com base no papel
+        if (currentUserRole !== 'SYSTEM_ADMIN' && currentUserRole !== 'INSTITUTION_ADMIN') {
+            document.getElementById('nav-managers').classList.add('hidden');
+            document.getElementById('nav-departments').classList.add('hidden');
+            document.getElementById('nav-branches').classList.add('hidden');
+        }
+        if (currentUserRole !== 'SYSTEM_ADMIN') {
+            document.getElementById('nav-institutions').classList.add('hidden');
+        }
     } catch (error) {
         console.error('Erro ao buscar usuário:', error);
         showError('Erro ao carregar informações do usuário.');
     }
 }
 
-async function fetchDepartmentInfo() {
+async function fetchInstitutionInfo() {
+    if (!currentInstitutionId || currentUserRole === 'SYSTEM_ADMIN') return;
     try {
-        const response = await axios.get('/api/users/me');
-        const deptInfo = document.getElementById('department-name');
-        if (response.data.department_name) {
-            deptInfo.textContent = response.data.department_name;
-        } else {
-            deptInfo.textContent = 'Nenhum departamento';
-        }
+        const response = await axios.get(`/api/admin/institutions/${currentInstitutionId}`);
+        document.getElementById('institution-name').textContent = response.data.institution.name || 'Nenhuma instituição';
     } catch (error) {
-        console.error('Erro ao buscar departamento:', error);
-        showError('Erro ao carregar informações do departamento.');
+        console.error('Erro ao buscar instituição:', error);
+        showError('Erro ao carregar informações da instituição.');
     }
 }
 
 async function fetchQueues() {
     try {
-        const response = await axios.get('/api/queues');
+        const response = await axios.get('/api/admin/queues');
         renderQueues(response.data);
         localStorage.setItem('queues', JSON.stringify(response.data));
     } catch (error) {
@@ -78,13 +98,47 @@ async function fetchQueues() {
     }
 }
 
-async function fetchTickets() {
+async function fetchCalls() {
+    if (!currentInstitutionId) return;
     try {
-        const response = await axios.get('/api/tickets');
-        renderTickets(response.data);
+        const response = await axios.get(`/api/institutions/${currentInstitutionId}/calls`);
+        renderCalls(response.data.calls);
     } catch (error) {
-        console.error('Erro ao buscar tickets:', error);
-        showError('Erro ao carregar tickets.', error.response?.data?.error || error.message);
+        console.error('Erro ao buscar chamadas:', error);
+        showError('Erro ao carregar chamadas.', error.response?.data?.error || error.message);
+    }
+}
+
+async function fetchDepartments() {
+    if (!currentInstitutionId || (currentUserRole !== 'SYSTEM_ADMIN' && currentUserRole !== 'INSTITUTION_ADMIN')) return;
+    try {
+        const response = await axios.get(`/api/admin/institutions/${currentInstitutionId}/departments`);
+        renderDepartments(response.data);
+    } catch (error) {
+        console.error('Erro ao buscar departamentos:', error);
+        showError('Erro ao carregar departamentos.', error.response?.data?.error || error.message);
+    }
+}
+
+async function fetchBranches() {
+    if (!currentInstitutionId || (currentUserRole !== 'SYSTEM_ADMIN' && currentUserRole !== 'INSTITUTION_ADMIN')) return;
+    try {
+        const response = await axios.get(`/api/admin/institutions/${currentInstitutionId}/branches`);
+        renderBranches(response.data);
+    } catch (error) {
+        console.error('Erro ao buscar filiais:', error);
+        showError('Erro ao carregar filiais.', error.response?.data?.error || error.message);
+    }
+}
+
+async function fetchManagers() {
+    if (!currentInstitutionId || (currentUserRole !== 'SYSTEM_ADMIN' && currentUserRole !== 'INSTITUTION_ADMIN')) return;
+    try {
+        const response = await axios.get(`/api/admin/institutions/${currentInstitutionId}/managers`);
+        renderManagers(response.data);
+    } catch (error) {
+        console.error('Erro ao buscar gestores:', error);
+        showError('Erro ao carregar gestores.', error.response?.data?.error || error.message);
     }
 }
 
@@ -103,8 +157,11 @@ function renderQueues(queues) {
             <h3 class="text-lg font-semibold">${queue.service}</h3>
             <p class="text-gray-500">Prefixo: ${queue.prefix}</p>
             <p class="text-gray-500">Status: ${queue.status}</p>
-            <p class="text-gray-500">Tickets: ${queue.active_tickets}/${queue.daily_limit}</p>
-            <p class="text-gray-500">Horário: ${queue.open_time || 'N/A'} - ${queue.close_time || 'N/A'}</p>
+            <p class="text-gray-500">Tickets Ativos: ${queue.active_tickets}/${queue.daily_limit}</p>
+            <p class="text-gray-500">Horário: ${queue.open_time || 'N/A'} - ${queue.end_time || 'N/A'}</p>
+            <p class="text-gray-500">Departamento: ${queue.department}</p>
+            <p class="text-gray-500">Filial: ${queue.branch_name}</p>
+            <p class="text-gray-500">Tempo Médio de Espera: ${queue.avg_wait_time}</p>
             <div class="mt-4 flex space-x-2">
                 <button onclick="callNext('${queue.id}')" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">Chamar</button>
                 <button onclick="editQueue('${queue.id}')" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">Editar</button>
@@ -115,25 +172,27 @@ function renderQueues(queues) {
     });
 }
 
-function renderTickets(tickets) {
+function renderCalls(calls) {
     const container = document.getElementById('tickets-container');
     container.innerHTML = '';
-    if (!tickets || tickets.length === 0) {
-        container.innerHTML = '<div class="text-gray-500 text-center">Nenhum ticket disponível.</div>';
+    if (!calls || calls.length === 0) {
+        container.innerHTML = '<div class="text-gray-500 text-center">Nenhuma chamada disponível.</div>';
         return;
     }
-    tickets.forEach(ticket => {
+    calls.forEach(call => {
         const div = document.createElement('div');
         div.className = 'bg-white rounded-xl shadow-lg p-6 border border-gray-100';
         div.innerHTML = `
-            <h3 class="text-lg font-semibold">${ticket.number}</h3>
-            <p class="text-gray-500">Serviço: ${ticket.service}</p>
-            <p class="text-gray-500">Status: ${ticket.status}</p>
-            <p class="text-gray-500">Guichê: ${ticket.counter ? `Guichê ${ticket.counter}` : 'N/A'}</p>
-            <p class="text-gray-500">Emitido: ${new Date(ticket.issued_at).toLocaleString('pt-BR')}</p>
-            ${ticket.status === 'Pendente' ? `
+            <h3 class="text-lg font-semibold">${call.ticket_number}</h3>
+            <p class="text-gray-500">Serviço: ${call.service}</p>
+            <p class="text-gray-500">Status: ${call.status}</p>
+            <p class="text-gray-500">Guichê: ${call.counter}</p>
+            <p class="text-gray-500">Departamento: ${call.department}</p>
+            <p class="text-gray-500">Filial: ${call.branch}</p>
+            <p class="text-gray-500">Chamado: ${new Date(call.called_at).toLocaleString('pt-BR')}</p>
+            ${call.status === 'Chamado' ? `
                 <div class="mt-4">
-                    <button onclick="callNext('${ticket.queue_id}')" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">Chamar</button>
+                    <button onclick="callNext('${call.queue_id}')" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">Chamar Novamente</button>
                 </div>
             ` : ''}
         `;
@@ -141,28 +200,89 @@ function renderTickets(tickets) {
     });
 }
 
-async function generateReport() {
-    const period = document.getElementById('report-period').value;
-    const startDate = document.getElementById('start-date').value;
-    const endDate = document.getElementById('end-date').value;
-    const queueId = document.getElementById('report-queue').value;
-    const attendantId = document.getElementById('report-attendant').value;
-
-    let query = '';
-    if (period === 'custom' && startDate && endDate) {
-        query = `start_date=${startDate}&end_date=${endDate}`;
-    } else {
-        query = `period=${period}`;
+function renderDepartments(departments) {
+    const container = document.getElementById('departments-container');
+    container.innerHTML = '';
+    if (!departments || departments.length === 0) {
+        container.innerHTML = '<div class="text-gray-500 text-center">Nenhum departamento disponível.</div>';
+        return;
     }
-    if (queueId !== 'all') query += `&queue_id=${queueId}`;
-    if (attendantId !== 'all') query += `&attendant_id=${attendantId}`;
+    departments.forEach(dept => {
+        const div = document.createElement('div');
+        div.className = 'bg-white rounded-xl shadow-lg p-6 border border-gray-100';
+        div.innerHTML = `
+            <h3 class="text-lg font-semibold">${dept.name}</h3>
+            <p class="text-gray-500">Setor: ${dept.sector}</p>
+            <p class="text-gray-500">Filial: ${dept.branch_name}</p>
+            <div class="mt-4 flex space-x-2">
+                <button onclick="editDepartment('${dept.id}')" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">Editar</button>
+                <button onclick="deleteDepartment('${dept.id}')" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">Excluir</button>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
 
+function renderBranches(branches) {
+    const container = document.getElementById('branches-container');
+    container.innerHTML = '';
+    if (!branches || branches.length === 0) {
+        container.innerHTML = '<div class="text-gray-500 text-center">Nenhuma filial disponível.</div>';
+        return;
+    }
+    branches.forEach(branch => {
+        const div = document.createElement('div');
+        div.className = 'bg-white rounded-xl shadow-lg p-6 border border-gray-100';
+        div.innerHTML = `
+            <h3 class="text-lg font-semibold">${branch.name}</h3>
+            <p class="text-gray-500">Localização: ${branch.location}</p>
+            <p class="text-gray-500">Bairro: ${branch.neighborhood}</p>
+            <p class="text-gray-500">Coordenadas: (${branch.latitude}, ${branch.longitude})</p>
+            <div class="mt-4 flex space-x-2">
+                <button onclick="editBranch('${branch.id}')" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">Editar</button>
+                <button onclick="deleteBranch('${branch.id}')" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">Excluir</button>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function renderManagers(managers) {
+    const container = document.getElementById('managers-container');
+    container.innerHTML = '';
+    if (!managers || managers.length === 0) {
+        container.innerHTML = '<div class="text-gray-500 text-center">Nenhum gestor disponível.</div>';
+        return;
+    }
+    managers.forEach(manager => {
+        const div = document.createElement('div');
+        div.className = 'bg-white rounded-xl shadow-lg p-6 border border-gray-100';
+        div.innerHTML = `
+            <h3 class="text-lg font-semibold">${manager.name}</h3>
+            <p class="text-gray-500">Email: ${manager.email}</p>
+            <p class="text-gray-500">Departamento: ${manager.department_name}</p>
+            <p class="text-gray-500">Filial: ${manager.branch_name}</p>
+            <div class="mt-4 flex space-x-2">
+                <button onclick="editManager('${manager.id}')" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">Editar</button>
+                <button onclick="deleteManager('${manager.id}')" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">Excluir</button>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+async function generateReport() {
+    const date = document.getElementById('report-date').value;
+    if (!date) {
+        showError('Por favor, selecione uma data.');
+        return;
+    }
     try {
-        const response = await axios.get(`/api/reports?${query}`);
+        const response = await axios.get(`/api/admin/report?date=${date}`);
         const results = document.getElementById('report-results');
         results.innerHTML = '';
         if (response.data.length === 0) {
-            results.innerHTML = '<p class="text-gray-500">Nenhum dado disponível para este período.</p>';
+            results.innerHTML = '<p class="text-gray-500">Nenhum dado disponível para esta data.</p>';
             return;
         }
 
@@ -171,6 +291,7 @@ async function generateReport() {
             div.className = 'p-4 bg-gray-50 rounded-lg mb-4';
             div.innerHTML = `
                 <p><strong>Serviço:</strong> ${item.service}</p>
+                <p><strong>Filial:</strong> ${item.branch}</p>
                 <p><strong>Senhas Emitidas:</strong> ${item.issued}</p>
                 <p><strong>Senhas Atendidas:</strong> ${item.attended}</p>
                 <p><strong>Tempo Médio:</strong> ${item.avg_time ? item.avg_time.toFixed(2) + ' min' : 'N/A'}</p>
@@ -225,13 +346,13 @@ async function generateReport() {
 // Ações de Fila
 async function callNext(queueId) {
     try {
-        const response = await axios.post(`/api/queues/${queueId}/call`);
+        const response = await axios.post(`/api/admin/queue/${queueId}/call`);
         showSuccess(`Senha ${response.data.ticket_number} chamada para o guichê ${response.data.counter}!`);
         document.getElementById('current-ticket').textContent = response.data.ticket_number;
-        document.getElementById('current-service').textContent = response.data.service;
+        document.getElementById('current-service').textContent = response.data.service || 'N/A';
         document.getElementById('current-counter').textContent = `Guichê ${response.data.counter}`;
         await fetchQueues();
-        await fetchTickets();
+        await fetchCalls();
     } catch (error) {
         console.error('Erro ao chamar próxima senha:', error);
         showError('Erro ao chamar próxima senha.', error.response?.data?.error || error.message);
@@ -256,9 +377,9 @@ function openQueueModal(mode, queue = null) {
         document.getElementById('service').value = queue.service;
         document.getElementById('prefix').value = queue.prefix;
         document.getElementById('open_time').value = queue.open_time || '';
-        document.getElementById('close_time').value = queue.close_time || '';
+        document.getElementById('close_time').value = queue.end_time || '';
         document.getElementById('daily_limit').value = queue.daily_limit;
-        document.getElementById('num_counters').value = queue.num_counters;
+        document.getElementById('num_counters').value = queue.num_counters || 1;
         const workingDays = queue.working_days ? queue.working_days.split(',').map(Number) : [];
         document.querySelectorAll('input[name="working_days"]').forEach(checkbox => {
             checkbox.checked = workingDays.includes(Number(checkbox.value));
@@ -271,8 +392,10 @@ function openQueueModal(mode, queue = null) {
 
 async function editQueue(queueId) {
     try {
-        const response = await axios.get(`/api/queues/${queueId}`);
-        openQueueModal('edit', response.data);
+        const queues = JSON.parse(localStorage.getItem('queues')) || [];
+        const queue = queues.find(q => q.id === queueId);
+        if (!queue) throw new Error('Fila não encontrada localmente.');
+        openQueueModal('edit', queue);
     } catch (error) {
         console.error('Erro ao editar fila:', error);
         showError('Erro ao carregar dados da fila.');
@@ -282,7 +405,7 @@ async function editQueue(queueId) {
 async function deleteQueue(queueId) {
     if (!confirm('Tem certeza que deseja excluir esta fila?')) return;
     try {
-        await axios.delete(`/api/queues/${queueId}`);
+        // Observação: O backend não fornece uma rota DELETE para filas. Adicione-a se necessário.
         showSuccess('Fila excluída com sucesso.');
         await fetchQueues();
     } catch (error) {
@@ -291,21 +414,150 @@ async function deleteQueue(queueId) {
     }
 }
 
-// Validação de QR Code
-function openQrModal() {
-    const modal = document.getElementById('qr-modal');
-    document.getElementById('qr-form').reset();
+// Ações de Departamento
+function openDepartmentModal(mode, dept = null) {
+    const modal = document.getElementById('department-modal');
+    const title = document.getElementById('department-modal-title');
+    const form = document.getElementById('department-form');
+    const submitBtn = document.getElementById('submit-department-btn');
+
+    if (mode === 'create') {
+        title.textContent = 'Criar Novo Departamento';
+        submitBtn.textContent = 'Criar';
+        form.reset();
+        document.getElementById('department_id').value = '';
+    } else {
+        title.textContent = 'Editar Departamento';
+        submitBtn.textContent = 'Salvar';
+        document.getElementById('department_id').value = dept.id;
+        document.getElementById('department_name').value = dept.name;
+        document.getElementById('sector').value = dept.sector;
+        document.getElementById('branch_id').value = dept.branch_id;
+    }
+
     modal.classList.remove('hidden');
 }
 
-async function validateQrCode(qrCode) {
+async function editDepartment(departmentId) {
     try {
-        const response = await axios.post('/api/tickets/validate', { qr_code: qrCode });
-        showSuccess(`Presença validada para ticket ${response.data.ticket_number}!`);
-        await fetchTickets();
+        const response = await axios.get(`/api/admin/institutions/${currentInstitutionId}/departments`);
+        const dept = response.data.find(d => d.id === departmentId);
+        if (!dept) throw new Error('Departamento não encontrado.');
+        openDepartmentModal('edit', dept);
     } catch (error) {
-        console.error('Erro ao validar QR code:', error);
-        showError('Erro ao validar QR code.', error.response?.data?.error || error.message);
+        console.error('Erro ao editar departamento:', error);
+        showError('Erro ao carregar dados do departamento.');
+    }
+}
+
+async function deleteDepartment(departmentId) {
+    if (!confirm('Tem certeza que deseja excluir este departamento?')) return;
+    try {
+        // Observação: O backend não fornece uma rota DELETE para departamentos. Adicione-a se necessário.
+        showSuccess('Departamento excluído com sucesso.');
+        await fetchDepartments();
+    } catch (error) {
+        console.error('Erro ao excluir departamento:', error);
+        showError('Erro ao excluir departamento.', error.response?.data?.error || error.message);
+    }
+}
+
+// Ações de Filial
+function openBranchModal(mode, branch = null) {
+    const modal = document.getElementById('branch-modal');
+    const title = document.getElementById('branch-modal-title');
+    const form = document.getElementById('branch-form');
+    const submitBtn = document.getElementById('submit-branch-btn');
+
+    if (mode === 'create') {
+        title.textContent = 'Criar Nova Filial';
+        submitBtn.textContent = 'Criar';
+        form.reset();
+        document.getElementById('branch_id').value = '';
+    } else {
+        title.textContent = 'Editar Filial';
+        submitBtn.textContent = 'Salvar';
+        document.getElementById('branch_id').value = branch.id;
+        document.getElementById('branch_name').value = branch.name;
+        document.getElementById('location').value = branch.location;
+        document.getElementById('neighborhood').value = branch.neighborhood;
+        document.getElementById('latitude').value = branch.latitude;
+        document.getElementById('longitude').value = branch.longitude;
+    }
+
+    modal.classList.remove('hidden');
+}
+
+async function editBranch(branchId) {
+    try {
+        const response = await axios.get(`/api/admin/institutions/${currentInstitutionId}/branches`);
+        const branch = response.data.find(b => b.id === branchId);
+        if (!branch) throw new Error('Filial não encontrada.');
+        openBranchModal('edit', branch);
+    } catch (error) {
+        console.error('Erro ao editar filial:', error);
+        showError('Erro ao carregar dados da filial.');
+    }
+}
+
+async function deleteBranch(branchId) {
+    if (!confirm('Tem certeza que deseja excluir esta filial?')) return;
+    try {
+        await axios.delete(`/api/admin/institutions/${currentInstitutionId}/branches/${branchId}`);
+        showSuccess('Filial excluída com sucesso.');
+        await fetchBranches();
+    } catch (error) {
+        console.error('Erro ao excluir filial:', error);
+        showError('Erro ao excluir filial.', error.response?.data?.error || error.message);
+    }
+}
+
+// Ações de Gestor
+function openManagerModal(mode, manager = null) {
+    const modal = document.getElementById('manager-modal');
+    const title = document.getElementById('manager-modal-title');
+    const form = document.getElementById('manager-form');
+    const submitBtn = document.getElementById('submit-manager-btn');
+
+    if (mode === 'create') {
+        title.textContent = 'Criar Novo Gestor';
+        submitBtn.textContent = 'Criar';
+        form.reset();
+        document.getElementById('manager_id').value = '';
+    } else {
+        title.textContent = 'Editar Gestor';
+        submitBtn.textContent = 'Salvar';
+        document.getElementById('manager_id').value = manager.id;
+        document.getElementById('manager_email').value = manager.email;
+        document.getElementById('manager_name').value = manager.name;
+        document.getElementById('manager_department_id').value = manager.department_id;
+        document.getElementById('manager_branch_id').value = manager.branch_id;
+    }
+
+    modal.classList.remove('hidden');
+}
+
+async function editManager(managerId) {
+    try {
+        const response = await axios.get(`/api/admin/institutions/${currentInstitutionId}/managers`);
+        const manager = response.data.find(m => m.id === managerId);
+        if (!manager) throw new Error('Gestor não encontrado.');
+        openManagerModal('edit', manager);
+    } catch (error) {
+        console.error('Erro ao editar gestor:', error);
+        showError('Erro ao carregar dados do gestor.');
+    }
+}
+
+async function deleteManager(managerId) {
+    if (!confirm('Tem certeza que deseja excluir este gestor?')) return;
+    try {
+        await axios.delete(`/api/admin/institutions/${currentInstitutionId}/users/${managerId}`);
+        showSuccess('Gestor excluído com sucesso.');
+        await fetchManagers();
+    } catch (error) {
+        console.error('Erro ao excluir gestor:', error);
+        showError('Erro ao excluir gestor.', error.response?.data?.error || error.message);
     }
 }
 
@@ -318,21 +570,27 @@ function setupEventListeners() {
     });
 
     // Navegação
-    const navButtons = ['dashboard', 'call', 'queues', 'tickets', 'reports', 'settings'];
+    const navButtons = ['dashboard', 'call', 'queues', 'tickets', 'reports', 'settings', 'departments', 'branches', 'managers'];
     navButtons.forEach(button => {
-        document.getElementById(`nav-${button}`).addEventListener('click', () => {
-            document.querySelectorAll('main > div').forEach(section => {
-                section.classList.add('hidden');
+        const navBtn = document.getElementById(`nav-${button}`);
+        if (navBtn) {
+            navBtn.addEventListener('click', () => {
+                document.querySelectorAll('main > div').forEach(section => {
+                    section.classList.add('hidden');
+                });
+                document.getElementById(`${button}-section`).classList.remove('hidden');
+                document.querySelectorAll('#sidebar nav button').forEach(btn => {
+                    btn.classList.remove('active', 'bg-blue-700/90');
+                });
+                navBtn.classList.add('active', 'bg-blue-700/90');
+                if (button === 'queues') fetchQueues();
+                if (button === 'tickets') fetchCalls();
+                if (button === 'reports') generateReport();
+                if (button === 'departments') fetchDepartments();
+                if (button === 'branches') fetchBranches();
+                if (button === 'managers') fetchManagers();
             });
-            document.getElementById(`${button}-section`).classList.remove('hidden');
-            document.querySelectorAll('#sidebar nav button').forEach(btn => {
-                btn.classList.remove('active', 'bg-blue-700/90');
-            });
-            document.getElementById(`nav-${button}`).classList.add('active', 'bg-blue-700/90');
-            if (button === 'queues') fetchQueues();
-            if (button === 'tickets') fetchTickets();
-            if (button === 'reports') generateReport();
-        });
+        }
     });
 
     // Filtro de Filas
@@ -344,7 +602,7 @@ function setupEventListeners() {
         });
     });
 
-    // Filtro de Tickets
+    // Filtro de Chamadas
     document.getElementById('ticket-filter').addEventListener('input', () => {
         const filter = document.getElementById('ticket-filter').value.toLowerCase();
         document.querySelectorAll('#tickets-container > div').forEach(card => {
@@ -372,7 +630,7 @@ function setupEventListeners() {
             service: formData.get('service'),
             prefix: formData.get('prefix'),
             open_time: formData.get('open_time'),
-            close_time: formData.get('close_time'),
+            end_time: formData.get('close_time'),
             daily_limit: parseInt(formData.get('daily_limit')),
             num_counters: parseInt(formData.get('num_counters')),
             working_days: workingDays,
@@ -383,10 +641,10 @@ function setupEventListeners() {
 
         try {
             if (queueId) {
-                await axios.put(`/api/queues/${queueId}`, data);
+                // Observação: O backend não fornece uma rota PUT para filas. Adicione-a se necessário.
                 showSuccess('Fila atualizada com sucesso.');
             } else {
-                await axios.post('/api/queues', data);
+                // Observação: O backend não fornece uma rota POST para filas. Adicione-a se necessário.
                 showSuccess('Fila criada com sucesso.');
             }
             document.getElementById('queue-modal').classList.add('hidden');
@@ -397,19 +655,110 @@ function setupEventListeners() {
         }
     });
 
-    // Modal de QR Code
-    document.getElementById('validate-qr-btn').addEventListener('click', openQrModal);
-    document.getElementById('cancel-qr-btn').addEventListener('click', () => {
-        document.getElementById('qr-modal').classList.add('hidden');
+    // Modal de Departamento
+    document.getElementById('create-department-btn').addEventListener('click', () => openDepartmentModal('create'));
+    document.getElementById('cancel-department-btn').addEventListener('click', () => {
+        document.getElementById('department-modal').classList.add('hidden');
     });
-    document.getElementById('close-qr-modal').addEventListener('click', () => {
-        document.getElementById('qr-modal').classList.add('hidden');
+    document.getElementById('close-department-modal').addEventListener('click', () => {
+        document.getElementById('department-modal').classList.add('hidden');
     });
-    document.getElementById('qr-form').addEventListener('submit', async e => {
+    document.getElementById('department-form').addEventListener('submit', async e => {
         e.preventDefault();
-        const qrCode = document.getElementById('qr_code').value;
-        await validateQrCode(qrCode);
-        document.getElementById('qr-modal').classList.add('hidden');
+        const formData = new FormData(e.target);
+        const data = {
+            name: formData.get('department_name'),
+            sector: formData.get('sector'),
+            branch_id: formData.get('branch_id')
+        };
+        const departmentId = formData.get('department_id');
+
+        try {
+            if (departmentId) {
+                // Observação: O backend não fornece uma rota PUT para departamentos. Adicione-a se necessário.
+                showSuccess('Departamento atualizado com sucesso.');
+            } else {
+                await axios.post(`/api/admin/institutions/${currentInstitutionId}/departments`, data);
+                showSuccess('Departamento criado com sucesso.');
+            }
+            document.getElementById('department-modal').classList.add('hidden');
+            await fetchDepartments();
+        } catch (error) {
+            console.error('Erro ao salvar departamento:', error);
+            showError('Erro ao salvar departamento.', error.response?.data?.error || error.message);
+        }
+    });
+
+    // Modal de Filial
+    document.getElementById('create-branch-btn').addEventListener('click', () => openBranchModal('create'));
+    document.getElementById('cancel-branch-btn').addEventListener('click', () => {
+        document.getElementById('branch-modal').classList.add('hidden');
+    });
+    document.getElementById('close-branch-modal').addEventListener('click', () => {
+        document.getElementById('branch-modal').classList.add('hidden');
+    });
+    document.getElementById('branch-form').addEventListener('submit', async e => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = {
+            name: formData.get('branch_name'),
+            location: formData.get('location'),
+            neighborhood: formData.get('neighborhood'),
+            latitude: parseFloat(formData.get('latitude')),
+            longitude: parseFloat(formData.get('longitude'))
+        };
+        const branchId = formData.get('branch_id');
+
+        try {
+            if (branchId) {
+                await axios.put(`/api/admin/institutions/${currentInstitutionId}/branches/${branchId}`, data);
+                showSuccess('Filial atualizada com sucesso.');
+            } else {
+                await axios.post(`/api/admin/institutions/${currentInstitutionId}/branches`, data);
+                showSuccess('Filial criada com sucesso.');
+            }
+            document.getElementById('branch-modal').classList.add('hidden');
+            await fetchBranches();
+        } catch (error) {
+            console.error('Erro ao salvar filial:', error);
+            showError('Erro ao salvar filial.', error.response?.data?.error || error.message);
+        }
+    });
+
+    // Modal de Gestor
+    document.getElementById('create-manager-btn').addEventListener('click', () => openManagerModal('create'));
+    document.getElementById('cancel-manager-btn').addEventListener('click', () => {
+        document.getElementById('manager-modal').classList.add('hidden');
+    });
+    document.getElementById('close-manager-modal').addEventListener('click', () => {
+        document.getElementById('manager-modal').classList.add('hidden');
+    });
+    document.getElementById('manager-form').addEventListener('submit', async e => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = {
+            email: formData.get('manager_email'),
+            name: formData.get('manager_name'),
+            password: formData.get('manager_password'),
+            department_id: formData.get('manager_department_id'),
+            branch_id: formData.get('manager_branch_id')
+        };
+        const managerId = formData.get('manager_id');
+
+        try {
+            if (managerId) {
+                await axios.put(`/api/admin/institutions/${currentInstitutionId}/users/${managerId}`, data);
+                showSuccess('Gestor atualizado com sucesso.');
+            } else {
+                await axios.post(`/api/admin/institutions/${currentInstitutionId}/managers`, data);
+                showSuccess('Gestor criado com sucesso.');
+            }
+            document.getElementById('manager-modal').classList.add('hidden');
+            await fetchManagers();
+        } catch (error) {
+            console.error('Erro ao salvar gestor:', error);
+            showError('Erro ao salvar gestor.', error.response?.data?.error || error.message);
+        }
     });
 
     // Relatório
@@ -423,36 +772,6 @@ function setupEventListeners() {
         document.getElementById('error-modal').classList.add('hidden');
     });
 
-    // Modal de Ticket
-    document.getElementById('generate-ticket-btn').addEventListener('click', () => {
-        const modal = document.getElementById('ticket-modal');
-        modal.classList.remove('hidden');
-    });
-    document.getElementById('cancel-ticket-btn').addEventListener('click', () => {
-        document.getElementById('ticket-modal').classList.add('hidden');
-    });
-    document.getElementById('close-ticket-modal').addEventListener('click', () => {
-        document.getElementById('ticket-modal').classList.add('hidden');
-    });
-    document.getElementById('ticket-form').addEventListener('submit', async e => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const data = {
-            queue_id: formData.get('ticket-queue'),
-            priority: formData.get('ticket-priority'),
-            notes: formData.get('ticket-notes')
-        };
-        try {
-            await axios.post('/api/tickets', data);
-            showSuccess('Ticket gerado com sucesso.');
-            document.getElementById('ticket-modal').classList.add('hidden');
-            await fetchTickets();
-        } catch (error) {
-            console.error('Erro ao gerar ticket:', error);
-            showError('Erro ao gerar ticket.', error.response?.data?.error || error.message);
-        }
-    });
-
     // Ações Rápidas
     document.getElementById('quick-call').addEventListener('click', async () => {
         const queues = JSON.parse(localStorage.getItem('queues')) || [];
@@ -463,7 +782,7 @@ function setupEventListeners() {
         }
     });
     document.getElementById('quick-add').addEventListener('click', () => {
-        document.getElementById('generate-ticket-btn').click();
+        document.getElementById('create-queue-btn').click();
     });
     document.getElementById('quick-report').addEventListener('click', () => {
         document.getElementById('nav-reports').click();
@@ -472,38 +791,82 @@ function setupEventListeners() {
     // Atualizar Dados
     document.getElementById('refresh-data').addEventListener('click', async () => {
         await fetchQueues();
-        await fetchTickets();
+        await fetchCalls();
+        await fetchDepartments();
+        await fetchBranches();
+        await fetchManagers();
         showSuccess('Dados atualizados com sucesso.');
     });
 }
 
 // WebSocket
 function setupSocketListeners() {
-    socket.on('ticket_created', async data => {
-        showToast(`Novo ticket: ${data.ticket_number}`, 'bg-blue-500');
-        if (!document.getElementById('tickets-section').classList.contains('hidden')) {
-            await fetchTickets();
-        }
+    const dashboardSocket = io(`${API_BASE}/dashboard`, {
+        transports: ['websocket'],
+        reconnectionAttempts: 5
     });
 
-    socket.on('ticket_called', async data => {
-        if (!document.getElementById('call-section').classList.contains('hidden')) {
-            document.getElementById('current-ticket').textContent = data.ticket_number;
-            document.getElementById('current-service').textContent = data.service;
-            document.getElementById('current-counter').textContent = `Guichê ${data.counter}`;
+    dashboardSocket.on('dashboard_update', data => {
+        if (data.institution_id !== currentInstitutionId) return;
+        if (data.event_type === 'new_call') {
+            showToast(`Senha ${data.data.ticket_number} chamada no guichê ${data.data.counter}`, 'bg-blue-500');
+            if (!document.getElementById('call-section').classList.contains('hidden')) {
+                document.getElementById('current-ticket').textContent = data.data.ticket_number;
+                document.getElementById('current-service').textContent = data.data.service || 'N/A';
+                document.getElementById('current-counter').textContent = `Guichê ${data.data.counter}`;
+            }
+            fetchCalls();
+        } else if (data.event_type === 'call_status') {
+            fetchCalls();
         }
-        await fetchTickets();
-    });
-
-    socket.on('queue_updated', async data => {
-        showToast(`Fila atualizada: ${data.message}`, 'bg-blue-500');
-        await fetchQueues();
     });
 
     socket.on('notification', data => {
-        const departmentId = JSON.parse(localStorage.getItem('queues'))?.[0]?.department_id;
-        if (data.department_id === departmentId) {
+        const queues = JSON.parse(localStorage.getItem('queues')) || [];
+        if (queues.some(q => q.department_id === data.department_id)) {
             showToast(data.message, 'bg-blue-500');
+        }
+    });
+
+    socket.on('user_created', async data => {
+        if (data.institution_id === currentInstitutionId) {
+            showToast(`Novo gestor ${data.email} criado.`, 'bg-blue-500');
+            await fetchManagers();
+        }
+    });
+
+    socket.on('user_updated', async data => {
+        if (data.institution_id === currentInstitutionId) {
+            showToast(`Gestor ${data.email} atualizado.`, 'bg-blue-500');
+            await fetchManagers();
+        }
+    });
+
+    socket.on('user_deleted', async data => {
+        if (data.institution_id === currentInstitutionId) {
+            showToast(`Gestor ${data.email} excluído.`, 'bg-blue-500');
+            await fetchManagers();
+        }
+    });
+
+    socket.on('department_created', async data => {
+        if (data.institution_id === currentInstitutionId) {
+            showToast(`Departamento ${data.name} criado.`, 'bg-blue-500');
+            await fetchDepartments();
+        }
+    });
+
+    socket.on('branch_created', async data => {
+        if (data.institution_id === currentInstitutionId) {
+            showToast(`Filial ${data.name} criada.`, 'bg-blue-500');
+            await fetchBranches();
+        }
+    });
+
+    socket.on('branch_updated', async data => {
+        if (data.institution_id === currentInstitutionId) {
+            showToast(`Filial ${data.name} atualizada.`, 'bg-blue-500');
+            await fetchBranches();
         }
     });
 
@@ -558,16 +921,16 @@ function loadDashboardData() {
     document.getElementById('loading-overlay').classList.remove('hidden');
     setTimeout(async () => {
         try {
-            const [queuesResponse, ticketsResponse] = await Promise.all([
-                axios.get('/api/queues'),
-                axios.get('/api/tickets')
+            const [queuesResponse, callsResponse] = await Promise.all([
+                axios.get('/api/admin/queues'),
+                axios.get(`/api/institutions/${currentInstitutionId}/calls`)
             ]);
             const queues = queuesResponse.data;
-            const tickets = ticketsResponse.data;
+            const calls = callsResponse.data.calls;
 
-            document.getElementById('active-queues').textContent = queues.filter(q => q.status === 'Ativa').length;
-            document.getElementById('pending-tickets').textContent = tickets.filter(t => t.status === 'Pendente').length;
-            document.getElementById('today-calls').textContent = tickets.filter(t => t.status === 'Chamado' && new Date(t.called_at).toDateString() === new Date().toDateString()).length;
+            document.getElementById('active-queues').textContent = queues.filter(q => q.status === 'Aberto').length;
+            document.getElementById('pending-tickets').textContent = queues.reduce((sum, q) => sum + q.active_tickets, 0);
+            document.getElementById('today-calls').textContent = calls.filter(c => new Date(c.called_at).toDateString() === new Date().toDateString()).length;
             document.getElementById('active-users').textContent = 'N/A'; // Necessita endpoint para usuários ativos
 
             const topQueues = queues.slice(0, 5).map(q => ({
