@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await fetchDepartmentInfo();
         await fetchAssignedQueues();
         await fetchActiveTickets();
+        await fetchAttendedTickets();
         setupSocketListeners();
         setupEventListeners();
         updateCurrentDateTime();
@@ -65,6 +66,9 @@ async function fetchAssignedQueues() {
         const response = await axios.get('/api/attendant/queues');
         renderQueues(response.data);
         localStorage.setItem('queues', JSON.stringify(response.data));
+        for (const queue of response.data) {
+            await fetchActiveTicketsForQueue(queue.id);
+        }
     } catch (error) {
         console.error('Erro ao buscar filas:', error);
         showError('Erro ao carregar filas.', error.response?.data?.error || error.message);
@@ -78,6 +82,30 @@ async function fetchActiveTickets() {
     } catch (error) {
         console.error('Erro ao buscar tickets:', error);
         showError('Erro ao carregar tickets.', error.response?.data?.error || error.message);
+    }
+}
+
+async function fetchActiveTicketsForQueue(queueId) {
+    try {
+        const response = await axios.get(`/api/attendant/queue/${queueId}/active-tickets`);
+        renderActiveTickets(queueId, response.data);
+    } catch (error) {
+        console.error(`Erro ao buscar tickets ativos para fila ${queueId}:`, error);
+        showError(`Erro ao carregar tickets ativos da fila ${queueId}.`);
+    }
+}
+
+async function fetchAttendedTickets() {
+    try {
+        const response = await axios.get('/api/attendant/tickets/attended', {
+            params: {
+                date: document.getElementById('attended-date-filter')?.value || new Date().toISOString().split('T')[0]
+            }
+        });
+        renderAttendedTickets(response.data);
+    } catch (error) {
+        console.error('Erro ao buscar tickets atendidos:', error);
+        showError('Erro ao carregar tickets atendidos.', error.response?.data?.error || error.message);
     }
 }
 
@@ -98,7 +126,7 @@ function renderQueues(queues) {
                 <span class="text-sm ${queue.status === 'active' ? 'text-green-500' : 'text-red-500'}">${queue.status === 'active' ? 'Ativa' : 'Inativa'}</span>
             </div>
             <p class="text-sm text-gray-500">Prefixo: ${queue.prefix}</p>
-            <p class="text-sm text-gray-500">Tickets ativos: ${queue.active_tickets}/${queue.daily_limit}</p>
+            <p class="text-sm text-gray-500">Tickets ativos: <span id="active-count-${queue.id}">${queue.active_tickets || 0}</span>/${queue.daily_limit}</p>
             <p class="text-sm text-gray-500">Horário: ${queue.open_time || 'N/A'} - ${queue.close_time || 'N/A'}</p>
             <div class="mt-3 flex space-x-2">
                 <button onclick="callNext('${queue.id}')" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm flex items-center">
@@ -114,9 +142,34 @@ function renderQueues(queues) {
                     Rechamar
                 </button>
             </div>
+            <div id="active-tickets-${queue.id}" class="mt-3 text-sm text-gray-600"></div>
         `;
         container.appendChild(div);
     });
+}
+
+function renderActiveTickets(queueId, tickets) {
+    const container = document.getElementById(`active-tickets-${queueId}`);
+    container.innerHTML = '';
+    if (!tickets || tickets.length === 0) {
+        container.innerHTML = '<p class="text-gray-500">Nenhuma senha ativa.</p>';
+        document.getElementById(`active-count-${queueId}`).textContent = '0';
+        return;
+    }
+    document.getElementById(`active-count-${queueId}`).textContent = tickets.length;
+    const ul = document.createElement('ul');
+    ul.className = 'list-disc pl-5';
+    tickets.forEach(ticket => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+            ${ticket.number} - ${ticket.status} 
+            ${ticket.status === 'Pendente' ? `
+                <button onclick="callNext('${queueId}')" class="text-green-500 hover:underline">Chamar</button>
+            ` : ''}
+        `;
+        ul.appendChild(li);
+    });
+    container.appendChild(ul);
 }
 
 function renderTickets(tickets) {
@@ -150,6 +203,29 @@ function renderTickets(tickets) {
     });
 }
 
+function renderAttendedTickets(tickets) {
+    const container = document.getElementById('attended-tickets-container');
+    container.innerHTML = '';
+    if (!tickets || tickets.length === 0) {
+        container.innerHTML = '<p class="p-3 text-gray-500 text-center">Nenhum ticket atendido hoje.</p>';
+        return;
+    }
+    tickets.forEach(ticket => {
+        const div = document.createElement('div');
+        div.className = 'bg-white rounded-xl shadow-lg p-4 border border-gray-100';
+        div.innerHTML = `
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-lg font-semibold">${ticket.number}</h3>
+                <span class="text-sm text-green-500">Atendido</span>
+            </div>
+            <p class="text-sm text-gray-500">Serviço: ${ticket.service}</p>
+            <p class="text-sm text-gray-500">Guichê: ${ticket.counter ? `Guichê ${ticket.counter}` : 'N/A'}</p>
+            <p class="text-sm text-gray-500">Atendido em: ${new Date(ticket.attended_at).toLocaleString('pt-BR')}</p>
+        `;
+        container.appendChild(div);
+    });
+}
+
 // Ações de Chamada
 async function callNext(queueId) {
     try {
@@ -160,6 +236,9 @@ async function callNext(queueId) {
         document.getElementById('current-counter').textContent = `Guichê ${response.data.counter}`;
         await fetchAssignedQueues();
         await fetchActiveTickets();
+        await fetchActiveTicketsForQueue(queueId);
+        await fetchAttendedTickets();
+        showToast(`Senha ${response.data.ticket_number} chamada!`, 'bg-green-500');
     } catch (error) {
         console.error('Erro ao chamar próxima senha:', error);
         showError('Erro ao chamar próxima senha.', error.response?.data?.error || error.message);
@@ -174,6 +253,8 @@ async function recallTicket(queueId) {
         document.getElementById('current-service').textContent = response.data.service;
         document.getElementById('current-counter').textContent = `Guichê ${response.data.counter}`;
         await fetchActiveTickets();
+        await fetchActiveTicketsForQueue(queueId);
+        showToast(`Senha ${response.data.ticket_number} rechamada!`, 'bg-yellow-500');
     } catch (error) {
         console.error('Erro ao rechamar senha:', error);
         showError('Erro ao rechamar senha.', error.response?.data?.error || error.message);
@@ -192,6 +273,8 @@ async function validateQrCode(qrCode) {
         const response = await axios.post('/api/attendant/ticket/validate', { qr_code: qrCode });
         showSuccess(`Presença validada para ticket ${response.data.ticket_number}!`);
         await fetchActiveTickets();
+        await fetchAttendedTickets();
+        showToast(`Ticket ${response.data.ticket_number} validado!`, 'bg-green-500');
         return response.data;
     } catch (error) {
         console.error('Erro ao validar QR code:', error);
@@ -207,7 +290,7 @@ function setupEventListeners() {
         window.location.href = '/index.html';
     });
 
-    const navButtons = ['call', 'queues', 'tickets'];
+    const navButtons = ['call', 'queues', 'tickets', 'attended'];
     navButtons.forEach(button => {
         document.getElementById(`nav-${button}`).addEventListener('click', () => {
             document.querySelectorAll('main > div').forEach(section => {
@@ -220,6 +303,7 @@ function setupEventListeners() {
             document.getElementById(`nav-${button}`).classList.add('active', 'bg-blue-700/90');
             if (button === 'queues') fetchAssignedQueues();
             if (button === 'tickets') fetchActiveTickets();
+            if (button === 'attended') fetchAttendedTickets();
         });
     });
 
@@ -238,6 +322,10 @@ function setupEventListeners() {
             const service = card.querySelector('p:nth-child(2)').textContent.toLowerCase();
             card.style.display = number.includes(filter) || service.includes(filter) ? '' : 'none';
         });
+    });
+
+    document.getElementById('attended-date-filter').addEventListener('change', () => {
+        fetchAttendedTickets();
     });
 
     document.getElementById('validate-qr-btn').addEventListener('click', openQrModal);
@@ -270,7 +358,9 @@ function setupEventListeners() {
     document.getElementById('refresh-data').addEventListener('click', async () => {
         await fetchAssignedQueues();
         await fetchActiveTickets();
+        await fetchAttendedTickets();
         showSuccess('Dados atualizados com sucesso.');
+        showToast('Dados atualizados!', 'bg-blue-500');
     });
 }
 
@@ -278,27 +368,36 @@ function setupEventListeners() {
 function setupSocketListeners() {
     socket.on('queue_update', async data => {
         if (data.department_id === JSON.parse(localStorage.getItem('queues'))?.[0]?.department_id) {
-            showToast(`Fila atualizada: ${data.message}`);
+            showToast(`Fila atualizada: ${data.message}`, 'bg-blue-500');
             await fetchAssignedQueues();
-            await fetchActiveTickets();
         }
     });
 
-    socket.on('ticket_called', data => {
+    socket.on('ticket_called', async data => {
         if (data.department_id === JSON.parse(localStorage.getItem('queues'))?.[0]?.department_id) {
-            showToast(`Senha ${data.ticket_number} chamada no guichê ${data.counter}`);
+            showToast(`Senha ${data.ticket_number} chamada no guichê ${data.counter}`, 'bg-green-500');
             if (!document.getElementById('call-section').classList.contains('hidden')) {
                 document.getElementById('current-ticket').textContent = data.ticket_number;
                 document.getElementById('current-service').textContent = data.service;
                 document.getElementById('current-counter').textContent = `Guichê ${data.counter}`;
             }
-            fetchActiveTickets();
+            await fetchActiveTickets();
+            await fetchActiveTicketsForQueue(data.queue_id);
+            await fetchAttendedTickets();
+        }
+    });
+
+    socket.on('ticket_attended', async data => {
+        if (data.department_id === JSON.parse(localStorage.getItem('queues'))?.[0]?.department_id) {
+            showToast(`Senha ${data.ticket_number} marcada como atendida`, 'bg-green-500');
+            await fetchActiveTicketsForQueue(data.queue_id);
+            await fetchAttendedTickets();
         }
     });
 
     socket.on('notification', data => {
         if (data.department_id === JSON.parse(localStorage.getItem('queues'))?.[0]?.department_id) {
-            showToast(data.message);
+            showToast(data.message, 'bg-blue-500');
         }
     });
 
@@ -308,6 +407,7 @@ function setupSocketListeners() {
 
     socket.on('reconnect', () => {
         showSuccess('Conexão restabelecida!');
+        showToast('Conexão restabelecida!', 'bg-green-500');
     });
 }
 
