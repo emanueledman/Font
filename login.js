@@ -1,3 +1,4 @@
+// Primeiro trecho ajustado
 const API_BASE = 'https://fila-facilita2-0-4uzw.onrender.com';
 
 // Sanitize inputs to prevent XSS
@@ -24,7 +25,7 @@ const clearSensitiveData = () => {
     console.log('Clearing sensitive data');
     ['localStorage', 'sessionStorage'].forEach(storageType => {
         const storage = window[storageType];
-        ['adminToken', 'userRole', 'queues'].forEach(key => storage.removeItem(key));
+        ['adminToken', 'userRole', 'queues', 'email'].forEach(key => storage.removeItem(key));
     });
 };
 
@@ -38,8 +39,9 @@ const storeAuthData = (data, rememberMe) => {
     const storage = rememberMe ? localStorage : sessionStorage;
     storage.setItem('adminToken', data.token);
     storage.setItem('userRole', data.user_role);
+    if (data.email) storage.setItem('email', data.email);
     if (data.queues) storage.setItem('queues', JSON.stringify(data.queues));
-    console.log('Data stored:', { token: data.token.substring(0, 10) + '...', userRole: data.user_role });
+    console.log('Data stored:', { token: data.token.substring(0, 10) + '...', userRole: data.user_role, email: data.email });
 };
 
 // Redirect based on role
@@ -65,53 +67,18 @@ const redirectUser = (userRole) => {
     }
 };
 
-// Verify token with backend
-const verifyToken = async () => {
+// Verificar autenticação inicial
+const checkAuth = () => {
     const token = getToken();
-    if (!token) {
-        console.log('No token found, redirecting to login');
+    const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
+    
+    if (!token || !userRole) {
+        console.log('No token or role found, redirecting to login');
         window.location.href = '/index.html';
-        return;
+        return false;
     }
-
-    try {
-        const response = await axios.get(
-            `${API_BASE}/api/auth/verify-token`,
-            {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                timeout: 10000
-            }
-        );
-
-        const data = response.data;
-        if (!data.user_role) {
-            throw new Error('Invalid response: user_role missing');
-        }
-
-        console.log('Token verified:', { user_role: data.user_role });
-        localStorage.setItem('userRole', data.user_role); // Update role
-        redirectUser(data.user_role);
-
-    } catch (error) {
-        console.error('Token verification failed:', error);
-        let message = 'Session expired. Please log in again.';
-        if (error.response) {
-            message = error.response.data?.error || message;
-            if (error.response.status === 401) message = 'Invalid or expired token.';
-            else if (error.response.status === 404) message = 'User not found.';
-            else if (error.response.status === 500) message = 'Server error.';
-        } else if (error.code === 'ECONNABORTED') {
-            message = 'Connection timeout.';
-        } else if (error.message.includes('Network Error')) {
-            message = 'Network error.';
-        }
-        showError(message);
-        clearSensitiveData();
-        window.location.href = '/index.html';
-    }
+    
+    return true;
 };
 
 // Initial verification
@@ -180,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     } else {
-        // Verify token for protected pages
-        verifyToken();
+        // Verificar autenticação para páginas protegidas
+        if (!checkAuth()) return;
     }
 });
