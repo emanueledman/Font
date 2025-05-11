@@ -7,7 +7,7 @@ const sanitizeInput = (input) => {
     if (typeof input !== 'string') return '';
     const div = document.createElement('div');
     div.textContent = input;
-    return div.innerHTML.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return div.innerHTML.replace(/</g, '<').replace(/>/g, '>');
 };
 
 // Valida código QR
@@ -161,7 +161,12 @@ const initializeWebSocket = () => {
             renderQueues();
         });
         socket.on('ticket_issued', () => {
-            fetchTickets();
+            console.log('Evento ticket_issued recebido, buscando tickets');
+            fetchTickets().then(tickets => {
+                console.log('Tickets recebidos:', tickets);
+            }).catch(err => {
+                console.error('Erro ao buscar tickets:', err);
+            });
             renderNextQueue();
             renderQueues();
             updateDashboardMetrics();
@@ -245,6 +250,7 @@ const fetchTickets = async () => {
         renderTickets(tickets);
         renderTicketQueueFilter(tickets);
         updateDashboardMetrics();
+        localStorage.setItem('tickets', JSON.stringify(tickets));
         return tickets;
     } catch (error) {
         showToast(error.response?.data?.error || 'Falha ao carregar tickets.', 'error');
@@ -426,6 +432,7 @@ const renderQueueSelect = (queues) => {
                 ticketQueueFilter.appendChild(option);
             });
         }
+        ticketQueueFilter.value = 'all'; // Garantir filtro inicial
     }
 };
 
@@ -447,7 +454,8 @@ const renderNextQueue = async () => {
         const filteredQueues = selectedQueueId ? queues.filter(queue => queue.id === selectedQueueId) : queues;
         for (const queue of filteredQueues) {
             const response = await axios.get(`/api/attendant/tickets?queue_id=${queue.id}&status=pending,called`);
-            const tickets = response.data.slice(0, 3); // Até 3 tickets não atendidos
+            console.log(`Tickets recebidos para fila ${queue.id}:`, response.data);
+            const tickets = response.data.filter(ticket => ['Pendente', 'Chamado'].includes(ticket.status)).slice(0, 3);
             if (tickets.length) {
                 tickets.forEach(ticket => {
                     const statusColor = ticket.status === 'Chamado' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800';
@@ -458,10 +466,10 @@ const renderNextQueue = async () => {
                             <h4 class="text-sm font-semibold text-gray-800">${sanitizeInput(ticket.number)}</h4>
                             <span class="px-2 py-1 text-xs font-semibold rounded-full ${statusColor}">${sanitizeInput(ticket.status)}</span>
                         </div>
-                        <p class="text-sm text-gray-600"><span class="font-medium">Serviço:</span> ${sanitizeInput(queue.service)}</p>
-                        <p class="text-sm text-gray-600"><span class="font-medium">Departamento:</span> ${sanitizeInput(queue.department_name)}</p>
+                        <p class="text-sm text-gray-600"><span class="font-medium">Serviço:</span> ${sanitizeInput(ticket.service)}</p>
+                        <p class="text-sm text-gray-600"><span class="font-medium">Departamento:</span> ${sanitizeInput(ticket.department_name)}</p>
                         <p class="text-sm text-gray-600"><span class="font-medium">Emitido:</span> ${new Date(ticket.issued_at).toLocaleTimeString('pt-BR')}</p>
-                        <p class="text-sm text-gray-600"><span class="font-medium">Espera:</span> ${ticket.avg_wait_time ? `${ticket.avg_wait_time.toFixed(1)} min` : 'N/A'}</p>
+                        <p class="text-sm text-gray-600"><span class="font-medium">Espera:</span> ${typeof ticket.avg_wait_time === 'number' ? `${ticket.avg_wait_time.toFixed(1)} min` : 'N/A'}</p>
                     `;
                     container.appendChild(div);
                 });
@@ -477,6 +485,7 @@ const renderNextQueue = async () => {
         }
     } catch (error) {
         container.innerHTML = '<p class="text-gray-500 text-center col-span-full">Erro ao carregar próximos tickets.</p>';
+        console.error('Erro ao renderizar próximos na fila:', error);
     }
 };
 
@@ -505,7 +514,7 @@ const renderTickets = (tickets) => {
                 <p class="text-sm text-gray-600"><span class="font-medium">Serviço:</span> ${sanitizeInput(ticket.service)} (${sanitizeInput(ticket.department_name)})</p>
                 <p class="text-sm text-gray-600"><span class="font-medium">Guichê:</span> ${ticket.counter || 'N/A'}</p>
                 <p class="text-sm text-gray-600"><span class="font-medium">Emitido em:</span> ${new Date(ticket.issued_at).toLocaleString('pt-BR')}</p>
-                <p class="text-sm text-gray-600"><span class="font-medium">Espera:</span> ${ticket.avg_wait_time ? `${ticket.avg_wait_time.toFixed(1)} min` : 'N/A'}</p>
+                <p class="text-sm text-gray-600"><span class="font-medium">Espera:</span> ${typeof ticket.avg_wait_time === 'number' ? `${ticket.avg_wait_time.toFixed(1)} min` : 'N/A'}</p>
             </div>
             ${ticket.status === 'Pendente' ? `
             <div class="mt-4">
@@ -536,7 +545,7 @@ const renderQueues = async () => {
     try {
         for (const queue of queues) {
             const response = await axios.get(`/api/attendant/tickets?queue_id=${queue.id}&status=pending,called`);
-            const tickets = response.data.slice(0, 5); // Até 5 tickets por fila
+            const tickets = response.data.slice(0, 5);
             const div = document.createElement('div');
             div.className = 'bg-white rounded-xl shadow-lg p-6 border border-gray-100 animate-zoom-in hover:shadow-xl transition-all';
             div.innerHTML = `
@@ -609,6 +618,11 @@ const renderTicketQueueFilter = (tickets) => {
     const queues = [...new Set(tickets.map(ticket => ticket.queue_id))];
     const queueData = JSON.parse(localStorage.getItem('queues')) || [];
     queues.forEach(queueId => {
+        if (!queueData.some(q => q.id === queueId)) {
+            console.warn(`Fila ${queueId} não encontrada no localStorage, recarregando filas`);
+            fetchQueues();
+            return;
+        }
         const queue = queueData.find(q => q.id === queueId);
         if (queue) {
             const option = document.createElement('option');
@@ -617,6 +631,7 @@ const renderTicketQueueFilter = (tickets) => {
             select.appendChild(option);
         }
     });
+    select.value = 'all';
 };
 
 // Configura eventos
@@ -652,8 +667,8 @@ const setupEventListeners = () => {
         ticketStatusFilter.addEventListener('change', () => {
             const status = ticketStatusFilter.value.toLowerCase();
             document.querySelectorAll('#tickets-container > div').forEach(card => {
-                const cardStatus = card.querySelector('span').textContent.toLowerCase();
-                card.style.display = status === 'all' || cardStatus === status ? '' : 'none';
+                const cardStatus = card.querySelector('span').textContent;
+                card.style.display = status === 'all' || cardStatus.toLowerCase() === status ? '' : 'none';
             });
         });
     }
@@ -663,11 +678,13 @@ const setupEventListeners = () => {
     if (ticketQueueFilter) {
         ticketQueueFilter.addEventListener('change', () => {
             const queueId = ticketQueueFilter.value;
+            console.log(`Filtro de fila aplicado: ${queueId}`);
             document.querySelectorAll('#tickets-container > div').forEach(card => {
                 const ticketQueueId = card.dataset.queueId;
                 card.style.display = queueId === 'all' || ticketQueueId === queueId ? '' : 'none';
             });
         });
+        ticketQueueFilter.value = 'all';
     }
 
     // Filtro de filas na seção Filas
