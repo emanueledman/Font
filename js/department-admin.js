@@ -84,26 +84,27 @@ class QueueManager {
     }
 
     async loadQueues() {
+        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
         const container = document.getElementById('queues-container');
         const loading = document.getElementById('queues-loading');
         container.innerHTML = '';
         loading.classList.remove('hidden');
-        const response = await axios.get(`${API_BASE}/api/branch_admin/queues?page=${this.currentPage}&per_page=${this.perPage}`);
-        this.queues = response.data.queues;
+        const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/queues?page=${this.currentPage}&per_page=${this.perPage}`);
+        this.queues = response.data;
         loading.classList.add('hidden');
         this.queues.forEach(queue => {
             const queueCard = document.createElement('div');
             queueCard.className = 'bg-white rounded-xl shadow-lg p-6 border border-gray-100';
             queueCard.innerHTML = `
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-semibold">${queue.service}</h3>
-                    <span class="px-2 py-1 text-xs font-medium rounded-full ${queue.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
-                        ${queue.status === 'active' ? 'Ativa' : 'Inativa'}
+                    <h3 class="text-lg font-semibold">${queue.service_name}</h3>
+                    <span class="px-2 py-1 text-xs font-medium rounded-full ${queue.status === 'Aberto' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                        ${queue.status}
                     </span>
                 </div>
                 <p class="text-sm text-gray-500 mb-2">Prefixo: ${queue.prefix}</p>
-                <p class="text-sm text-gray-500 mb-2">Tickets pendentes: ${queue.pending_tickets}</p>
-                <p class="text-sm text-gray-500 mb-4">Horário: ${queue.open_time} - ${queue.close_time}</p>
+                <p class="text-sm text-gray-500 mb-2">Tickets pendentes: ${queue.active_tickets}</p>
+                <p class="text-sm text-gray-500 mb-4">Tempo médio de espera: ${queue.avg_wait_time ? queue.avg_wait_time + ' min' : 'N/A'}</p>
                 <div class="flex space-x-2">
                     <button class="edit-queue-btn px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm" data-id="${queue.id}">Editar</button>
                     <button class="delete-queue-btn px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm" data-id="${queue.id}">Excluir</button>
@@ -111,7 +112,6 @@ class QueueManager {
             `;
             container.appendChild(queueCard);
         });
-        this.updatePagination(response.data.total);
         this.setupQueueActions();
     }
 
@@ -128,20 +128,16 @@ class QueueManager {
         if (queueId) {
             title.textContent = 'Editar Fila';
             const queue = this.queues.find(q => q.id === queueId);
-            form.service.value = queue.service;
+            form.service_id.value = queue.service_id;
+            form.department_id.value = queue.department_id;
             form.prefix.value = queue.prefix;
             form.daily_limit.value = queue.daily_limit;
-            form.open_time.value = queue.open_time;
-            form.close_time.value = queue.close_time;
             form.num_counters.value = queue.num_counters;
-            form.queue_description.value = queue.description || '';
             form.queue_id.value = queue.id;
-            queue.working_days.forEach(day => form.querySelector(`input[name="working_days"][value="${day}"]`).checked = true);
         } else {
             title.textContent = 'Nova Fila';
             form.reset();
             form.queue_id.value = '';
-            form.querySelectorAll('input[name="working_days"]').forEach(checkbox => checkbox.checked = ['0', '6'].includes(checkbox.value) ? false : true);
         }
         modal.classList.remove('hidden');
         document.getElementById('close-queue-modal').addEventListener('click', () => modal.classList.add('hidden'));
@@ -153,20 +149,18 @@ class QueueManager {
     }
 
     async saveQueue() {
+        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
         const form = document.getElementById('queue-form');
         const data = {
             id: form.queue_id.value,
-            service: form.service.value,
+            department_id: form.department_id.value,
+            service_id: form.service_id.value,
             prefix: form.prefix.value,
             daily_limit: parseInt(form.daily_limit.value),
-            open_time: form.open_time.value,
-            close_time: form.close_time.value,
-            num_counters: parseInt(form.num_counters.value),
-            description: form.queue_description.value,
-            working_days: Array.from(form.querySelectorAll('input[name="working_days"]:checked')).map(cb => parseInt(cb.value))
+            num_counters: parseInt(form.num_counters.value)
         };
         Utils.showLoading(true, 'Salvando fila...');
-        await axios.post(`${API_BASE}/api/branch_admin/queues`, data);
+        await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/queues`, data);
         Utils.showLoading(false);
         document.getElementById('queue-modal').classList.add('hidden');
         Utils.showToast('Fila salva com sucesso', 'success');
@@ -174,37 +168,12 @@ class QueueManager {
     }
 
     async deleteQueue(queueId) {
-        if (!confirm('Tem certeza que deseja excluir esta fila?')) return;
+        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
         Utils.showLoading(true, 'Excluindo fila...');
-        await axios.delete(`${API_BASE}/api/branch_admin/queues/${queueId}`);
+        await axios.delete(`${API_BASE}/api/branch_admin/branches/${branchId}/queues/${queueId}`);
         Utils.showLoading(false);
         Utils.showToast('Fila excluída com sucesso', 'success');
         this.loadQueues();
-    }
-
-    updatePagination(total) {
-        const start = document.getElementById('queues-start');
-        const end = document.getElementById('queues-end');
-        const totalEl = document.getElementById('queues-total');
-        const prevBtn = document.getElementById('queues-prev');
-        const nextBtn = document.getElementById('queues-next');
-        start.textContent = (this.currentPage - 1) * this.perPage + 1;
-        end.textContent = Math.min(this.currentPage * this.perPage, total);
-        totalEl.textContent = total;
-        prevBtn.disabled = this.currentPage === 1;
-        nextBtn.disabled = this.currentPage * this.perPage >= total;
-        prevBtn.onclick = () => {
-            if (this.currentPage > 1) {
-                this.currentPage--;
-                this.loadQueues();
-            }
-        };
-        nextBtn.onclick = () => {
-            if (this.currentPage * this.perPage < total) {
-                this.currentPage++;
-                this.loadQueues();
-            }
-        };
     }
 }
 
@@ -217,25 +186,26 @@ class TicketManager {
     }
 
     async loadTickets() {
+        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
         const container = document.getElementById('tickets-container');
         const loading = document.getElementById('tickets-loading');
         container.innerHTML = '';
         loading.classList.remove('hidden');
-        const response = await axios.get(`${API_BASE}/api/branch_admin/tickets?page=${this.currentPage}&per_page=${this.perPage}`);
-        this.tickets = response.data.tickets;
+        const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/tickets?page=${this.currentPage}&per_page=${this.perPage}`);
+        this.tickets = response.data;
         loading.classList.add('hidden');
         this.tickets.forEach(ticket => {
             const ticketCard = document.createElement('div');
             ticketCard.className = 'bg-white rounded-xl shadow-lg p-6 border border-gray-100';
             ticketCard.innerHTML = `
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-semibold">${ticket.number}</h3>
+                    <h3 class="text-lg font-semibold">${ticket.ticket_number}</h3>
                     <span class="px-2 py-1 text-xs font-medium rounded-full ${this.getStatusColor(ticket.status)}">
                         ${ticket.status}
                     </span>
                 </div>
-                <p class="text-sm text-gray-500 mb-2">Fila: ${ticket.queue_name}</p>
-                <p class="text-sm text-gray-500 mb-2">Criado: ${Utils.formatDate(ticket.created_at)}</p>
+                <p class="text-sm text-gray-500 mb-2">Fila: ${ticket.queue_prefix}</p>
+                <p class="text-sm text-gray-500 mb-2">Criado: ${Utils.formatDate(ticket.issued_at)}</p>
                 <p class="text-sm text-gray-500 mb-4">Prioridade: ${ticket.priority}</p>
                 <div class="flex space-x-2">
                     <button class="edit-ticket-btn px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm" data-id="${ticket.id}">Editar</button>
@@ -244,7 +214,6 @@ class TicketManager {
             `;
             container.appendChild(ticketCard);
         });
-        this.updatePagination(response.data.total);
         this.setupTicketActions();
     }
 
@@ -252,7 +221,7 @@ class TicketManager {
         switch (status.toLowerCase()) {
             case 'pendente': return 'bg-yellow-100 text-yellow-800';
             case 'chamado': return 'bg-blue-100 text-blue-800';
-            case 'finalizado': return 'bg-green-100 text-green-800';
+            case 'atendido': return 'bg-green-100 text-green-800';
             case 'cancelado': return 'bg-red-100 text-red-800';
             default: return 'bg-gray-100 text-gray-800';
         }
@@ -272,7 +241,6 @@ class TicketManager {
             const ticket = this.tickets.find(t => t.id === ticketId);
             form['ticket-queue'].value = ticket.queue_id;
             form['ticket-priority'].value = ticket.priority;
-            form['ticket-notes'].value = ticket.notes || '';
         } else {
             form.reset();
         }
@@ -286,14 +254,14 @@ class TicketManager {
     }
 
     async saveTicket() {
+        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
         const form = document.getElementById('ticket-form');
         const data = {
             queue_id: form['ticket-queue'].value,
-            priority: form['ticket-priority'].value,
-            notes: form['ticket-notes'].value
+            priority: form['ticket-priority'].value
         };
         Utils.showLoading(true, 'Gerando ticket...');
-        await axios.post(`${API_BASE}/api/branch_admin/tickets`, data);
+        await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/queues/totem`, data);
         Utils.showLoading(false);
         document.getElementById('ticket-modal').classList.add('hidden');
         Utils.showToast('Ticket gerado com sucesso', 'success');
@@ -301,9 +269,9 @@ class TicketManager {
     }
 
     async deleteTicket(ticketId) {
-        if (!confirm('Tem certeza que deseja excluir este ticket?')) return;
+        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
         Utils.showLoading(true, 'Excluindo ticket...');
-        await axios.delete(`${API_BASE}/api/branch_admin/tickets/${ticketId}`);
+        await axios.delete(`${API_BASE}/api/branch_admin/branches/${branchId}/tickets/${ticketId}`);
         Utils.showLoading(false);
         Utils.showToast('Ticket excluído com sucesso', 'success');
         this.loadTickets();
@@ -323,38 +291,14 @@ class TicketManager {
     }
 
     async validateQR() {
+        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
         const form = document.getElementById('qr-form');
         const qrCode = form.qr_code.value;
         Utils.showLoading(true, 'Validando QR Code...');
-        await axios.post(`${API_BASE}/api/branch_admin/tickets/validate-qr`, { qr_code: qrCode });
+        await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/tickets/validate-qr`, { qr_code: qrCode });
         Utils.showLoading(false);
         document.getElementById('qr-modal').classList.add('hidden');
         Utils.showToast('QR Code validado com sucesso', 'success');
-    }
-
-    updatePagination(total) {
-        const start = document.getElementById('tickets-start');
-        const end = document.getElementById('tickets-end');
-        const totalEl = document.getElementById('tickets-total');
-        const prevBtn = document.getElementById('tickets-prev');
-        const nextBtn = document.getElementById('tickets-next');
-        start.textContent = (this.currentPage - 1) * this.perPage + 1;
-        end.textContent = Math.min(this.currentPage * this.perPage, total);
-        totalEl.textContent = total;
-        prevBtn.disabled = this.currentPage === 1;
-        nextBtn.disabled = this.currentPage * this.perPage >= total;
-        prevBtn.onclick = () => {
-            if (this.currentPage > 1) {
-                this.currentPage--;
-                this.loadTickets();
-            }
-        };
-        nextBtn.onclick = () => {
-            if (this.currentPage * this.perPage < total) {
-                this.currentPage++;
-                this.loadTickets();
-            }
-        };
     }
 }
 
@@ -365,23 +309,11 @@ class ReportManager {
     }
 
     async generateReport() {
+        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
         const period = document.getElementById('report-period').value;
-        const type = document.getElementById('report-type').value;
-        const queue = document.getElementById('report-queue').value;
-        const attendant = document.getElementById('report-attendant').value;
-        const group = document.getElementById('report-group').value;
-        const startDate = document.getElementById('start-date').value;
-        const endDate = document.getElementById('end-date').value;
-        const params = new URLSearchParams({
-            period,
-            type,
-            queue,
-            attendant,
-            group,
-            ...(period === 'custom' && { start_date: startDate, end_date: endDate })
-        });
+        const date = period === 'today' ? new Date().toISOString().split('T')[0] : document.getElementById('start-date').value;
         Utils.showLoading(true, 'Gerando relatório...');
-        const response = await axios.get(`${API_BASE}/api/branch_admin/reports?${params}`);
+        const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/report?date=${date}`);
         Utils.showLoading(false);
         this.renderReport(response.data);
         Utils.showToast('Relatório gerado com sucesso', 'success');
@@ -391,39 +323,41 @@ class ReportManager {
         const container = document.getElementById('report-results');
         container.innerHTML = `
             <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-                <h3 class="text-xl font-semibold mb-4">${data.title}</h3>
+                <h3 class="text-xl font-semibold mb-4">Relatório de Desempenho</h3>
                 <div class="h-96">
                     <canvas id="report-chart"></canvas>
                 </div>
                 <div class="mt-6">
                     <h4 class="text-lg font-semibold mb-2">Resumo</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        ${data.summary.map(item => `
+                        ${data.map(item => `
                             <div class="p-4 bg-gray-50 rounded-lg">
-                                <p class="text-sm text-gray-500">${item.label}</p>
-                                <p class="text-lg font-semibold">${item.value}</p>
+                                <p class="text-sm text-gray-500">${item.service_name}</p>
+                                <p class="text-lg font-semibold">Emitidos: ${item.issued}, Atendidos: ${item.attended}</p>
                             </div>
                         `).join('')}
                     </div>
                 </div>
             </div>
         `;
-        this.initChart(data.chart_data);
+        this.initChart(data);
     }
 
     initChart(data) {
         const ctx = document.getElementById('report-chart').getContext('2d');
         if (this.chart) this.chart.destroy();
         this.chart = new Chart(ctx, {
-            type: 'line',
+            type: 'bar',
             data: {
-                labels: data.labels,
+                labels: data.map(item => item.service_name),
                 datasets: [{
-                    label: 'Desempenho',
-                    data: data.values,
-                    borderColor: '#3B82F6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    fill: true
+                    label: 'Tickets Emitidos',
+                    data: data.map(item => item.issued),
+                    backgroundColor: '#3B82F6'
+                }, {
+                    label: 'Tickets Atendidos',
+                    data: data.map(item => item.attended),
+                    backgroundColor: '#10B981'
                 }]
             },
             options: {
@@ -442,65 +376,38 @@ class SettingsManager {
     }
 
     async loadSettings() {
-        const response = await axios.get(`${API_BASE}/api/branch_admin/settings`);
+        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+        const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/schedules`);
         this.settings = response.data;
-        document.getElementById('dept-name').value = this.settings.department.name;
-        document.getElementById('dept-id').value = this.settings.department.id;
-        document.getElementById('dept-description').value = this.settings.department.description || '';
-        document.getElementById('dept-email').value = this.settings.department.email || '';
-        document.getElementById('dept-phone').value = this.settings.department.phone || '';
-        document.getElementById('dept-location').value = this.settings.department.location || '';
-        document.getElementById('theme-select').value = this.settings.display.theme;
-        document.getElementById('density-select').value = this.settings.display.density;
-        document.getElementById('notifications-toggle').checked = this.settings.notifications.panel;
-        document.getElementById('email-notifications-toggle').checked = this.settings.notifications.email;
-        document.getElementById('call-interval').value = this.settings.call.interval;
-        document.getElementById('call-attempts').value = this.settings.call.attempts;
-        document.getElementById('max-wait-time').value = this.settings.call.max_wait;
-        document.getElementById('call-sound').value = this.settings.call.sound;
+        document.getElementById('dept-name').value = localStorage.getItem('branchName') || '';
+        document.getElementById('dept-id').value = branchId;
     }
 
     async saveSettings() {
+        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
         const form = document.getElementById('department-form');
         const data = {
-            department: {
-                name: form['dept-name'].value,
-                description: form['dept-description'].value,
-                email: form['dept-email'].value,
-                phone: form['dept-phone'].value,
-                location: form['dept-location'].value
-            },
-            display: {
-                theme: document.getElementById('theme-select').value,
-                density: document.getElementById('density-select').value
-            },
-            notifications: {
-                panel: document.getElementById('notifications-toggle').checked,
-                email: document.getElementById('email-notifications-toggle').checked
-            },
-            call: {
-                interval: document.getElementById('call-interval').value,
-                attempts: document.getElementById('call-attempts').value,
-                max_wait: document.getElementById('max-wait-time').value,
-                sound: document.getElementById('call-sound').value
-            }
+            weekday: form['weekday'].value,
+            open_time: form['open-time'].value,
+            end_time: form['end-time'].value,
+            is_closed: form['is-closed'].checked
         };
         Utils.showLoading(true, 'Salvando configurações...');
-        await axios.post(`${API_BASE}/api/branch_admin/settings`, data);
+        await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/schedules`, data);
         Utils.showLoading(false);
         Utils.showToast('Configurações salvas com sucesso', 'success');
     }
 
     async addMember() {
+        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
         const form = document.getElementById('member-form');
         const data = {
-            name: form['member-name'].value,
             email: form['member-email'].value,
-            role: form['member-role'].value,
-            permissions: Array.from(form.querySelectorAll('input[name="member-permissions"]:checked')).map(cb => cb.value)
+            name: form['member-name'].value,
+            password: form['member-password'].value
         };
         Utils.showLoading(true, 'Adicionando membro...');
-        await axios.post(`${API_BASE}/api/branch_admin/members`, data);
+        await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/attendants`, data);
         Utils.showLoading(false);
         document.getElementById('member-modal').classList.add('hidden');
         Utils.showToast('Membro adicionado com sucesso', 'success');
@@ -508,9 +415,10 @@ class SettingsManager {
     }
 
     async loadMembers() {
+        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
         const container = document.getElementById('team-members');
         container.innerHTML = '';
-        const response = await axios.get(`${API_BASE}/api/branch_admin/members`);
+        const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/attendants`);
         response.data.forEach(member => {
             const memberCard = document.createElement('div');
             memberCard.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100';
@@ -519,7 +427,7 @@ class SettingsManager {
                     <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold mr-3">${member.name[0]}</div>
                     <div>
                         <p class="font-medium">${member.name}</p>
-                        <p class="text-xs text-gray-500">${member.role}</p>
+                        <p class="text-xs text-gray-500">${member.email}</p>
                     </div>
                 </div>
                 <button class="delete-member-btn text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50" data-id="${member.id}">
@@ -534,9 +442,9 @@ class SettingsManager {
     }
 
     async deleteMember(memberId) {
-        if (!confirm('Tem certeza que deseja remover este membro?')) return;
+        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
         Utils.showLoading(true, 'Removendo membro...');
-        await axios.delete(`${API_BASE}/api/branch_admin/members/${memberId}`);
+        await axios.delete(`${API_BASE}/api/branch_admin/branches/${branchId}/attendants/${memberId}`);
         Utils.showLoading(false);
         Utils.showToast('Membro removido com sucesso', 'success');
         this.loadMembers();
@@ -551,45 +459,39 @@ class DashboardManager {
     }
 
     async loadDashboardData() {
+        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
         const skeletonAreas = ['active-queues', 'pending-tickets', 'today-calls', 'active-users', 'top-queues', 'system-alerts'];
         skeletonAreas.forEach(area => {
             const el = document.getElementById(area);
             el.innerHTML = '';
             el.appendChild(Utils.createSkeletonLoading());
         });
-        const [queuesRes, ticketsRes, callsRes, usersRes, topQueuesRes, alertsRes] = await Promise.all([
-            axios.get(`${API_BASE}/api/branch_admin/queues/active`),
-            axios.get(`${API_BASE}/api/branch_admin/tickets/active`),
-            axios.get(`${API_BASE}/api/branch_admin/calls/today`),
-            axios.get(`${API_BASE}/api/branch_admin/users/active`),
-            axios.get(`${API_BASE}/api/branch_admin/queues/top`),
-            axios.get(`${API_BASE}/api/branch_admin/alerts`)
-        ]);
-        document.getElementById('active-queues').textContent = queuesRes.data.count;
-        document.getElementById('pending-tickets').textContent = ticketsRes.data.count;
-        document.getElementById('today-calls').textContent = callsRes.data.count;
-        document.getElementById('active-users').textContent = usersRes.data.count;
+        const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/dashboard`);
+        document.getElementById('active-queues').textContent = response.data.queues.filter(q => q.status === 'Aberto').length;
+        document.getElementById('pending-tickets').textContent = response.data.metrics.pending_tickets;
+        document.getElementById('today-calls').textContent = response.data.metrics.attended_tickets;
+        document.getElementById('active-users').textContent = response.data.metrics.active_attendants;
         const topQueues = document.getElementById('top-queues');
-        topQueues.innerHTML = topQueuesRes.data.map(queue => `
+        topQueues.innerHTML = response.data.queues.slice(0, 5).map(queue => `
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="font-medium">${queue.service}</p>
-                    <p class="text-sm text-gray-500">${queue.tickets} tickets</p>
+                    <p class="font-medium">${queue.service_name}</p>
+                    <p class="text-sm text-gray-500">${queue.active_tickets} tickets</p>
                 </div>
-                <span class="text-sm ${queue.trend === 'up' ? 'text-green-500' : 'text-red-500'}">
-                    ${queue.trend === 'up' ? '↑' : '↓'} ${queue.change}%
+                <span class="text-sm ${queue.status === 'Aberto' ? 'text-green-500' : 'text-red-500'}">
+                    ${queue.status}
                 </span>
             </div>
         `).join('');
         const alerts = document.getElementById('system-alerts');
-        alerts.innerHTML = alertsRes.data.map(alert => `
-            <div class="flex items-center p-3 bg-${alert.type === 'warning' ? 'yellow' : 'red'}-50 rounded-lg">
-                <svg class="w-5 h-5 text-${alert.type === 'warning' ? 'yellow' : 'red'}-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        alerts.innerHTML = response.data.recent_tickets.filter(t => t.status === 'Pendente').map(ticket => `
+            <div class="flex items-center p-3 bg-yellow-50 rounded-lg">
+                <svg class="w-5 h-5 text-yellow-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div>
-                    <p class="text-sm font-medium">${alert.message}</p>
-                    <p class="text-xs text-gray-500">${Utils.formatDate(alert.created_at)}</p>
+                    <p class="text-sm font-medium">${ticket.ticket_number}</p>
+                    <p class="text-xs text-gray-500">${Utils.formatDate(ticket.issued_at)}</p>
                 </div>
             </div>
         `).join('');
@@ -637,46 +539,50 @@ class DashboardManager {
     }
 
     initWebSocket() {
-        this.socket = io(`${API_BASE}`, {
-            path: '/real-time',
+        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+        this.socket = io(`${API_BASE}/dashboard`, {
+            path: '/socket.io',
             transports: ['websocket'],
-            reconnectionAttempts: 5
+            reconnectionAttempts: 5,
+            query: { branch_id: branchId }
         });
-        this.socket.on('new_ticket', (data) => {
-            Utils.showToast(`Novo ticket: ${data.ticket_number}`, 'info');
-            if (!document.getElementById('tickets-section').classList.contains('hidden')) {
-                ticketManager.loadTickets();
+        this.socket.on('dashboard_update', (data) => {
+            if (data.event_type === 'ticket_issued') {
+                Utils.showToast(`Novo ticket: ${data.data.ticket_number}`, 'info');
+                if (!document.getElementById('tickets-section').classList.contains('hidden')) {
+                    ticketManager.loadTickets();
+                }
             }
-        });
-        this.socket.on('called_ticket', (data) => {
-            if (!document.getElementById('call-section').classList.contains('hidden')) {
-                this.updateCurrentTicket(data);
+            if (data.event_type === 'ticket_called') {
+                if (!document.getElementById('call-section').classList.contains('hidden')) {
+                    this.updateCurrentTicket(data.data);
+                }
             }
-        });
-        this.socket.on('queue_update', () => {
-            if (!document.getElementById('queues-section').classList.contains('hidden')) {
-                queueManager.loadQueues();
+            if (data.event_type === 'queue_updated') {
+                if (!document.getElementById('queues-section').classList.contains('hidden')) {
+                    queueManager.loadQueues();
+                }
             }
         });
     }
 
     updateCurrentTicket(data) {
         document.getElementById('current-ticket').textContent = data.ticket_number;
-        document.getElementById('current-service').textContent = data.service;
-        document.getElementById('current-counter').textContent = `Guichê ${data.counter}`;
-        document.getElementById('avg-wait-time').textContent = `${data.avg_wait_time} min`;
+        document.getElementById('current-service').textContent = data.service_name;
+        document.getElementById('current-counter').textContent = data.counter;
+        document.getElementById('avg-wait-time').textContent = `${data.avg_wait_time || 'N/A'} min`;
         const waitBar = document.getElementById('wait-bar');
         waitBar.style.width = `${Math.min((data.avg_wait_time / 30) * 100, 100)}%`;
         const nextQueue = document.getElementById('next-queue');
-        nextQueue.innerHTML = data.next_tickets.map(ticket => `
+        nextQueue.innerHTML = data.next_tickets ? data.next_tickets.map(ticket => `
             <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div>
-                    <p class="font-medium">${ticket.number}</p>
-                    <p class="text-sm text-gray-500">${ticket.service}</p>
+                    <p class="font-medium">${ticket.ticket_number}</p>
+                    <p class="text-sm text-gray-500">${ticket.service_name}</p>
                 </div>
-                <p class="text-sm text-gray-500">${ticket.wait_time} min</p>
+                <p class="text-sm text-gray-500">${ticket.wait_time || 'N/A'} min</p>
             </div>
-        `).join('');
+        `).join('') : '';
     }
 }
 
@@ -751,11 +657,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('cancel-member-btn').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
     document.getElementById('refresh-data').addEventListener('click', () => dashboardManager.loadDashboardData());
     document.getElementById('call-next-btn').addEventListener('click', async () => {
-        const response = await axios.post(`${API_BASE}/api/branch_admin/calls/next`);
+        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+        const response = await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/queues/call-next`);
         dashboardManager.updateCurrentTicket(response.data);
     });
     document.getElementById('recall-btn').addEventListener('click', async () => {
-        const response = await axios.post(`${API_BASE}/api/branch_admin/calls/recall`);
+        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+        const response = await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/queues/recall`);
         dashboardManager.updateCurrentTicket(response.data);
     });
 });
