@@ -7,7 +7,7 @@ const sanitizeInput = (input) => {
     if (typeof input !== 'string') return '';
     const div = document.createElement('div');
     div.textContent = input;
-    return div.innerHTML.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return div.innerHTML.replace(/</g, '<').replace(/>/g, '>');
 };
 
 // Valida código QR
@@ -20,7 +20,7 @@ const validateQRCode = (code) => {
 const clearSensitiveData = () => {
     ['localStorage', 'sessionStorage'].forEach(storageType => {
         const storage = window[storageType];
-        ['adminToken', 'userRole', 'queues', 'tickets', 'redirectCount', 'lastRedirect'].forEach(key => storage.removeItem(key));
+        ['adminToken', 'userRole', 'queues', 'tickets'].forEach(key => storage.removeItem(key));
     });
 };
 
@@ -82,31 +82,14 @@ const setupAxios = () => {
     const token = getToken();
     if (token) {
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    } else {
-        showToast('Faça login para acessar todas as funcionalidades.', 'warning');
     }
     axios.defaults.baseURL = API_BASE;
     axios.defaults.timeout = 15000;
 
-    let authFailedCount = 0;
     axios.interceptors.response.use(
-        response => {
-            authFailedCount = 0;
-            return response;
-        },
+        response => response,
         error => {
-            if (error.response?.status === 401) {
-                authFailedCount++;
-                if (authFailedCount > 3) {
-                    showToast('Sessão inválida. Redirecionando para login...', 'error');
-                    clearSensitiveData();
-                    setTimeout(() => window.location.href = '/index.html', 3000);
-                } else {
-                    showToast('Problema de autenticação. Tente novamente.', 'warning');
-                }
-            } else if (error.response?.status === 403) {
-                showToast(error.response.data?.error || 'Acesso não autorizado.', 'error');
-            } else if (error.response?.status === 404) {
+            if (error.response?.status === 404) {
                 showToast('Recurso não encontrado.', 'warning');
             } else if (error.code === 'ECONNABORTED') {
                 showToast('Tempo de conexão excedido.', 'error');
@@ -130,7 +113,6 @@ const setupAxios = () => {
 const initializeWebSocket = () => {
     const token = getToken();
     if (!token) {
-        showToast('Conexão em tempo real indisponível.', 'warning');
         return;
     }
     try {
@@ -799,25 +781,8 @@ const setupEventListeners = () => {
 document.addEventListener('DOMContentLoaded', async () => {
     toggleLoading(true, 'Carregando painel...');
 
-    // Verificar loop de redirecionamento
-    let redirectCount = parseInt(sessionStorage.getItem('redirectCount') || '0');
-    const lastRedirect = sessionStorage.getItem('lastRedirect');
-    const now = Date.now();
-    if (lastRedirect && (now - parseInt(lastRedirect)) < 3000 && redirectCount > 2) {
-        clearSensitiveData();
-        showToast('Problema de autenticação. Redirecionando para login...', 'error');
-        setTimeout(() => window.location.href = '/index.html', 3000);
-        return;
-    }
-    sessionStorage.setItem('redirectCount', (redirectCount + 1).toString());
-    sessionStorage.setItem('lastRedirect', now.toString());
-
     setupAxios();
     updateCurrentDate();
-    const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
-    if (userRole !== 'ATTENDANT') {
-        showToast('Acesso restrito a atendentes. Algumas funções podem estar limitadas.', 'warning');
-    }
 
     initializeWebSocket();
     try {

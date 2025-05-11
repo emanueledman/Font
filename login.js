@@ -59,64 +59,14 @@ const redirectUser = (userRole) => {
             window.location.href = '/system-admin.html';
             break;
         default:
-            showError('Invalid user role.');
             clearSensitiveData();
             window.location.href = '/index.html';
     }
 };
 
-// Verify token with backend
-const verifyToken = async () => {
-    const token = getToken();
-    if (!token) {
-        console.log('No token found, redirecting to login');
-        window.location.href = '/index.html';
-        return;
-    }
-
-    try {
-        const response = await axios.get(
-            `${API_BASE}/api/auth/verify-token`,
-            {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                timeout: 10000
-            }
-        );
-
-        const data = response.data;
-        if (!data.user_role) {
-            throw new Error('Invalid response: user_role missing');
-        }
-
-        console.log('Token verified:', { user_role: data.user_role });
-        localStorage.setItem('userRole', data.user_role); // Update role
-        redirectUser(data.user_role);
-
-    } catch (error) {
-        console.error('Token verification failed:', error);
-        let message = 'Session expired. Please log in again.';
-        if (error.response) {
-            message = error.response.data?.error || message;
-            if (error.response.status === 401) message = 'Invalid or expired token.';
-            else if (error.response.status === 404) message = 'User not found.';
-            else if (error.response.status === 500) message = 'Server error.';
-        } else if (error.code === 'ECONNABORTED') {
-            message = 'Connection timeout.';
-        } else if (error.message.includes('Network Error')) {
-            message = 'Network error.';
-        }
-        showError(message);
-        clearSensitiveData();
-        window.location.href = '/index.html';
-    }
-};
-
-// Initial verification
+// Handle login form submission
 document.addEventListener('DOMContentLoaded', () => {
-    // Skip verification on login page
+    // Only handle login on index.html
     if (window.location.pathname.includes('index.html')) {
         const loginForm = document.getElementById('login-form');
         if (!loginForm) {
@@ -164,11 +114,8 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 console.error('Login error:', error);
                 let message = 'Login failed. Please check your credentials.';
-                if (error.response) {
-                    message = error.response.data?.error || message;
-                    if (error.response.status === 401) message = 'Invalid credentials.';
-                    else if (error.response.status === 403) message = 'Unauthorized access.';
-                    else if (error.response.status === 500) message = 'Server error.';
+                if (error.response?.status === 500) {
+                    message = 'Server error.';
                 } else if (error.code === 'ECONNABORTED') {
                     message = 'Connection timeout.';
                 } else if (error.message.includes('Network Error')) {
@@ -179,8 +126,5 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('password').value = '';
             }
         });
-    } else {
-        // Verify token for protected pages
-        verifyToken();
     }
 });
