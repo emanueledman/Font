@@ -62,13 +62,13 @@ const redirectUser = (userRole) => {
         case 'attendant':
             window.location.href = '/attendant.html';
             break;
-        case 'BRANCH_ADMIN':
+        case 'branch_admin':
             window.location.href = '/branch-admin.html';
             break;
-        case 'INSTITUTION_ADMIN':
+        case 'inst_admin':
             window.location.href = '/institution-admin.html';
             break;
-        case 'SYSTEM_ADMIN':
+        case 'sys_admin':
             window.location.href = '/system-admin.html';
             break;
         default:
