@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const userRole = localStorage.getItem('userRole');
-    
+
     // Verificar se o usuário tem o papel correto
     if (userRole !== 'branch_admin') {
         showToast('Acesso restrito a administradores de filial.', 'error');
@@ -9,8 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const API_BASE_URL = 'https://fila-facilita2-0-4uzw.onrender.com/api/admin';
-    const socket = io('https://fila-facilita2-0-4uzw.onrender.com/admin', { 
-        auth: { token: localStorage.getItem('adminToken') } 
+    const socket = io('https://fila-facilita2-0-4uzw.onrender.com/admin', {
+        auth: { token: localStorage.getItem('adminToken') }
     });
 
     // DOM Elements
@@ -57,15 +57,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Utility Functions
     const showLoading = (message) => {
-        loadingMessage.textContent = message;
-        loadingOverlay.classList.remove('hidden');
+        if (loadingMessage && loadingOverlay) {
+            loadingMessage.textContent = message;
+            loadingOverlay.classList.remove('hidden');
+        }
     };
 
     const hideLoading = () => {
-        loadingOverlay.classList.add('hidden');
+        if (loadingOverlay) {
+            loadingOverlay.classList.add('hidden');
+        }
     };
 
     const showToast = (message, type = 'success') => {
+        if (!toastContainer) return;
         const toast = document.createElement('div');
         toast.className = `flex items-center px-4 py-3 rounded-lg shadow-lg text-white animate-slide-in toast-${type}`;
         toast.innerHTML = `
@@ -109,9 +114,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const switchSection = (sectionId) => {
         Object.values(sections).forEach(section => section.classList.add('hidden'));
-        sections[sectionId].classList.remove('hidden');
+        if (sections[sectionId]) {
+            sections[sectionId].classList.remove('hidden');
+        }
         navButtons.forEach(btn => btn.classList.remove('active', 'bg-indigo-600'));
-        document.getElementById(`nav-${sectionId}`).classList.add('active', 'bg-indigo-600');
+        const navButton = document.getElementById(`nav-${sectionId}`);
+        if (navButton) {
+            navButton.classList.add('active', 'bg-indigo-600');
+        }
     };
 
     const formatDate = (date) => {
@@ -156,9 +166,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return null;
         }
 
-        userName.textContent = storedEmail;
-        userEmailElement.textContent = storedEmail;
-        userInfo.querySelector('.w-8').textContent = storedEmail.split('@')[0].slice(0, 2).toUpperCase();
+        if (userName && userEmailElement && userInfo) {
+            userName.textContent = storedEmail;
+            userEmailElement.textContent = storedEmail;
+            userInfo.querySelector('.w-8').textContent = storedEmail.split('@')[0].slice(0, 2).toUpperCase();
+        }
         return { email: storedEmail };
     };
 
@@ -173,27 +185,29 @@ document.addEventListener('DOMContentLoaded', () => {
             const queuesRes = await axios.get(`${API_BASE_URL}/queues`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            queuesData = queuesRes.data.queues;
+            queuesData = queuesRes.data.queues || [];
 
             const activeQueuesCount = queuesData.filter(q => q.status === 'Aberto').length;
-            activeQueues.textContent = activeQueuesCount;
+            if (activeQueues) activeQueues.textContent = activeQueuesCount;
 
-            activeAttendants.textContent = 'N/A';
-            totalDepartments.textContent = 'N/A';
-            configuredSchedules.textContent = 'N/A';
+            if (activeAttendants) activeAttendants.textContent = 'N/A';
+            if (totalDepartments) totalDepartments.textContent = 'N/A';
+            if (configuredSchedules) configuredSchedules.textContent = 'N/A';
 
-            queuesOverview.innerHTML = queuesData.slice(0, 5).map(queue => `
-                <div class="queue-card bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200">
-                    <div class="flex items-center justify-between">
-                        <h4 class="font-medium text-gray-800">${queue.service}</h4>
-                        <span class="text-xs px-2 py-1 rounded-full ${queue.status === 'Aberto' ? 'bg-green-100 text-green-800' : queue.status === 'Fechado' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">${queue.status}</span>
+            if (queuesOverview) {
+                queuesOverview.innerHTML = queuesData.slice(0, 5).map(queue => `
+                    <div class="queue-card bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <h4 class="font-medium text-gray-800">${queue.service || 'N/A'}</h4>
+                            <span class="text-xs px-2 py-1 rounded-full ${queue.status === 'Aberto' ? 'bg-green-100 text-green-800' : queue.status === 'Fechado' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">${queue.status}</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-1">Departamento: ${queue.department || 'N/A'}</p>
+                        <p class="text-sm text-gray-600">Senhas ativas: ${queue.active_tickets || 0}</p>
+                        <p class="text-sm text-gray-600">Tempo médio: ${queue.avg_wait_time || 'N/A'}</p>
+                        <button class="call-next-btn mt-2 w-full px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" data-queue-id="${queue.id}" ${queue.status !== 'Aberto' ? 'disabled' : ''}>Chamar Próximo</button>
                     </div>
-                    <p class="text-sm text-gray-600 mt-1">Departamento: ${queue.department}</p>
-                    <p class="text-sm text-gray-600">Senhas ativas: ${queue.active_tickets}</p>
-                    <p class="text-sm text-gray-600">Tempo médio: ${queue.avg_wait_time || 'N/A'}</p>
-                    <button class="call-next-btn mt-2 w-full px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" data-queue-id="${queue.id}" ${queue.status !== 'Aberto' ? 'disabled' : ''}>Chamar Próximo</button>
-                </div>
-            `).join('');
+                `).join('');
+            }
         } catch (error) {
             if (!handleApiError(error)) {
                 // Tratar outros erros, se necessário
@@ -214,22 +228,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     per_page: 20
                 }
             });
-            queuesContainer.innerHTML = response.data.queues.map(queue => `
-                <div class="queue-card bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-                    <div class="flex items-center justify-between mb-2">
-                        <h3 class="font-semibold text-gray-800">${queue.service}</h3>
-                        <span class="text-xs px-2 py-1 rounded-full ${queue.status === 'Aberto' ? 'bg-green-100 text-green-800' : queue.status === 'Fechado' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">${queue.status}</span>
+            const queues = response.data.queues || [];
+            if (queuesContainer) {
+                queuesContainer.innerHTML = queues.map(queue => `
+                    <div class="queue-card bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="font-semibold text-gray-800">${queue.service || 'N/A'}</h3>
+                            <span class="text-xs px-2 py-1 rounded-full ${queue.status === 'Aberto' ? 'bg-green-100 text-green-800' : queue.status === 'Fechado' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">${queue.status}</span>
+                        </div>
+                        <p class="text-sm text-gray-600">Prefixo: ${queue.prefix || 'N/A'}</p>
+                        <p class="text-sm text-gray-600">Departamento: ${queue.department || 'N/A'}</p>
+                        <p class="text-sm text-gray-600">Senhas ativas: ${queue.active_tickets || 0}/${queue.daily_limit || 'N/A'}</p>
+                        <p class="text-sm text-gray-600">Tempo médio: ${queue.avg_wait_time || 'N/A'}</p>
+                        <div class="flex space-x-2 mt-4">
+                            <button class="call-next-btn flex-1 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" data-queue-id="${queue.id}" ${queue.status !== 'Aberto' ? 'disabled' : ''}>Chamar Próximo</button>
+                            <button class="edit-queue-btn flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300" data-queue-id="${queue.id}">Editar</button>
+                        </div>
                     </div>
-                    <p class="text-sm text-gray-600">Prefixo: ${queue.prefix}</p>
-                    <p class="text-sm text-gray-600">Departamento: ${queue.department}</p>
-                    <p class="text-sm text-gray-600">Senhas ativas: ${queue.active_tickets}/${queue.daily_limit}</p>
-                    <p class="text-sm text-gray-600">Tempo médio: ${queue.avg_wait_time || 'N/A'}</p>
-                    <div class="flex space-x-2 mt-4">
-                        <button class="call-next-btn flex-1 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" data-queue-id="${queue.id}" ${queue.status !== 'Aberto' ? 'disabled' : ''}>Chamar Próximo</button>
-                        <button class="edit-queue-btn flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300" data-queue-id="${queue.id}">Editar</button>
-                    </div>
-                </div>
-            `).join('');
+                `).join('');
+            }
         } catch (error) {
             if (!handleApiError(error)) {
                 // Tratar outros erros, se necessário
@@ -247,17 +264,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { Authorization: `Bearer ${token}` },
                 params: { page: 1, per_page: 20 }
             });
-            departmentsContainer.innerHTML = response.data.departments.map(dept => `
-                <div class="department-card bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-                    <h3 class="font-semibold text-gray-800">${dept.name}</h3>
-                    <p class="text-sm text-gray-600 mt-1">Setor: ${dept.sector}</p>
-                    <p class="text-sm text-gray-600">Filial: ${dept.branch_name}</p>
-                    <div class="flex space-x-2 mt-4">
-                        <button class="edit-department-btn flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300" data-department-id="${dept.id}">Editar</button>
-                        <button class="delete-department-btn flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700" data-department-id="${dept.id}">Excluir</button>
+            const departments = response.data.departments || [];
+            if (departmentsContainer) {
+                departmentsContainer.innerHTML = departments.map(dept => `
+                    <div class="department-card bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                        <h3 class="font-semibold text-gray-800">${dept.name || 'N/A'}</h3>
+                        <p class="text-sm text-gray-600 mt-1">Setor: ${dept.sector || 'N/A'}</p>
+                        <p class="text-sm text-gray-600">Filial: ${dept.branch_name || 'N/A'}</p>
+                        <div class="flex space-x-2 mt-4">
+                            <button class="edit-department-btn flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300" data-department-id="${dept.id}">Editar</button>
+                            <button class="delete-department-btn flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700" data-department-id="${dept.id}">Excluir</button>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `).join('');
+            }
         } catch (error) {
             if (!handleApiError(error)) {
                 // Tratar outros erros, se necessário
@@ -275,25 +295,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { Authorization: `Bearer ${token}` },
                 params: { page: 1, per_page: 20 }
             });
-            attendantsContainer.innerHTML = response.data.attendants.map(attendant => `
-                <div class="attendant-card bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-                    <div class="flex items-center mb-2">
-                        <div class="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold mr-3">
-                            ${attendant.name ? attendant.name.split(' ').map(n => n[0]).join('').toUpperCase() : attendant.email.slice(0, 2).toUpperCase()}
+            const attendants = response.data.attendants || [];
+            if (attendantsContainer) {
+                attendantsContainer.innerHTML = attendants.map(attendant => `
+                    <div class="attendant-card bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                        <div class="flex items-center mb-2">
+                            <div class="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold mr-3">
+                                ${attendant.name ? attendant.name.split(' ').map(n => n[0]).join('').toUpperCase() : (attendant.email || '').slice(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-800">${attendant.name || attendant.email || 'N/A'}</h3>
+                                <p class="text-sm text-gray-600">${attendant.email || 'N/A'}</p>
+                            </div>
                         </div>
-                        <div>
-                            <h3 class="font-semibold text-gray-800">${attendant.name || attendant.email}</h3>
-                            <p class="text-sm text-gray-600">${attendant.email}</p>
+                        <p class="text-sm text-gray-600">Departamento: ${attendant.department_name || 'N/A'}</p>
+                        <p class="text-sm text-gray-600">Filial: ${attendant.branch_name || 'N/A'}</p>
+                        <div class="flex space-x-2 mt-4">
+                            <button class="edit-attendant-btn flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300" data-user-id="${attendant.id}">Editar</button>
+                            <button class="delete-attendant-btn flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700" data-user-id="${attendant.id}">Excluir</button>
                         </div>
                     </div>
-                    <p class="text-sm text-gray-600">Departamento: ${attendant.department_name || 'N/A'}</p>
-                    <p class="text-sm text-gray-600">Filial: ${attendant.branch_name || 'N/A'}</p>
-                    <div class="flex space-x-2 mt-4">
-                        <button class="edit-attendant-btn flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300" data-user-id="${attendant.id}">Editar</button>
-                        <button class="delete-attendant-btn flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700" data-user-id="${attendant.id}">Excluir</button>
-                    </div>
-                </div>
-            `).join('');
+                `).join('');
+            }
         } catch (error) {
             if (!handleApiError(error)) {
                 // Tratar outros erros, se necessário
@@ -310,16 +333,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await axios.get(`${API_BASE_URL}/institutions/1/branches`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            const branch = response.data.branches[0];
-            schedulesContainer.innerHTML = branch.schedules.map(schedule => `
-                <div class="schedule-card bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-                    <h3 class="font-semibold text-gray-800">${schedule.weekday}</h3>
-                    <p class="text-sm text-gray-600 mt-1">${schedule.is_closed ? 'Fechado' : `${schedule.open_time} - ${schedule.end_time}`}</p>
-                    <div class="flex space-x-2 mt-4">
-                        <button class="edit-schedule-btn flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300" data-schedule-id="${schedule.id}">Editar</button>
+            const branch = response.data.branches && response.data.branches[0] ? response.data.branches[0] : { schedules: [] };
+            if (schedulesContainer) {
+                schedulesContainer.innerHTML = (branch.schedules || []).map(schedule => `
+                    <div class="schedule-card bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                        <h3 class="font-semibold text-gray-800">${schedule.weekday || 'N/A'}</h3>
+                        <p class="text-sm text-gray-600 mt-1">${schedule.is_closed ? 'Fechado' : `${schedule.open_time || 'N/A'} - ${schedule.end_time || 'N/A'}`}</p>
+                        <div class="flex space-x-2 mt-4">
+                            <button class="edit-schedule-btn flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300" data-schedule-id="${schedule.id || ''}">Editar</button>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `).join('');
+            }
         } catch (error) {
             if (!handleApiError(error)) {
                 // Tratar outros erros, se necessário
@@ -335,8 +360,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await axios.get(`${API_BASE_URL}/institutions/1/departments`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            queueDepartmentFilter.innerHTML = '<option value="all">Todos os departamentos</option>' +
-                response.data.departments.map(dept => `<option value="${dept.id}">${dept.name}</option>`).join('');
+            const departments = response.data.departments || [];
+            if (queueDepartmentFilter) {
+                queueDepartmentFilter.innerHTML = '<option value="all">Todos os departamentos</option>' +
+                    departments.map(dept => `<option value="${dept.id}">${dept.name || 'N/A'}</option>`).join('');
+            }
         } catch (error) {
             if (!handleApiError(error)) {
                 // Tratar outros erros, se necessário
@@ -353,7 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <h3 class="text-xl font-semibold text-gray-800 mb-4">${title}</h3>
                 <div class="modal-content">${content}</div>
                 <div class="flex justify-end space-x-2 mt-6">
-                    ${buttons.map(btn => `<button class="${btn.class} px-4 py-2 rounded-lg" ${btn.onclick ? `onclick="${btn.onclick}"` : ''}>${btn.label}</button>`).join('')}
+                    ${buttons.map(btn => `<button class="${btn.class}" ${btn.onclick ? `onclick="${btn.onclick}"` : ''}>${btn.label}</button>`).join('')}
                 </div>
             </div>
         `;
@@ -362,11 +390,13 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Event Handlers
-    sidebarToggle.addEventListener('click', () => {
-        sidebar.classList.toggle('sidebar-collapsed');
-        sidebar.classList.toggle('w-64');
-        sidebar.classList.toggle('w-20');
-    });
+    if (sidebarToggle && sidebar) {
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('sidebar-collapsed');
+            sidebar.classList.toggle('w-64');
+            sidebar.classList.toggle('w-20');
+        });
+    }
 
     navButtons.forEach(button => {
         button.addEventListener('click', () => {
@@ -379,117 +409,137 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    logoutBtn.addEventListener('click', () => {
-        localStorage.clear();
-        window.location.href = '/index.html';
-    });
-
-    refreshQueues.addEventListener('click', loadDashboard);
-
-    queueFilter.addEventListener('input', () => {
-        const filter = queueFilter.value.toLowerCase();
-        const cards = queuesContainer.querySelectorAll('.queue-card');
-        cards.forEach(card => {
-            const service = card.querySelector('h3').textContent.toLowerCase();
-            const department = card.querySelector('p:nth-child(3)').textContent.toLowerCase();
-            card.style.display = (service.includes(filter) || department.includes(filter)) ? '' : 'none';
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            localStorage.clear();
+            window.location.href = '/index.html';
         });
-    });
+    }
 
-    queueStatusFilter.addEventListener('change', () => {
-        const status = queueStatusFilter.value;
-        const cards = queuesContainer.querySelectorAll('.queue-card');
-        cards.forEach(card => {
-            const cardStatus = card.querySelector('span').textContent;
-            card.style.display = (status === 'all' || (status === 'open' && cardStatus === 'Aberto') || (status === 'closed' && cardStatus === 'Fechado')) ? '' : 'none';
+    if (refreshQueues) {
+        refreshQueues.addEventListener('click', loadDashboard);
+    }
+
+    if (queueFilter) {
+        queueFilter.addEventListener('input', () => {
+            const filter = queueFilter.value.toLowerCase();
+            const cards = queuesContainer.querySelectorAll('.queue-card');
+            cards.forEach(card => {
+                const service = card.querySelector('h3')?.textContent.toLowerCase() || '';
+                const department = card.querySelector('p:nth-child(3)')?.textContent.toLowerCase() || '';
+                card.style.display = (service.includes(filter) || department.includes(filter)) ? '' : 'none';
+            });
         });
-    });
+    }
 
-    queueDepartmentFilter.addEventListener('change', () => {
-        const deptId = queueDepartmentFilter.value;
-        const cards = queuesContainer.querySelectorAll('.queue-card');
-        cards.forEach(card => {
-            const cardDept = card.querySelector('p:nth-child(3)').textContent;
-            card.style.display = (deptId === 'all' || cardDept.includes(queueDepartmentFilter.selectedOptions[0].text)) ? '' : 'none';
+    if (queueStatusFilter) {
+        queueStatusFilter.addEventListener('change', () => {
+            const status = queueStatusFilter.value;
+            const cards = queuesContainer.querySelectorAll('.queue-card');
+            cards.forEach(card => {
+                const cardStatus = card.querySelector('span')?.textContent || '';
+                card.style.display = (status === 'all' || (status === 'open' && cardStatus === 'Aberto') || (status === 'closed' && cardStatus === 'Fechado')) ? '' : 'none';
+            });
         });
-    });
+    }
 
-    departmentFilter.addEventListener('input', () => {
-        const filter = departmentFilter.value.toLowerCase();
-        const cards = departmentsContainer.querySelectorAll('.department-card');
-        cards.forEach(card => {
-            const name = card.querySelector('h3').textContent.toLowerCase();
-            const sector = card.querySelector('p:nth-child(2)').textContent.toLowerCase();
-            card.style.display = (name.includes(filter) || sector.includes(filter)) ? '' : 'none';
+    if (queueDepartmentFilter) {
+        queueDepartmentFilter.addEventListener('change', () => {
+            const deptId = queueDepartmentFilter.value;
+            const cards = queuesContainer.querySelectorAll('.queue-card');
+            cards.forEach(card => {
+                const cardDept = card.querySelector('p:nth-child(3)')?.textContent || '';
+                card.style.display = (deptId === 'all' || cardDept.includes(queueDepartmentFilter.selectedOptions[0]?.text)) ? '' : 'none';
+            });
         });
-    });
+    }
 
-    attendantFilter.addEventListener('input', () => {
-        const filter = attendantFilter.value.toLowerCase();
-        const cards = attendantsContainer.querySelectorAll('.attendant-card');
-        cards.forEach(card => {
-            const name = card.querySelector('h3').textContent.toLowerCase();
-            const email = card.querySelector('p').textContent.toLowerCase();
-            card.style.display = (name.includes(filter) || email.includes(filter)) ? '' : 'none';
+    if (departmentFilter) {
+        departmentFilter.addEventListener('input', () => {
+            const filter = departmentFilter.value.toLowerCase();
+            const cards = departmentsContainer.querySelectorAll('.department-card');
+            cards.forEach(card => {
+                const name = card.querySelector('h3')?.textContent.toLowerCase() || '';
+                const sector = card.querySelector('p:nth-child(2)')?.textContent.toLowerCase() || '';
+                card.style.display = (name.includes(filter) || sector.includes(filter)) ? '' : 'none';
+            });
         });
-    });
+    }
 
-    attendantRoleFilter.addEventListener('change', () => {
-        const role = attendantRoleFilter.value;
-        const cards = attendantsContainer.querySelectorAll('.attendant-card');
-        cards.forEach(card => {
-            const cardRole = card.querySelector('p:nth-child(3)').textContent.toLowerCase();
-            card.style.display = (role === 'all' || cardRole.includes(role)) ? '' : 'none';
+    if (attendantFilter) {
+        attendantFilter.addEventListener('input', () => {
+            const filter = attendantFilter.value.toLowerCase();
+            const cards = attendantsContainer.querySelectorAll('.attendant-card');
+            cards.forEach(card => {
+                const name = card.querySelector('h3')?.textContent.toLowerCase() || '';
+                const email = card.querySelector('p')?.textContent.toLowerCase() || '';
+                card.style.display = (name.includes(filter) || email.includes(filter)) ? '' : 'none';
+            });
         });
-    });
+    }
 
-    scheduleFilter.addEventListener('input', () => {
-        const filter = scheduleFilter.value.toLowerCase();
-        const cards = schedulesContainer.querySelectorAll('.schedule-card');
-        cards.forEach(card => {
-            const weekday = card.querySelector('h3').textContent.toLowerCase();
-            card.style.display = weekday.includes(filter) ? '' : 'none';
+    if (attendantRoleFilter) {
+        attendantRoleFilter.addEventListener('change', () => {
+            const role = attendantRoleFilter.value;
+            const cards = attendantsContainer.querySelectorAll('.attendant-card');
+            cards.forEach(card => {
+                const cardRole = card.querySelector('p:nth-child(3)')?.textContent.toLowerCase() || '';
+                card.style.display = (role === 'all' || cardRole.includes(role)) ? '' : 'none';
+            });
         });
-    });
+    }
 
-    addQueueBtn.addEventListener('click', () => {
-        createModal(
-            'Adicionar Nova Fila',
-            `
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Serviço</label>
-                        <input type="text" id="queue-service" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Nome do serviço">
+    if (scheduleFilter) {
+        scheduleFilter.addEventListener('input', () => {
+            const filter = scheduleFilter.value.toLowerCase();
+            const cards = schedulesContainer.querySelectorAll('.schedule-card');
+            cards.forEach(card => {
+                const weekday = card.querySelector('h3')?.textContent.toLowerCase() || '';
+                card.style.display = weekday.includes(filter) ? '' : 'none';
+            });
+        });
+    }
+
+    if (addQueueBtn) {
+        addQueueBtn.addEventListener('click', () => {
+            createModal(
+                'Adicionar Nova Fila',
+                `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Serviço</label>
+                            <input type="text" id="queue-service" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Nome do serviço">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Prefixo</label>
+                            <input type="text" id="queue-prefix" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Ex: A, B">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Limite Diário</label>
+                            <input type="number" id="queue-limit" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Ex: 100">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Departamento</label>
+                            <select id="queue-department" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500">
+                                <option value="">Selecione um departamento</option>
+                                ${queueDepartmentFilter?.innerHTML || ''}
+                            </select>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Prefixo</label>
-                        <input type="text" id="queue-prefix" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Ex: A, B">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Limite Diário</label>
-                        <input type="number" id="queue-limit" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Ex: 100">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Departamento</label>
-                        <select id="queue-department" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500">
-                            <option value="">Selecione um departamento</option>
-                            ${queueDepartmentFilter.innerHTML}
-                        </select>
-                    </div>
-                </div>
-            `,
-            [
-                { label: 'Cancelar', class: 'bg-gray-200 text-gray-800 hover:bg-gray-300' },
-                { label: 'Adicionar', class: 'bg-indigo-600 text-white hover:bg-indigo-700', onclick: 'addQueue()' }
-            ]
-        );
-    });
+                `,
+                [
+                    { label: 'Cancelar', class: 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-4 py-2 rounded-lg' },
+                    { label: 'Adicionar', class: 'bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-lg', onclick: 'addQueue()' }
+                ]
+            );
+        });
+    }
 
     window.addQueue = async () => {
-        const service = document.getElementById('queue-service').value;
-        const prefix = document.getElementById('queue-prefix').value;
-        const limit = document.getElementById('queue-limit').value;
-        const departmentId = document.getElementById('queue-department').value;
+        const service = document.getElementById('queue-service')?.value;
+        const prefix = document.getElementById('queue-prefix')?.value;
+        const limit = document.getElementById('queue-limit')?.value;
+        const departmentId = document.getElementById('queue-department')?.value;
 
         if (!service || !prefix || !limit || !departmentId) {
             showToast('Preencha todos os campos', 'error');
@@ -500,12 +550,12 @@ document.addEventListener('DOMContentLoaded', () => {
             showLoading('Adicionando fila...');
             const token = localStorage.getItem('adminToken');
             await axios.post(`${API_BASE_URL}/queues`, {
-                service_id: service, // Supondo que a criação do serviço é tratada em outro lugar
+                service_id: service, // Ajustar conforme a API
                 prefix,
                 daily_limit: parseInt(limit),
                 department_id: departmentId
             }, { headers: { Authorization: `Bearer ${token}` } });
-            document.querySelector('.modal-content').closest('.fixed').remove();
+            document.querySelector('.modal-content')?.closest('.fixed')?.remove();
             showToast('Fila adicionada com sucesso');
             loadQueues();
         } catch (error) {
@@ -517,31 +567,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    addDepartmentBtn.addEventListener('click', () => {
-        createModal(
-            'Adicionar Novo Departamento',
-            `
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Nome</label>
-                        <input type="text" id="department-name" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Nome do departamento">
+    if (addDepartmentBtn) {
+        addDepartmentBtn.addEventListener('click', () => {
+            createModal(
+                'Adicionar Novo Departamento',
+                `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Nome</label>
+                            <input type="text" id="department-name" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Nome do departamento">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Setor</label>
+                            <input type="text" id="department-sector" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Ex: Atendimento ao Cliente">
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Setor</label>
-                        <input type="text" id="department-sector" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Ex: Atendimento ao Cliente">
-                    </div>
-                </div>
-            `,
-            [
-                { label: 'Cancelar', class: 'bg-gray-200 text-gray-800 hover:bg-gray-300' },
-                { label: 'Adicionar', class: 'bg-indigo-600 text-white hover:bg-indigo-700', onclick: 'addDepartment()' }
-            ]
-        );
-    });
+                `,
+                [
+                    { label: 'Cancelar', class: 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-4 py-2 rounded-lg' },
+                    { label: 'Adicionar', class: 'bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-lg', onclick: 'addDepartment()' }
+                ]
+            );
+        });
+    }
 
     window.addDepartment = async () => {
-        const name = document.getElementById('department-name').value;
-        const sector = document.getElementById('department-sector').value;
+        const name = document.getElementById('department-name')?.value;
+        const sector = document.getElementById('department-sector')?.value;
 
         if (!name || !sector) {
             showToast('Preencha todos os campos', 'error');
@@ -559,9 +611,9 @@ document.addEventListener('DOMContentLoaded', () => {
             await axios.post(`${API_BASE_URL}/institutions/1/departments`, {
                 name,
                 sector,
-                branch_id: 1 // Placeholder: ajustar para branch_id correto
+                branch_id: localStorage.getItem('branch_id') || 1 // Ajustar conforme necessário
             }, { headers: { Authorization: `Bearer ${token}` } });
-            document.querySelector('.modal-content').closest('.fixed').remove();
+            document.querySelector('.modal-content')?.closest('.fixed')?.remove();
             showToast('Departamento adicionado com sucesso');
             loadDepartments();
             loadDepartmentsFilter();
@@ -574,54 +626,56 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    addAttendantBtn.addEventListener('click', () => {
-        createModal(
-            'Adicionar Novo Atendente',
-            `
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Nome</label>
-                        <input type="text" id="attendant-name" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Nome completo">
+    if (addAttendantBtn) {
+        addAttendantBtn.addEventListener('click', () => {
+            createModal(
+                'Adicionar Novo Atendente',
+                `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Nome</label>
+                            <input type="text" id="attendant-name" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Nome completo">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Email</label>
+                            <input type="email" id="attendant-email" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="email@exemplo.com">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Senha</label>
+                            <input type="password" id="attendant-password" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Mínimo 8 caracteres">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Departamento</label>
+                            <select id="attendant-department" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500">
+                                <option value="">Selecione um departamento</option>
+                                ${queueDepartmentFilter?.innerHTML || ''}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Papel</label>
+                            <select id="attendant-role" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500">
+                                <option value="ATTENDANT">Atendente</option>
+                                <option value="BRANCH_ADMIN">Administrador de Filial</option>
+                            </select>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Email</label>
-                        <input type="email" id="attendant-email" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="email@exemplo.com">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Senha</label>
-                        <input type="password" id="attendant-password" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Mínimo 8 caracteres">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Departamento</label>
-                        <select id="attendant-department" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500">
-                            <option value="">Selecione um departamento</option>
-                            ${queueDepartmentFilter.innerHTML}
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Papel</label>
-                        <select id="attendant-role" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500">
-                            <option value="attendant">Atendente</option>
-                            <option value="branch_admin">Administrador de Filial</option>
-                        </select>
-                    </div>
-                </div>
-            `,
-            [
-                { label: 'Cancelar', class: 'bg-gray-200 text-gray-800 hover:bg-gray-300' },
-                { label: 'Adicionar', class: 'bg-indigo-600 text-white hover:bg-indigo-700', onclick: 'addAttendant()' }
-            ]
-        );
-    });
+                `,
+                [
+                    { label: 'Cancelar', class: 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-4 py-2 rounded-lg' },
+                    { label: 'Adicionar', class: 'bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-lg', onclick: 'addAttendant()' }
+                ]
+            );
+        });
+    }
 
     window.addAttendant = async () => {
-        const name = document.getElementById('attendant-name').value;
-        const email = document.getElementById('attendant-email').value;
-        const password = document.getElementById('attendant-password').value;
-        const departmentId = document.getElementById('attendant-department').value;
-        const role = document.getElementById('attendant-role').value;
+        const name = document.getElementById('attendant-name')?.value;
+        const email = document.getElementById('attendant-email')?.value;
+        const password = document.getElementById('attendant-password')?.value;
+        const departmentId = document.getElementById('attendant-department')?.value;
+        const role = document.getElementById('attendant-role')?.value;
 
-        if (!name || !email || !password || !departmentId) {
+        if (!name || !email || !password || !departmentId || !role) {
             showToast('Preencha todos os campos', 'error');
             return;
         }
@@ -638,9 +692,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 name,
                 email,
                 password,
-                role: role.toUpperCase()
+                role
             }, { headers: { Authorization: `Bearer ${token}` } });
-            document.querySelector('.modal-content').closest('.fixed').remove();
+            document.querySelector('.modal-content')?.closest('.fixed')?.remove();
             showToast('Atendente adicionado com sucesso');
             loadAttendants();
         } catch (error) {
@@ -652,41 +706,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    queuesContainer.addEventListener('click', async (e) => {
-        if (e.target.classList.contains('call-next-btn')) {
-            const queueId = e.target.dataset.queueId;
-            try {
-                showLoading('Chamando próximo ticket...');
-                const token = localStorage.getItem('adminToken');
-                const response = await axios.post(`${API_BASE_URL}/queue/${queueId}/call`, {}, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                showToast(response.data.message);
-                loadDashboard();
-                loadQueues();
-            } catch (error) {
-                if (!handleApiError(error)) {
-                    // Tratar outros erros, se necessário
-                }
-            } finally {
-                hideLoading();
-            }
-        }
-    });
-
-    departmentsContainer.addEventListener('click', async (e) => {
-        if (e.target.classList.contains('delete-department-btn')) {
-            const departmentId = e.target.dataset.departmentId;
-            if (confirm('Tem certeza que deseja excluir este departamento?')) {
+    if (queuesContainer) {
+        queuesContainer.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('call-next-btn')) {
+                const queueId = e.target.dataset.queueId;
                 try {
-                    showLoading('Excluindo departamento...');
+                    showLoading('Chamando próximo ticket...');
                     const token = localStorage.getItem('adminToken');
-                    await axios.delete(`${API_BASE_URL}/institutions/1/departments/${departmentId}`, {
+                    const response = await axios.post(`${API_BASE_URL}/queue/${queueId}/call`, {}, {
                         headers: { Authorization: `Bearer ${token}` }
                     });
-                    showToast('Departamento excluído com sucesso');
-                    loadDepartments();
-                    loadDepartmentsFilter();
+                    showToast(response.data.message || 'Próximo ticket chamado');
+                    loadDashboard();
+                    loadQueues();
                 } catch (error) {
                     if (!handleApiError(error)) {
                         // Tratar outros erros, se necessário
@@ -694,43 +726,97 @@ document.addEventListener('DOMContentLoaded', () => {
                 } finally {
                     hideLoading();
                 }
+            } else if (e.target.classList.contains('edit-queue-btn')) {
+                const queueId = e.target.dataset.queueId;
+                // Implementar lógica de edição (exemplo abaixo)
+                showToast('Funcionalidade de edição de fila ainda não implementada', 'warning');
             }
-        }
-    });
+        });
+    }
 
-    attendantsContainer.addEventListener('click', async (e) => {
-        if (e.target.classList.contains('delete-attendant-btn')) {
-            const userId = e.target.dataset.userId;
-            if (confirm('Tem certeza que deseja excluir este atendente?')) {
-                try {
-                    showLoading('Excluindo atendente...');
-                    const token = localStorage.getItem('adminToken');
-                    await axios.delete(`${API_BASE_URL}/institutions/1/users/${userId}`, {
-                        headers: { Authorization: `Bearer ${token}` }
-                    });
-                    showToast('Atendente excluído com sucesso');
-                    loadAttendants();
-                } catch (error) {
-                    if (!handleApiError(error)) {
-                        // Tratar outros erros, se necessário
+    if (departmentsContainer) {
+        departmentsContainer.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('delete-department-btn')) {
+                const departmentId = e.target.dataset.departmentId;
+                if (confirm('Tem certeza que deseja excluir este departamento?')) {
+                    try {
+                        showLoading('Excluindo departamento...');
+                        const token = localStorage.getItem('adminToken');
+                        await axios.delete(`${API_BASE_URL}/institutions/1/departments/${departmentId}`, {
+                            headers: { Authorization: `Bearer ${token}` }
+                        });
+                        showToast('Departamento excluído com sucesso');
+                        loadDepartments();
+                        loadDepartmentsFilter();
+                    } catch (error) {
+                        if (!handleApiError(error)) {
+                            // Tratar outros erros, se necessário
+                        }
+                    } finally {
+                        hideLoading();
                     }
-                } finally {
-                    hideLoading();
                 }
+            } else if (e.target.classList.contains('edit-department-btn')) {
+                const departmentId = e.target.dataset.departmentId;
+                // Implementar lógica de edição (exemplo abaixo)
+                showToast('Funcionalidade de edição de departamento ainda não implementada', 'warning');
             }
-        }
-    });
+        });
+    }
+
+    if (attendantsContainer) {
+        attendantsContainer.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('delete-attendant-btn')) {
+                const userId = e.target.dataset.userId;
+                if (confirm('Tem certeza que deseja excluir este atendente?')) {
+                    try {
+                        showLoading('Excluindo atendente...');
+                        const token = localStorage.getItem('adminToken');
+                        await axios.delete(`${API_BASE_URL}/institutions/1/users/${userId}`, {
+                            headers: { Authorization: `Bearer ${token}` }
+                        });
+                        showToast('Atendente excluído com sucesso');
+                        loadAttendants();
+                    } catch (error) {
+                        if (!handleApiError(error)) {
+                            // Tratar outros erros, se necessário
+                        }
+                    } finally {
+                        hideLoading();
+                    }
+                }
+            } else if (e.target.classList.contains('edit-attendant-btn')) {
+                const userId = e.target.dataset.userId;
+                // Implementar lógica de edição (exemplo abaixo)
+                showToast('Funcionalidade de edição de atendente ainda não implementada', 'warning');
+            }
+        });
+    }
+
+    if (schedulesContainer) {
+        schedulesContainer.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('edit-schedule-btn')) {
+                const scheduleId = e.target.dataset.scheduleId;
+                // Implementar lógica de edição (exemplo abaixo)
+                showToast('Funcionalidade de edição de horário ainda não implementada', 'warning');
+            }
+        });
+    }
 
     // WebSocket Events
     socket.on('connect', () => {
-        connectionStatus.classList.add('bg-green-500');
-        connectionText.textContent = 'AO VIVO';
+        if (connectionStatus && connectionText) {
+            connectionStatus.classList.add('bg-green-500');
+            connectionText.textContent = 'AO VIVO';
+        }
     });
 
     socket.on('disconnect', () => {
-        connectionStatus.classList.remove('bg-green-500');
-        connectionStatus.classList.add('bg-red-500');
-        connectionText.textContent = 'DESCONECTADO';
+        if (connectionStatus && connectionText) {
+            connectionStatus.classList.remove('bg-green-500');
+            connectionStatus.classList.add('bg-red-500');
+            connectionText.textContent = 'DESCONECTADO';
+        }
     });
 
     socket.on('department_created', () => {
@@ -747,10 +833,13 @@ document.addEventListener('DOMContentLoaded', () => {
     socket.on('queue_updated', () => {
         loadDashboard();
         loadQueues();
+        showToast('Fila atualizada');
     });
 
     // Initialize
-    currentDate.textContent = formatDate(new Date());
+    if (currentDate) {
+        currentDate.textContent = formatDate(new Date());
+    }
     const userData = initUserInfo();
     if (userData) {
         loadDashboard();
