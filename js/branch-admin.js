@@ -1,6 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const API_BASE_URL = 'https://fila-facilita2-0-4uzw.onrender.com';
-    const socket = io('/admin', { auth: { token: localStorage.getItem('authToken') } });
+    const API_BASE_URL = 'https://fila-facilita2-0-4uzw.onrender.com/api/admin';
+    const socket = io('https://fila-facilita2-0-4uzw.onrender.com/admin', { 
+        auth: { token: localStorage.getItem('authToken') } 
+    });
     let currentUser = null;
     let institutionId = null;
     let branchId = null;
@@ -126,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             showToast('Erro ao carregar informações do usuário', 'error');
             console.error('Error fetching user info:', error);
-            setTimeout(() => window.location.href = '/index.html', 2000);
+            setTimeout(() => window.location.href = '/login.html', 2000);
         } finally {
             hideLoading();
         }
@@ -135,7 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadDashboard = async () => {
         try {
             showLoading('Carregando dados do painel...');
-            const [queuesRes, departmentsRes, attendantsRes, schedulesRes] = await Promise.all([
+            const [queuesRes, departmentsRes, attendantsRes, branchesRes] = await Promise.all([
                 axios.get(`${API_BASE_URL}/queues`, { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } }),
                 axios.get(`${API_BASE_URL}/institutions/${institutionId}/departments`, { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } }),
                 axios.get(`${API_BASE_URL}/institutions/${institutionId}/department_admins`, { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } }),
@@ -154,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
             totalDepartments.textContent = departmentsRes.data.departments.length;
 
             // Configured Schedules
-            const schedulesCount = schedulesRes.data.branches.find(b => b.id === branchId)?.schedules?.length || 0;
+            const schedulesCount = branchesRes.data.branches.find(b => b.id === branchId)?.schedules?.length || 0;
             configuredSchedules.textContent = schedulesCount;
 
             // Queues Overview
@@ -346,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     logoutBtn.addEventListener('click', () => {
         localStorage.removeItem('authToken');
-        window.location.href = '/index.html';
+        window.location.href = '/login.html';
     });
 
     refreshQueues.addEventListener('click', loadDashboard);
@@ -464,7 +466,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             showLoading('Adicionando fila...');
             await axios.post(`${API_BASE_URL}/queues`, {
-                service_id: service, // Assuming service creation is handled elsewhere
+                service_id: service, // Supondo que a criação do serviço é tratada em outro lugar
                 prefix,
                 daily_limit: parseInt(limit),
                 department_id: departmentId
