@@ -1,3 +1,26 @@
+// Configurar interceptor do Axios
+axios.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
+        if (token) {
+            config.headers['Authorization'] = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
+
+axios.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.status === 401) {
+            console.log('Authentication error:', error.response.data?.error);
+            Utils.showToast(error.response.data?.error || 'Erro de autenticação. Por favor, faça login novamente.', 'error');
+        }
+        return Promise.reject(error);
+    }
+);
+
 // Authentication Module
 class AuthManager {
     constructor() {
@@ -25,10 +48,14 @@ class AuthManager {
     async handleLogout() {
         try {
             await axios.post('/api/auth/logout');
+            localStorage.removeItem('adminToken');
+            sessionStorage.removeItem('adminToken');
+            localStorage.removeItem('userRole');
+            sessionStorage.removeItem('userRole');
             window.location.href = '/index.html';
         } catch (error) {
             console.error('Logout failed:', error);
-            showToast('Erro ao fazer logout', 'error');
+            Utils.showToast('Erro ao fazer logout', 'error');
         }
     }
 }
@@ -785,7 +812,6 @@ class DashboardManager {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.chart-period-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                // Update chart data based on period (mock)
                 this.activityChart.data.datasets[0].data = this.getChartData(btn.dataset.period);
                 this.activityChart.update();
             });
@@ -793,7 +819,6 @@ class DashboardManager {
     }
 
     getChartData(period) {
-        // Mock data - replace with real API call
         switch (period) {
             case 'today': return [10, 20, 50, 80, 60, 30];
             case 'week': return [100, 200, 500, 800, 600, 300, 150];
@@ -803,7 +828,7 @@ class DashboardManager {
     }
 
     initWebSocket() {
-        this.socket = io('https://fila-facilita2-0.onrender.com', {
+        this.socket = io('https://fila-facilita2-0-4uzw.onrender.com', {
             path: '/real-time',
             transports: ['websocket'],
             reconnectionAttempts: 5
@@ -912,6 +937,8 @@ function updateCurrentDateTime() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    if (window.location.pathname.includes('index.html')) return;
+
     if (await authManager.checkAuthStatus()) {
         dashboardManager.loadDashboardData();
         setupNavigation();

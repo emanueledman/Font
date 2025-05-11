@@ -1,4 +1,3 @@
-// Primeiro trecho ajustado
 const API_BASE = 'https://fila-facilita2-0-4uzw.onrender.com';
 
 // Sanitize inputs to prevent XSS
@@ -18,15 +17,6 @@ const showError = (message) => {
     } else {
         console.error('Error element not found:', message);
     }
-};
-
-// Clear sensitive data
-const clearSensitiveData = () => {
-    console.log('Clearing sensitive data');
-    ['localStorage', 'sessionStorage'].forEach(storageType => {
-        const storage = window[storageType];
-        ['adminToken', 'userRole', 'queues', 'email'].forEach(key => storage.removeItem(key));
-    });
 };
 
 // Get token
@@ -62,92 +52,96 @@ const redirectUser = (userRole) => {
             break;
         default:
             showError('Invalid user role.');
-            clearSensitiveData();
             window.location.href = '/index.html';
     }
 };
 
-// Verificar autenticação inicial
-const checkAuth = () => {
-    const token = getToken();
-    const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
-    
-    if (!token || !userRole) {
-        console.log('No token or role found, redirecting to login');
-        window.location.href = '/index.html';
-        return false;
-    }
-    
-    return true;
-};
+// Configurar interceptor do Axios
+axios.interceptors.request.use(
+    (config) => {
+        const token = getToken();
+        if (token) {
+            config.headers['Authorization'] = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
 
-// Initial verification
+axios.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.status === 401) {
+            console.log('Authentication error:', error.response.data?.error);
+            showError(error.response.data?.error || 'Erro de autenticação. Por favor, faça login novamente.');
+        }
+        return Promise.reject(error);
+    }
+);
+
+// Login form submission
 document.addEventListener('DOMContentLoaded', () => {
-    // Skip verification on login page
-    if (window.location.pathname.includes('index.html')) {
-        const loginForm = document.getElementById('login-form');
-        if (!loginForm) {
-            console.error('Login form not found');
-            showError('Internal error: login form not found.');
+    if (!window.location.pathname.includes('index.html')) return;
+
+    const loginForm = document.getElementById('login-form');
+    if (!loginForm) {
+        console.error('Login form not found');
+        showError('Internal error: login form not found.');
+        return;
+    }
+
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const email = sanitizeInput(document.getElementById('email').value.trim());
+        const password = document.getElementById('password').value;
+        const rememberMe = document.getElementById('remember-me')?.checked || false;
+
+        if (!email || !password) {
+            showError('Email and password are required.');
             return;
         }
 
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            showError('Invalid email.');
+            return;
+        }
 
-            const email = sanitizeInput(document.getElementById('email').value.trim());
-            const password = document.getElementById('password').value;
-            const rememberMe = document.getElementById('remember-me')?.checked || false;
-
-            if (!email || !password) {
-                showError('Email and password are required.');
-                return;
-            }
-
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                showError('Invalid email.');
-                return;
-            }
-
-            try {
-                const response = await axios.post(
-                    `${API_BASE}/api/admin/login`,
-                    { email, password },
-                    {
-                        headers: { 'Content-Type': 'application/json' },
-                        timeout: 10000
-                    }
-                );
-
-                const data = response.data;
-                if (!data.token || !data.user_role) {
-                    throw new Error('Invalid response: token or user_role missing');
+        try {
+            const response = await axios.post(
+                `${API_BASE}/api/admin/login`,
+                { email, password },
+                {
+                    headers: { 'Content-Type': 'application/json' },
+                    timeout: 10000
                 }
+            );
 
-                console.log('Login successful:', { user_role: data.user_role });
-                storeAuthData(data, rememberMe);
-                redirectUser(data.user_role);
-
-            } catch (error) {
-                console.error('Login error:', error);
-                let message = 'Login failed. Please check your credentials.';
-                if (error.response) {
-                    message = error.response.data?.error || message;
-                    if (error.response.status === 401) message = 'Invalid credentials.';
-                    else if (error.response.status === 403) message = 'Unauthorized access.';
-                    else if (error.response.status === 500) message = 'Server error.';
-                } else if (error.code === 'ECONNABORTED') {
-                    message = 'Connection timeout.';
-                } else if (error.message.includes('Network Error')) {
-                    message = 'Network error.';
-                }
-                showError(message);
-            } finally {
-                document.getElementById('password').value = '';
+            const data = response.data;
+            if (!data.token || !data.user_role) {
+                throw new Error('Invalid response: token or user_role missing');
             }
-        });
-    } else {
-        // Verificar autenticação para páginas protegidas
-        if (!checkAuth()) return;
-    }
+
+            console.log('Login successful:', { user_role: data.user_role });
+            storeAuthData(data, rememberMe);
+            redirectUser(data.user_role);
+
+        } catch (error) {
+            console.error('Login error:', error);
+            let message = 'Login failed. Please check your credentials.';
+            if (error.response) {
+                message = error.response.data?.error || message;
+                if (error.response.status === 401) message = 'Invalid credentials.';
+                else if (error.response.status === 403) message = 'Unauthorized access.';
+                else if (error.response.status === 500) message = 'Server error.';
+            } else if (error.code === 'ECONNABORTED') {
+                message = 'Connection timeout.';
+            } else if (error.message.includes('Network Error')) {
+                message = 'Network error.';
+            }
+            showError(message);
+        } finally {
+            document.getElementById('password').value = '';
+        }
+    });
 });
