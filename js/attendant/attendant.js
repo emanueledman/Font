@@ -7,7 +7,7 @@ const sanitizeInput = (input) => {
     if (typeof input !== 'string') return '';
     const div = document.createElement('div');
     div.textContent = input;
-    return div.innerHTML.replace(/</g, '<').replace(/>/g, '>');
+    return div.innerHTML.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 };
 
 // Valida código QR
@@ -20,7 +20,7 @@ const validateQRCode = (code) => {
 const clearSensitiveData = () => {
     ['localStorage', 'sessionStorage'].forEach(storageType => {
         const storage = window[storageType];
-        ['adminToken', 'userRole', 'queues', 'redirectCount', 'lastRedirect'].forEach(key => storage.removeItem(key));
+        ['adminToken', 'userRole', 'queues', 'tickets', 'redirectCount', 'lastRedirect'].forEach(key => storage.removeItem(key));
     });
 };
 
@@ -60,7 +60,7 @@ const showToast = (message, type = 'success') => {
     toast.className = `toast toast-${type} text-white px-6 py-3 rounded-lg shadow-lg animate-slide-in`;
     toast.innerHTML = `
         <div class="flex items-center">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${
                     type === 'success' ? 'M5 13l4 4L19 7' :
                     type === 'warning' ? 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' :
@@ -86,7 +86,7 @@ const setupAxios = () => {
         showToast('Faça login para acessar todas as funcionalidades.', 'warning');
     }
     axios.defaults.baseURL = API_BASE;
-    axios.defaults.timeout = 10000;
+    axios.defaults.timeout = 15000;
 
     let authFailedCount = 0;
     axios.interceptors.response.use(
@@ -107,7 +107,7 @@ const setupAxios = () => {
             } else if (error.response?.status === 403) {
                 showToast(error.response.data?.error || 'Acesso não autorizado.', 'error');
             } else if (error.response?.status === 404) {
-                showToast('Funcionalidade indisponível no momento.', 'warning');
+                showToast('Recurso não encontrado.', 'warning');
             } else if (error.code === 'ECONNABORTED') {
                 showToast('Tempo de conexão excedido.', 'error');
             } else if (error.message.includes('Network Error')) {
@@ -126,7 +126,7 @@ const setupAxios = () => {
     });
 };
 
-
+// Inicializa WebSocket
 const initializeWebSocket = () => {
     const token = getToken();
     if (!token) {
@@ -161,23 +161,13 @@ const initializeWebSocket = () => {
             renderQueues();
         });
         socket.on('ticket_issued', () => {
-            console.log('Evento ticket_issued recebido, buscando tickets');
-            fetchTickets().then(tickets => {
-                console.log('Tickets recebidos:', tickets);
-            }).catch(err => {
-                console.error('Erro ao buscar tickets:', err);
-            });
+            fetchTickets();
             renderNextQueue();
             renderQueues();
             updateDashboardMetrics();
         });
         socket.on('ticket_completed', () => {
-            console.log('Evento ticket_completed recebido, atualizando tickets');
-            fetchTickets().then(tickets => {
-                console.log('Tickets atualizados:', tickets);
-            }).catch(err => {
-                console.error('Erro ao atualizar tickets:', err);
-            });
+            fetchTickets();
             renderNextQueue();
             renderQueues();
             updateDashboardMetrics();
@@ -228,7 +218,7 @@ const fetchUserInfo = async () => {
         const user = response.data;
         document.getElementById('user-name').textContent = sanitizeInput(user.name || 'Atendente');
         document.getElementById('user-email').textContent = sanitizeInput(user.email || 'N/A');
-        document.querySelector('#user-info .bg-blue-600').textContent = (user.name || 'A').slice(0, 2).toUpperCase();
+        document.querySelector('#user-info .bg-indigo-500').textContent = (user.name || 'A').slice(0, 2).toUpperCase();
         return user;
     } catch (error) {
         showToast('Não foi possível carregar informações do usuário.', 'warning');
@@ -283,7 +273,7 @@ const fetchRecentCalls = async () => {
         return calls;
     } catch (error) {
         showToast(error.response?.data?.error || 'Falha ao carregar chamadas recentes.', 'warning');
-        document.getElementById('recent-calls-table').innerHTML = '<tr><td colspan="5" class="p-3 text-gray-500 text-center">Nenhuma chamada recente.</td></tr>';
+        document.getElementById('recent-calls').innerHTML = '<p class="text-gray-500 text-center">Nenhuma chamada recente.</p>';
         return [];
     } finally {
         toggleLoading(false);
@@ -334,6 +324,8 @@ const callNextTicket = async () => {
     }
     try {
         toggleLoading(true, 'Chamando próximo ticket...');
+        const callNextBtn = document.getElementById('call-next-btn');
+        callNextBtn.disabled = true;
         const response = await axios.post('/api/attendant/call-next', { queue_id: queueId });
         showToast('Próximo ticket chamado com sucesso.', 'success');
         updateCurrentTicket(response.data);
@@ -346,6 +338,7 @@ const callNextTicket = async () => {
         showToast(error.response?.data?.error || 'Falha ao chamar próximo ticket.', 'error');
     } finally {
         toggleLoading(false);
+        document.getElementById('call-next-btn').disabled = false;
     }
 };
 
@@ -357,6 +350,8 @@ const recallTicket = async () => {
     }
     try {
         toggleLoading(true, 'Rechamando ticket...');
+        const recallBtn = document.getElementById('recall-btn');
+        recallBtn.disabled = true;
         await axios.post('/api/attendant/recall', { ticket_id: currentTicket.id });
         showToast('Ticket rechamado com sucesso.', 'success');
         fetchRecentCalls();
@@ -365,6 +360,7 @@ const recallTicket = async () => {
         showToast(error.response?.data?.error || 'Falha ao rechamar ticket.', 'error');
     } finally {
         toggleLoading(false);
+        document.getElementById('recall-btn').disabled = false;
     }
 };
 
@@ -376,6 +372,8 @@ const completeTicket = async () => {
     }
     try {
         toggleLoading(true, 'Finalizando ticket...');
+        const completeBtn = document.getElementById('complete-btn');
+        completeBtn.disabled = true;
         await axios.post('/api/attendant/complete', { ticket_id: currentTicket.id });
         showToast('Ticket finalizado com sucesso.', 'success');
         updateCurrentTicket(null);
@@ -388,6 +386,7 @@ const completeTicket = async () => {
         showToast(error.response?.data?.error || 'Falha ao finalizar ticket.', 'error');
     } finally {
         toggleLoading(false);
+        document.getElementById('complete-btn').disabled = false;
     }
 };
 
@@ -443,7 +442,7 @@ const renderQueueSelect = (queues) => {
                 ticketQueueFilter.appendChild(option);
             });
         }
-        ticketQueueFilter.value = 'all'; // Garantir filtro inicial
+        ticketQueueFilter.value = 'all';
     }
 };
 
@@ -457,7 +456,7 @@ const renderNextQueue = async () => {
     const queues = JSON.parse(localStorage.getItem('queues')) || [];
 
     if (!queues.length) {
-        container.innerHTML = '<p class="text-gray-500 text-center col-span-full">Nenhuma fila disponível.</p>';
+        container.innerHTML = '<p class="text-gray-500 text-center">Nenhuma fila disponível.</p>';
         return;
     }
 
@@ -465,38 +464,30 @@ const renderNextQueue = async () => {
         const filteredQueues = selectedQueueId ? queues.filter(queue => queue.id === selectedQueueId) : queues;
         for (const queue of filteredQueues) {
             const response = await axios.get(`/api/attendant/tickets?queue_id=${queue.id}&status=pending,called`);
-            console.log(`Tickets recebidos para fila ${queue.id}:`, response.data);
-            const tickets = response.data.filter(ticket => ['Pendente', 'Chamado'].includes(ticket.status)).slice(0, 3);
+            const tickets = response.data.filter(ticket => ['Pendente', 'Chamado'].includes(ticket.status)).slice(0, 5);
             if (tickets.length) {
                 tickets.forEach(ticket => {
-                    const statusColor = ticket.status === 'Chamado' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800';
+                    const statusColor = ticket.status === 'Chamado' ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-100 text-gray-800';
                     const div = document.createElement('div');
-                    div.className = 'bg-gray-50 rounded-lg p-4 border border-gray-100 animate-zoom-in hover:shadow-lg transition-all';
+                    div.className = 'ticket-card bg-gray-50 rounded-lg p-3 border border-gray-200 animate-zoom-in hover:shadow-lg transition-all';
                     div.innerHTML = `
-                        <div class="flex justify-between items-center mb-2">
-                            <h4 class="text-sm font-semibold text-gray-800">${sanitizeInput(ticket.number)}</h4>
+                        <div class="flex justify-between items-center">
+                            <h4 class="text-lg font-semibold text-gray-800">${sanitizeInput(ticket.number)}</h4>
                             <span class="px-2 py-1 text-xs font-semibold rounded-full ${statusColor}">${sanitizeInput(ticket.status)}</span>
                         </div>
-                        <p class="text-sm text-gray-600"><span class="font-medium">Serviço:</span> ${sanitizeInput(ticket.service)}</p>
-                        <p class="text-sm text-gray-600"><span class="font-medium">Departamento:</span> ${sanitizeInput(ticket.department_name)}</p>
-                        <p class="text-sm text-gray-600"><span class="font-medium">Emitido:</span> ${new Date(ticket.issued_at).toLocaleTimeString('pt-BR')}</p>
-                        <p class="text-sm text-gray-600"><span class="font-medium">Espera:</span> ${typeof ticket.avg_wait_time === 'number' ? `${ticket.avg_wait_time.toFixed(1)} min` : 'N/A'}</p>
+                        <p class="text-sm text-gray-600">${sanitizeInput(ticket.service)}</p>
                     `;
                     container.appendChild(div);
                 });
             } else {
                 const div = document.createElement('div');
-                div.className = 'bg-gray-50 rounded-lg p-4 border border-gray-100';
-                div.innerHTML = `
-                    <h4 class="text-sm font-medium text-gray-700">${sanitizeInput(queue.service)} (${sanitizeInput(queue.department_name)})</h4>
-                    <p class="text-sm text-gray-500 mt-2">Nenhum ticket pendente ou chamado</p>
-                `;
+                div.className = 'bg-gray-50 rounded-lg p-3 border border-gray-200';
+                div.innerHTML = '<p class="text-sm text-gray-500">Nenhum ticket pendente ou chamado</p>';
                 container.appendChild(div);
             }
         }
     } catch (error) {
-        container.innerHTML = '<p class="text-gray-500 text-center col-span-full">Erro ao carregar próximos tickets.</p>';
-        console.error('Erro ao renderizar próximos na fila:', error);
+        container.innerHTML = '<p class="text-gray-500 text-center">Erro ao carregar próximos tickets.</p>';
     }
 };
 
@@ -511,11 +502,11 @@ const renderTickets = (tickets) => {
     }
     tickets.forEach(ticket => {
         const statusColor = ticket.status === 'Atendido' ? 'bg-green-100 text-green-800' :
-                          ticket.status === 'Chamado' ? 'bg-blue-100 text-blue-800' :
+                          ticket.status === 'Chamado' ? 'bg-indigo-100 text-indigo-800' :
                           'bg-gray-100 text-gray-800';
         const div = document.createElement('div');
         div.dataset.queueId = ticket.queue_id;
-        div.className = 'bg-white rounded-xl shadow-lg p-6 border border-gray-100 animate-zoom-in hover:shadow-xl transition-all';
+        div.className = 'ticket-card bg-white rounded-xl shadow-lg p-6 border border-gray-200 animate-zoom-in hover:shadow-xl transition-all';
         div.innerHTML = `
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold text-gray-800">${sanitizeInput(ticket.number)}</h3>
@@ -529,8 +520,8 @@ const renderTickets = (tickets) => {
             </div>
             ${ticket.status === 'Pendente' ? `
             <div class="mt-4">
-                <button onclick="callTicket('${ticket.queue_id}', '${ticket.id}')" class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-md transition-colors">
-                    <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button onclick="callTicket('${ticket.queue_id}', '${ticket.id}')" class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-md transition-colors" aria-label="Chamar ticket ${ticket.number}">
+                    <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
                     Chamar
@@ -549,7 +540,7 @@ const renderQueues = async () => {
     const queues = JSON.parse(localStorage.getItem('queues')) || [];
 
     if (!queues.length) {
-        container.innerHTML = '<p class="text-gray-500 text-center col-span-full">Nenhuma fila disponível.</p>';
+        container.innerHTML = '<p class="text-gray-500 text-center">Nenhuma fila disponível.</p>';
         return;
     }
 
@@ -558,52 +549,44 @@ const renderQueues = async () => {
             const response = await axios.get(`/api/attendant/tickets?queue_id=${queue.id}&status=pending,called`);
             const tickets = response.data.slice(0, 5);
             const div = document.createElement('div');
-            div.className = 'bg-white rounded-xl shadow-lg p-6 border border-gray-100 animate-zoom-in hover:shadow-xl transition-all';
+            div.className = 'queue-card bg-white rounded-xl shadow-lg p-4 border border-gray-200 animate-zoom-in hover:shadow-xl transition-all';
             div.innerHTML = `
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-semibold text-gray-800">${sanitizeInput(queue.service)} (${sanitizeInput(queue.department_name)})</h3>
-                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">${tickets.length} tickets ativos</span>
-                </div>
-                <div class="space-y-2">
-                    ${tickets.length ? tickets.map(ticket => `
-                        <div class="flex justify-between items-center">
-                            <p class="text-sm text-gray-600">${sanitizeInput(ticket.number)}</p>
-                            <span class="px-2 py-1 text-xs font-semibold rounded-full ${ticket.status === 'Chamado' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}">${sanitizeInput(ticket.status)}</span>
-                        </div>
-                    `).join('') : '<p class="text-sm text-gray-500">Nenhum ticket pendente ou chamado</p>'}
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-semibold text-gray-800">${sanitizeInput(queue.service)}</h3>
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800">${tickets.length} tickets</span>
                 </div>
             `;
             container.appendChild(div);
         }
     } catch (error) {
-        container.innerHTML = '<p class="text-gray-500 text-center col-span-full">Erro ao carregar filas.</p>';
+        container.innerHTML = '<p class="text-gray-500 text-center">Erro ao carregar filas.</p>';
     }
 };
 
 // Renderiza chamadas recentes
 const renderRecentCalls = (calls) => {
-    const tbody = document.getElementById('recent-calls-table');
-    if (!tbody) return;
-    tbody.innerHTML = '';
+    const container = document.getElementById('recent-calls');
+    if (!container) return;
+    container.innerHTML = '';
     if (!calls || calls.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="p-3 text-gray-500 text-center">Nenhuma chamada recente.</td></tr>';
+        container.innerHTML = '<p class="text-gray-500 text-center">Nenhuma chamada recente.</p>';
         return;
     }
     calls.forEach(call => {
         const statusColor = call.status === 'Atendido' ? 'bg-green-100 text-green-800' :
-                          call.status === 'Chamado' ? 'bg-blue-100 text-blue-800' :
+                          call.status === 'Chamado' ? 'bg-indigo-100 text-indigo-800' :
                           'bg-gray-100 text-gray-800';
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td class="px-4 py-3">${sanitizeInput(call.ticket_number)}</td>
-            <td class="px-4 py-3">${sanitizeInput(call.service)} (${sanitizeInput(call.department_name)})</td>
-            <td class="px-4 py-3">${call.counter || 'N/A'}</td>
-            <td class="px-4 py-3">${new Date(call.called_at).toLocaleString('pt-BR')}</td>
-            <td class="px-4 py-3">
+        const div = document.createElement('div');
+        div.className = 'call-card bg-gray-50 rounded-lg p-3 border border-gray-200 animate-zoom-in hover:shadow-lg transition-all';
+        div.innerHTML = `
+            <div class="flex justify-between items-center">
+                <h4 class="text-lg font-semibold text-gray-800">${sanitizeInput(call.ticket_number)}</h4>
                 <span class="px-2 py-1 text-xs font-semibold rounded-full ${statusColor}">${sanitizeInput(call.status)}</span>
-            </td>
+            </div>
+            <p class="text-sm text-gray-600">${sanitizeInput(call.service)}</p>
+            <p class="text-sm text-gray-600">Guichê: ${call.counter || 'N/A'}</p>
         `;
-        tbody.appendChild(tr);
+        container.appendChild(div);
     });
 };
 
@@ -629,11 +612,6 @@ const renderTicketQueueFilter = (tickets) => {
     const queues = [...new Set(tickets.map(ticket => ticket.queue_id))];
     const queueData = JSON.parse(localStorage.getItem('queues')) || [];
     queues.forEach(queueId => {
-        if (!queueData.some(q => q.id === queueId)) {
-            console.warn(`Fila ${queueId} não encontrada no localStorage, recarregando filas`);
-            fetchQueues();
-            return;
-        }
         const queue = queueData.find(q => q.id === queueId);
         if (queue) {
             const option = document.createElement('option');
@@ -689,7 +667,6 @@ const setupEventListeners = () => {
     if (ticketQueueFilter) {
         ticketQueueFilter.addEventListener('change', () => {
             const queueId = ticketQueueFilter.value;
-            console.log(`Filtro de fila aplicado: ${queueId}`);
             document.querySelectorAll('#tickets-container > div').forEach(card => {
                 const ticketQueueId = card.dataset.queueId;
                 card.style.display = queueId === 'all' || ticketQueueId === queueId ? '' : 'none';
@@ -733,8 +710,8 @@ const setupEventListeners = () => {
     // Navegação entre seções
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active', 'bg-blue-700/90'));
-            btn.classList.add('active', 'bg-blue-700/90');
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active', 'bg-indigo-600'));
+            btn.classList.add('active', 'bg-indigo-600');
             const sectionId = btn.id.replace('nav-', '') + '-section';
             document.querySelectorAll('main > div').forEach(section => {
                 section.classList.add('hidden');
@@ -804,9 +781,9 @@ const setupEventListeners = () => {
     if (callFilter) {
         callFilter.addEventListener('change', () => {
             const filter = callFilter.value.toLowerCase();
-            document.querySelectorAll('#recent-calls-table tr').forEach(row => {
-                const service = row.cells[1].textContent.toLowerCase();
-                row.style.display = filter === '' || service === filter ? '' : 'none';
+            document.querySelectorAll('#recent-calls > div').forEach(card => {
+                const service = card.querySelector('p:nth-child(2)').textContent.toLowerCase();
+                card.style.display = filter === '' || service.includes(filter) ? '' : 'none';
             });
         });
     }
