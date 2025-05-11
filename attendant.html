@@ -3,172 +3,363 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel do Atendente</title>
+    <title>Painel do Atendente - Fila Fácil</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.5/dist/socket.io.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="js/attendant/attendant.js" defer></script>
+    <style>
+        /* Estilos para toasts */
+        .toast-success { background-color: #10B981; }
+        .toast-warning { background-color: #F59E0B; }
+        .toast-error { background-color: #EF4444; }
+
+        /* Animações */
+        .animate-slide-in {
+            animation: slideIn 0.3s ease-in;
+        }
+        .animate-slide-out {
+            animation: slideOut 0.5s ease-out;
+        }
+        .animate-zoom-in {
+            animation: zoomIn 0.3s ease-in;
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes slideIn {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateY(0); opacity: 1; }
+            to { transform: translateY(100%); opacity: 0; }
+        }
+        @keyframes zoomIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Efeito de sombra no texto */
+        .text-shadow {
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Estilo para badge de notificação */
+        .notification-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: white;
+            margin-left: auto;
+        }
+
+        /* Estilo para barra de espera */
+        .wait-bar-transition {
+            transition: width 0.5s ease-in-out;
+        }
+    </style>
 </head>
-<body class="bg-gray-100">
-    <div class="flex h-screen">
-        <!-- Sidebar -->
-        <aside id="sidebar" class="w-64 bg-blue-800 text-white p-4">
-            <div class="mb-6">
-                <h1 class="text-2xl font-bold">Fila Facilita</h1>
-                <p id="department-name" class="text-sm">Departamento</p>
+<body class="bg-gray-50 min-h-screen flex font-sans">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="bg-gradient-to-b from-blue-900 to-blue-800 text-white w-20 md:w-64 min-h-screen p-4 flex flex-col transition-all duration-300 ease-in-out">
+        <div class="flex items-center mb-8 py-2 border-b border-blue-700">
+            <div class="logo-container w-10 h-10 md:mr-2 rounded-full bg-white/10 flex items-center justify-center shadow-lg">
+                <img src="assets/logo-icon.png" alt="Logo" class="w-8 h-8">
             </div>
-            <nav class="space-y-2">
-                <button id="nav-call" class="w-full text-left p-2 rounded active bg-blue-700/90 hover:bg-blue-700 flex items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                    Chamada
-                </button>
-                <button id="nav-queues" class="w-full text-left p-2 rounded hover:bg-blue-700 flex items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                    </svg>
-                    Minhas Filas
-                </button>
-                <button id="nav-tickets" class="w-full text-left p-2 rounded hover:bg-blue-700 flex items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                    Tickets Ativos
-                </button>
-                <button id="nav-attended" class="w-full text-left p-2 rounded hover:bg-blue-700 flex items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                    Tickets Atendidos
-                </button>
-            </nav>
-            <button id="logout" class="mt-4 w-full text-left p-2 rounded hover:bg-red-700 flex items-center">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <h1 class="hidden md:block text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-200 tracking-tight">Fila Fácil</h1>
+            <button id="sidebar-toggle" class="ml-auto text-white md:hidden hover:bg-blue-700 p-1 rounded-lg">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+        </div>
+        <nav class="flex-grow">
+            <ul class="space-y-2">
+                <li>
+                    <button id="nav-call" class="nav-btn active w-full flex items-center px-3 py-3 bg-blue-700/90 rounded-lg hover:bg-blue-600 transition-all group" title="Chamada">
+                        <div class="nav-icon bg-blue-600 group-hover:bg-blue-500 p-2 rounded-lg">
+                            <svg class="w-5 h-5 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                        </div>
+                        <span class="hidden md:block ml-2">Chamada</span>
+                        <span class="notification-badge bg-yellow-500">1</span>
+                    </button>
+                </li>
+                <li>
+                    <button id="nav-tickets" class="nav-btn w-full flex items-center px-3 py-3 rounded-lg hover:bg-blue-600 transition-all group" title="Tickets">
+                        <div class="nav-icon bg-blue-700/50 group-hover:bg-blue-500 p-2 rounded-lg">
+                            <svg class="w-5 h-5 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                            </svg>
+                        </div>
+                        <span class="hidden md:block ml-2">Tickets</span>
+                    </button>
+                </li>
+            </ul>
+        </nav>
+        <div class="mt-auto pt-4 border-t border-blue-700">
+            <div id="user-info" class="flex items-center px-2 py-3 rounded-lg hover:bg-blue-700/50 transition-all cursor-pointer">
+                <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold mr-2">JD</div>
+                <div class="hidden md:block flex-1 min-w-0">
+                    <p id="user-name" class="font-medium truncate">João da Silva</p>
+                    <p id="user-email" class="text-xs text-blue-200 truncate">joao.silva@empresa.com</p>
+                </div>
+            </div>
+            <button id="logout" class="w-full flex items-center justify-center px-3 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-lg shadow-lg mt-2 transition-all" title="Sair">
+                <svg class="w-5 h-5 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
-                Sair
+                <span class="hidden md:block">Sair</span>
             </button>
-        </aside>
+        </div>
+    </aside>
 
-        <!-- Main Content -->
-        <main class="flex-1 p-6 overflow-auto">
-            <!-- Header -->
-            <header class="flex justify-between items-center mb-6">
+    <!-- Conteúdo principal -->
+    <main class="flex-grow p-4 md:p-6 bg-gradient-to-br from-gray-50 to-blue-50 transition-all duration-300 ease-in-out">
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-xl p-8 max-w-md w-full mx-4 text-center">
+                <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mx-auto mb-4"></div>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">Carregando...</h3>
+                <p class="text-gray-600" id="loading-message">Por favor, aguarde enquanto carregamos os dados</p>
+            </div>
+        </div>
+
+        <!-- Chamada -->
+        <div id="call-section">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
                 <div>
-                    <h2 class="text-2xl font-semibold">Painel do Atendente</h2>
-                    <p id="user-name" class="text-sm text-gray-600">Atendente</p>
-                    <p id="user-email" class="text-sm text-gray-600">email@exemplo.com</p>
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-800">Chamada Atual</h2>
+                    <p class="text-gray-500">Gerencie as chamadas em tempo real - <span id="current-date" class="font-medium">Carregando...</span></p>
                 </div>
-                <div class="text-right">
-                    <p id="current-date" class="text-sm text-gray-600">Carregando...</p>
-                    <button id="refresh-data" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm flex items-center">
-                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                <div class="mt-4 md:mt-0 flex items-center space-x-3">
+                    <button id="validate-qr-btn" class="flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-colors">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                         </svg>
-                        Atualizar
+                        Validar QR
                     </button>
+                    <div class="flex items-center text-sm bg-green-100 text-green-800 px-3 py-1 rounded-full">
+                        <div class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                        <span>AO VIVO</span>
+                    </div>
                 </div>
-            </header>
-
-            <!-- Seção de Chamada -->
-            <div id="call-section" class="">
-                <h2 class="text-xl font-semibold mb-4">Chamada Atual</h2>
-                <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-                    <p class="text-lg font-semibold">Senha: <span id="current-ticket">N/A</span></p>
-                    <p class="text-sm text-gray-500">Serviço: <span id="current-service">N/A</span></p>
-                    <p class="text-sm text-gray-500">Guichê: <span id="current-counter">N/A</span></p>
-                    <div class="mt-4 flex space-x-2">
-                        <button id="quick-call" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center">
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <!-- Painel de Chamada Principal -->
+                <div class="lg:col-span-2 bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-xl shadow-2xl p-6 md:p-8 flex flex-col items-center animate-zoom-in relative overflow-hidden">
+                    <div class="absolute -bottom-20 -right-20 w-60 h-60 bg-blue-700/20 rounded-full"></div>
+                    <div class="absolute -top-20 -left-20 w-60 h-60 bg-blue-700/20 rounded-full"></div>
+                    
+                    <div class="absolute top-4 right-4 flex items-center">
+                        <div class="w-3 h-3 bg-green-400 animate-pulse rounded-full mr-2"></div>
+                        <span class="text-xs text-white/80">CONECTADO</span>
+                    </div>
+                    
+                    <h3 class="text-xl md:text-2xl font-semibold mb-4 text-center">Senha Atual</h3>
+                    
+                    <div class="relative mb-2">
+                        <p id="current-ticket" class="text-6xl md:text-7xl font-bold animate-pulse text-shadow tracking-wider">---</p>
+                        <div id="ticket-counter" class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold shadow hidden"></div>
+                    </div>
+                    
+                    <div class="text-center mb-6">
+                        <p id="current-service" class="text-lg md:text-xl text-blue-100 font-medium"></p>
+                        <p id="current-counter" class="text-sm md:text-base text-blue-200"></p>
+                    </div>
+                    
+                    <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 w-full justify-center">
+                        <button id="call-next-btn" class="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-6 py-3 rounded-lg text-lg font-semibold shadow-lg hover:shadow-xl transition-all flex items-center justify-center">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                             </svg>
                             Chamar Próxima
                         </button>
-                        <button id="validate-qr-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded flex items-center">
+                        <button id="recall-btn" class="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white px-4 py-3 rounded-lg text-lg font-semibold shadow-lg hover:shadow-xl transition-all flex items-center justify-center">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
-                            Validar QR Code
+                            Rechamar
                         </button>
+                        <button id="complete-btn" class="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-4 py-3 rounded-lg text-lg font-semibold shadow-lg hover:shadow-xl transition-all flex items-center justify-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            Finalizar
+                        </button>
+                    </div>
+                    
+                    <div class="w-full mt-6 bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                        <div class="flex justify-between text-xs text-blue-100 mb-1">
+                            <span>Tempo de espera médio</span>
+                            <span id="avg-wait-time">N/A</span>
+                        </div>
+                        <div class="w-full bg-white/20 rounded-full h-2">
+                            <div id="wait-bar" class="bg-green-400 h-2 rounded-full wait-bar-transition"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Próximos na Fila -->
+                <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-semibold">Próximos na Fila</h3>
+                        <button id="refresh-queue" class="text-blue-600 hover:text-blue-800 p-1 rounded-full hover:bg-blue-50">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
+                    </div>
+                    <select id="queue-select" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500 mb-4">
+                        <option value="">Selecione uma fila</option>
+                    </select>
+                    <div class="space-y-3" id="next-queue"></div>
+                </div>
+            </div>
+            
+            <!-- Últimas Chamadas -->
+            <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xl font-semibold">Últimas Chamadas</h3>
+                    <div class="flex items-center space-x-3">
+                        <select id="call-filter" class="p-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="">Todas as filas</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ticket</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serviço</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guichê</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hora</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-calls-table" class="bg-white divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tickets -->
+        <div id="tickets-section" class="hidden">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-800">Gerenciar Tickets</h2>
+                    <p class="text-gray-500">Visualize tickets atendidos e pendentes</p>
+                </div>
+                <div class="mt-4 md:mt-0 flex space-x-3">
+                    <button id="validate-qr-btn-tickets" class="flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-colors">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                        Validar QR
+                    </button>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-lg p-4 mb-6 border border-gray-100">
+                <div class="flex flex-col md:flex-row md:items-center gap-4">
+                    <div class="relative flex-grow">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                        <input type="text" id="ticket-filter" placeholder="Buscar por número, serviço ou status..." class="pl-10 p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div class="flex gap-2">
+                        <select id="ticket-status-filter" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                            <option value="all">Todos os status</option>
+                            <option value="pendente">Pendentes</option>
+                            <option value="chamado">Chamados</option>
+                            <option value="atendido">Finalizados</option>
+                        </select>
+                        <select id="ticket-queue-filter" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                            <option value="all">Todas as filas</option>
+                        </select>
                     </div>
                 </div>
             </div>
-
-            <!-- Seção de Filas -->
-            <div id="queues-section" class="hidden">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">Minhas Filas</h2>
-                    <input id="queue-filter" type="text" placeholder="Filtrar filas..." class="border rounded px-2 py-1">
-                </div>
-                <div id="queues-container" class="grid gap-4"></div>
-            </div>
-
-            <!-- Seção de Tickets Ativos -->
-            <div id="tickets-section" class="hidden">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">Tickets Ativos</h2>
-                    <input id="ticket-filter" type="text" placeholder="Filtrar tickets..." class="border rounded px-2 py-1">
-                </div>
-                <div id="tickets-container" class="grid gap-4"></div>
-            </div>
-
-            <!-- Seção de Tickets Atendidos -->
-            <div id="attended-section" class="hidden">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">Tickets Atendidos</h2>
-                    <input id="attended-date-filter" type="date" class="border rounded px-2 py-1">
-                </div>
-                <div id="attended-tickets-container" class="grid gap-4"></div>
-            </div>
-        </main>
-    </div>
-
-    <!-- Modal de Erro/Sucesso -->
-    <div id="error-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-        <div class="bg-white rounded-xl p-6 w-full max-w-md">
-            <div class="flex items-center mb-4">
-                <span id="error-icon" class="mr-2"></span>
-                <h3 id="error-modal-title" class="text-lg font-semibold"></h3>
-            </div>
-            <p id="error-message" class="text-gray-600"></p>
-            <div class="mt-4 flex justify-end">
-                <button id="close-error-btn" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">Fechar</button>
+            
+            <div id="tickets-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Os cards de tickets serão preenchidos dinamicamente pelo JavaScript -->
             </div>
         </div>
-    </div>
+    </main>
 
-    <!-- Modal de QR Code -->
-    <div id="qr-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-        <div class="bg-white rounded-xl p-6 w-full max-w-md">
-            <h3 class="text-lg font-semibold mb-4">Validar QR Code</h3>
+    <!-- Modal para Validar QR Code -->
+    <div id="qr-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-2xl p-8 w-full max-w-lg shadow-2xl animate-fade-in">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-semibold text-gray-800">Validar QR Code</h3>
+                <button id="close-qr-modal" class="text-gray-400 hover:text-gray-500">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
             <form id="qr-form">
-                <input id="qr_code" type="text" placeholder="Digite o código QR" class="w-full border rounded px-2 py-1 mb-4">
-                <div class="flex justify-end space-x-2">
-                    <button id="cancel-qr-btn" type="button" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">Cancelar</button>
-                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">Validar</button>
+                <div class="mb-6">
+                    <label for="qr_code" class="block text-sm font-medium text-gray-700 mb-1">Digite o código do ticket</label>
+                    <input type="text" id="qr_code" name="qr_code" required class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" placeholder="Código do ticket">
+                </div>
+                <div class="flex justify-end space-x-4">
+                    <button type="button" id="cancel-qr-btn" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" id="submit-qr-btn" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md transition-colors">
+                        Validar
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Toast Template -->
-    <template id="toast-template">
-        <div class="toast fixed bottom-4 right-4 bg-opacity-90 rounded-xl p-4 text-white shadow-lg transition-opacity">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h4 class="toast-title font-semibold"></h4>
-                    <p class="toast-message text-sm"></p>
-                </div>
-                <button class="toast-close text-white hover:text-gray-300">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <!-- Modal de Erro/Sucesso -->
+    <div id="error-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-2xl p-8 w-full max-w-lg shadow-2xl animate-fade-in">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="error-modal-title" class="text-2xl font-semibold text-gray-800">Operação Concluída</h3>
+                <button id="close-error-modal" class="text-gray-400 hover:text-gray-500">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
             </div>
+            <div class="flex items-start mb-6">
+                <div id="error-icon" class="bg-green-100 p-3 rounded-full mr-4 flex-shrink-0">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                </div>
+                <p id="error-message" class="text-gray-600 mt-1">Ação realizada com sucesso.</p>
+            </div>
+            <div class="flex justify-end">
+                <button id="close-error-btn" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md transition-colors">
+                    Fechar
+                </button>
+            </div>
         </div>
-    </template>
+    </div>
 
-    <div id="toast-container"></div>
-    <script src="attendant-enhanced.js"></script>
+    <!-- Toast para Notificações -->
+    <div id="toast-container" class="fixed bottom-6 right-6 space-y-4 z-50"></div>
 </body>
 </html>
