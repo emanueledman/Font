@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = 'https://fila-facilita2-0-4uzw.onrender.com/api/admin';
     const socket = io('https://fila-facilita2-0-4uzw.onrender.com/admin', { 
-        auth: { token: localStorage.getItem('authToken') } 
+        auth: { token: localStorage.getItem('adminToken') } 
     });
     let currentUser = null;
     let institutionId = null;
@@ -112,15 +112,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const fetchUserInfo = async () => {
         try {
             showLoading('Carregando informações do usuário...');
-            const response = await axios.get(`${API_BASE_URL}/user`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+            const token = localStorage.getItem('adminToken');
+            if (!token) {
+                throw new Error('No token found');
+            }
+            const response = await axios.get('https://fila-facilita2-0-4uzw.onrender.com/api/auth/verify-token', {
+                headers: { Authorization: `Bearer ${token}` }
             });
             currentUser = response.data;
             institutionId = currentUser.institution_id;
             branchId = currentUser.branch_id;
-            userName.textContent = currentUser.name;
+            userName.textContent = currentUser.email; // Backend não retorna 'name', usando email
             userEmail.textContent = currentUser.email;
-            userInfo.querySelector('.w-8').textContent = currentUser.name.split(' ').map(n => n[0]).join('').toUpperCase();
+            userInfo.querySelector('.w-8').textContent = currentUser.email.split('@')[0].slice(0, 2).toUpperCase();
             await Promise.all([
                 loadDashboard(),
                 loadDepartmentsFilter()
@@ -128,7 +132,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             showToast('Erro ao carregar informações do usuário', 'error');
             console.error('Error fetching user info:', error);
-            setTimeout(() => window.location.href = '/login.html', 2000);
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('userRole');
+            setTimeout(() => window.location.href = '/index.html', 2000);
         } finally {
             hideLoading();
         }
@@ -137,11 +143,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadDashboard = async () => {
         try {
             showLoading('Carregando dados do painel...');
+            const token = localStorage.getItem('adminToken');
             const [queuesRes, departmentsRes, attendantsRes, branchesRes] = await Promise.all([
-                axios.get(`${API_BASE_URL}/queues`, { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } }),
-                axios.get(`${API_BASE_URL}/institutions/${institutionId}/departments`, { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } }),
-                axios.get(`${API_BASE_URL}/institutions/${institutionId}/department_admins`, { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } }),
-                axios.get(`${API_BASE_URL}/institutions/${institutionId}/branches`, { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } })
+                axios.get(`${API_BASE_URL}/queues`, { headers: { Authorization: `Bearer ${token}` } }),
+                axios.get(`${API_BASE_URL}/institutions/${institutionId}/departments`, { headers: { Authorization: `Bearer ${token}` } }),
+                axios.get(`${API_BASE_URL}/institutions/${institutionId}/department_admins`, { headers: { Authorization: `Bearer ${token}` } }),
+                axios.get(`${API_BASE_URL}/institutions/${institutionId}/branches`, { headers: { Authorization: `Bearer ${token}` } })
             ]);
 
             // Active Queues
@@ -149,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
             activeQueues.textContent = activeQueuesCount;
 
             // Active Attendants
-            const activeAttendantsCount = attendantsRes.data.department_admins.filter(a => a.active).length;
+            const activeAttendantsCount = attendantsRes.data.attendants.filter(a => a.active).length;
             activeAttendants.textContent = activeAttendantsCount;
 
             // Total Departments
@@ -168,7 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <p class="text-sm text-gray-600 mt-1">Departamento: ${queue.department}</p>
                     <p class="text-sm text-gray-600">Senhas ativas: ${queue.active_tickets}</p>
-                    <p class="text-sm text-gray-600">Tempo médio: ${queue.avg_wait_time}</p>
+                    <p class="text-sm text-gray-600">Tempo médio: ${queue.avg_wait_time || 'N/A'}</p>
                     <button class="call-next-btn mt-2 w-full px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" data-queue-id="${queue.id}" ${queue.status !== 'Aberto' ? 'disabled' : ''}>Chamar Próximo</button>
                 </div>
             `).join('');
@@ -183,8 +190,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadQueues = async () => {
         try {
             showLoading('Carregando filas...');
+            const token = localStorage.getItem('adminToken');
             const response = await axios.get(`${API_BASE_URL}/queues`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` },
+                headers: { Authorization: `Bearer ${token}` },
                 params: {
                     page: 1,
                     per_page: 20,
@@ -200,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p class="text-sm text-gray-600">Prefixo: ${queue.prefix}</p>
                     <p class="text-sm text-gray-600">Departamento: ${queue.department}</p>
                     <p class="text-sm text-gray-600">Senhas ativas: ${queue.active_tickets}/${queue.daily_limit}</p>
-                    <p class="text-sm text-gray-600">Tempo médio: ${queue.avg_wait_time}</p>
+                    <p class="text-sm text-gray-600">Tempo médio: ${queue.avg_wait_time || 'N/A'}</p>
                     <div class="flex space-x-2 mt-4">
                         <button class="call-next-btn flex-1 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" data-queue-id="${queue.id}" ${queue.status !== 'Aberto' ? 'disabled' : ''}>Chamar Próximo</button>
                         <button class="edit-queue-btn flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300" data-queue-id="${queue.id}">Editar</button>
@@ -218,8 +226,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadDepartments = async () => {
         try {
             showLoading('Carregando departamentos...');
+            const token = localStorage.getItem('adminToken');
             const response = await axios.get(`${API_BASE_URL}/institutions/${institutionId}/departments`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` },
+                headers: { Authorization: `Bearer ${token}` },
                 params: { page: 1, per_page: 20 }
             });
             departmentsContainer.innerHTML = response.data.departments.map(dept => `
@@ -244,23 +253,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadAttendants = async () => {
         try {
             showLoading('Carregando atendentes...');
+            const token = localStorage.getItem('adminToken');
             const response = await axios.get(`${API_BASE_URL}/institutions/${institutionId}/department_admins`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` },
+                headers: { Authorization: `Bearer ${token}` },
                 params: { page: 1, per_page: 20 }
             });
-            attendantsContainer.innerHTML = response.data.department_admins.map(attendant => `
+            attendantsContainer.innerHTML = response.data.attendants.map(attendant => `
                 <div class="attendant-card bg-white p-6 rounded-xl shadow-lg border border-gray-200">
                     <div class="flex items-center mb-2">
                         <div class="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold mr-3">
-                            ${attendant.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                            ${attendant.name ? attendant.name.split(' ').map(n => n[0]).join('').toUpperCase() : attendant.email.slice(0, 2).toUpperCase()}
                         </div>
                         <div>
-                            <h3 class="font-semibold text-gray-800">${attendant.name}</h3>
+                            <h3 class="font-semibold text-gray-800">${attendant.name || attendant.email}</h3>
                             <p class="text-sm text-gray-600">${attendant.email}</p>
                         </div>
                     </div>
-                    <p class="text-sm text-gray-600">Departamento: ${attendant.department_name}</p>
-                    <p class="text-sm text-gray-600">Filial: ${attendant.branch_name}</p>
+                    <p class="text-sm text-gray-600">Departamento: ${attendant.department_name || 'N/A'}</p>
+                    <p class="text-sm text-gray-600">Filial: ${attendant.branch_name || 'N/A'}</p>
                     <div class="flex space-x-2 mt-4">
                         <button class="edit-attendant-btn flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300" data-user-id="${attendant.id}">Editar</button>
                         <button class="delete-attendant-btn flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700" data-user-id="${attendant.id}">Excluir</button>
@@ -278,8 +288,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadSchedules = async () => {
         try {
             showLoading('Carregando horários...');
+            const token = localStorage.getItem('adminToken');
             const response = await axios.get(`${API_BASE_URL}/institutions/${institutionId}/branches`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             const branch = response.data.branches.find(b => b.id === branchId);
             schedulesContainer.innerHTML = branch.schedules.map(schedule => `
@@ -301,8 +312,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const loadDepartmentsFilter = async () => {
         try {
+            const token = localStorage.getItem('adminToken');
             const response = await axios.get(`${API_BASE_URL}/institutions/${institutionId}/departments`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             queueDepartmentFilter.innerHTML = '<option value="all">Todos os departamentos</option>' +
                 response.data.departments.map(dept => `<option value="${dept.id}">${dept.name}</option>`).join('');
@@ -347,8 +359,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     logoutBtn.addEventListener('click', () => {
-        localStorage.removeItem('authToken');
-        window.location.href = '/login.html';
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('userRole');
+        window.location.href = '/index.html';
     });
 
     refreshQueues.addEventListener('click', loadDashboard);
@@ -465,12 +478,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             showLoading('Adicionando fila...');
+            const token = localStorage.getItem('adminToken');
             await axios.post(`${API_BASE_URL}/queues`, {
                 service_id: service, // Supondo que a criação do serviço é tratada em outro lugar
                 prefix,
                 daily_limit: parseInt(limit),
                 department_id: departmentId
-            }, { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } });
+            }, { headers: { Authorization: `Bearer ${token}` } });
             document.querySelector('.modal-content').closest('.fixed').remove();
             showToast('Fila adicionada com sucesso');
             loadQueues();
@@ -520,11 +534,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             showLoading('Adicionando departamento...');
+            const token = localStorage.getItem('adminToken');
             await axios.post(`${API_BASE_URL}/institutions/${institutionId}/departments`, {
                 name,
                 sector,
                 branch_id: branchId
-            }, { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } });
+            }, { headers: { Authorization: `Bearer ${token}` } });
             document.querySelector('.modal-content').closest('.fixed').remove();
             showToast('Departamento adicionado com sucesso');
             loadDepartments();
@@ -596,12 +611,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             showLoading('Adicionando atendente...');
+            const token = localStorage.getItem('adminToken');
             await axios.post(`${API_BASE_URL}/departments/${departmentId}/users`, {
                 name,
                 email,
                 password,
                 role: role.toUpperCase()
-            }, { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } });
+            }, { headers: { Authorization: `Bearer ${token}` } });
             document.querySelector('.modal-content').closest('.fixed').remove();
             showToast('Atendente adicionado com sucesso');
             loadAttendants();
@@ -618,8 +634,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const queueId = e.target.dataset.queueId;
             try {
                 showLoading('Chamando próximo ticket...');
+                const token = localStorage.getItem('adminToken');
                 const response = await axios.post(`${API_BASE_URL}/queue/${queueId}/call`, {}, {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+                    headers: { Authorization: `Bearer ${token}` }
                 });
                 showToast(response.data.message);
                 loadDashboard();
@@ -639,8 +656,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (confirm('Tem certeza que deseja excluir este departamento?')) {
                 try {
                     showLoading('Excluindo departamento...');
+                    const token = localStorage.getItem('adminToken');
                     await axios.delete(`${API_BASE_URL}/institutions/${institutionId}/departments/${departmentId}`, {
-                        headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+                        headers: { Authorization: `Bearer ${token}` }
                     });
                     showToast('Departamento excluído com sucesso');
                     loadDepartments();
@@ -661,8 +679,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (confirm('Tem certeza que deseja excluir este atendente?')) {
                 try {
                     showLoading('Excluindo atendente...');
+                    const token = localStorage.getItem('adminToken');
                     await axios.delete(`${API_BASE_URL}/institutions/${institutionId}/users/${userId}`, {
-                        headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+                        headers: { Authorization: `Bearer ${token}` }
                     });
                     showToast('Atendente excluído com sucesso');
                     loadAttendants();
