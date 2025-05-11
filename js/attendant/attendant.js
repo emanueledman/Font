@@ -20,7 +20,7 @@ const validateQRCode = (code) => {
 const clearSensitiveData = () => {
     ['localStorage', 'sessionStorage'].forEach(storageType => {
         const storage = window[storageType];
-        ['adminToken', 'userRole', 'queues', 'tickets'].forEach(key => storage.removeItem(key));
+        ['adminToken', 'userRole', 'queues', 'tickets', 'institution_id', 'user_id'].forEach(key => storage.removeItem(key));
     });
 };
 
@@ -54,6 +54,7 @@ const toggleLoading = (show, message = 'Carregando...') => {
 
 // Exibe notificações
 const showToast = (message, type = 'success') => {
+    if (type === 'warning' && message.includes('conexão em tempo real')) return;
     const toastContainer = document.getElementById('toast-container');
     if (!toastContainer) return;
     const toast = document.createElement('div');
@@ -77,6 +78,15 @@ const showToast = (message, type = 'success') => {
     }, 5000);
 };
 
+// Debounce para evitar atualizações excessivas
+const debounce = (func, wait) => {
+    let timeout;
+    return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), wait);
+    };
+};
+
 // Configura Axios com retry
 const setupAxios = () => {
     const token = getToken();
@@ -89,7 +99,10 @@ const setupAxios = () => {
     axios.interceptors.response.use(
         response => response,
         error => {
-            if (error.response?.status === 404) {
+            if (error.response?.status === 401 || error.response?.status === 403) {
+                clearSensitiveData();
+                window.location.href = '/index.html';
+            } else if (error.response?.status === 404) {
                 showToast('Recurso não encontrado.', 'warning');
             } else if (error.code === 'ECONNABORTED') {
                 showToast('Tempo de conexão excedido.', 'error');
@@ -113,57 +126,68 @@ const setupAxios = () => {
 const initializeWebSocket = () => {
     const token = getToken();
     if (!token) {
+        showToast('Token não encontrado. Faça login novamente.', 'error');
+        window.location.href = '/index.html';
         return;
     }
     try {
-        socket = io(API_BASE, {
+        socket = io(`${API_BASE}/dashboard`, {
             transports: ['websocket'],
             reconnectionAttempts: 10,
             reconnectionDelay: 2000,
-            query: { token }
+            query: { 
+                token, 
+                institution_id: localStorage.getItem('institution_id') || '',
+                user_id: localStorage.getItem('user_id') || ''
+            }
         });
         socket.on('connect', () => {
+            const institution_id = localStorage.getItem('institution_id') || '';
+            socket.emit('join_room', { room: institution_id });
+            console.log('WebSocket conectado:', socket.id, 'Room:', institution_id);
             showToast('Conexão em tempo real estabelecida.', 'success');
-            document.querySelector('.animate-pulse.bg-green-400').classList.remove('bg-red-500');
+            document.querySelector('.animate-pulse.bg-green-400')?.classList.remove('bg-red-500');
         });
-        socket.on('connect_error', () => {
-            showToast('Falha na conexão em tempo real.', 'warning');
-            document.querySelector('.animate-pulse.bg-green-400').classList.add('bg-red-500');
+        socket.on('connect_error', (error) => {
+            console.error('Erro na conexão WebSocket:', error.message);
+            if (error.message.includes('Token expirado') || error.message.includes('Token revogado')) {
+                clearSensitiveData();
+                window.location.href = '/index.html';
+            } else {
+                showToast(`Falha na conexão em tempo real: ${error.message}`, 'error');
+                document.querySelector('.animate-pulse.bg-green-400')?.classList.add('bg-red-500');
+            }
         });
         socket.on('disconnect', () => {
+            console.log('WebSocket desconectado');
             showToast('Conexão em tempo real perdida.', 'warning');
-            document.querySelector('.animate-pulse.bg-green-400').classList.add('bg-red-500');
+            document.querySelector('.animate-pulse.bg-green-400')?.classList.add('bg-red-500');
         });
-        socket.on('ticket_called', (data) => {
-            updateCurrentTicket(data);
-            fetchTickets();
-            fetchRecentCalls();
-            updateDashboardMetrics();
-            renderNextQueue();
-            renderQueues();
-        });
-        socket.on('ticket_issued', () => {
-            fetchTickets();
-            renderNextQueue();
-            renderQueues();
-            updateDashboardMetrics();
-        });
-        socket.on('ticket_completed', () => {
-            fetchTickets();
-            renderNextQueue();
-            renderQueues();
-            updateDashboardMetrics();
-        });
-        socket.on('queue_updated', () => {
-            fetchQueues();
-            renderNextQueue();
-            renderQueues();
-            updateDashboardMetrics();
-        });
+        socket.on('ticket_called', debouncedHandleTicketCalled);
+        socket.on('ticket_completed', debouncedHandleTicketUpdate);
+        socket.on('ticket_recalled', debouncedHandleTicketCalled);
     } catch (err) {
-        showToast('Falha ao iniciar conexão em tempo real.', 'warning');
+        console.error('Erro ao iniciar WebSocket:', err);
+        showToast('Falha ao iniciar conexão em tempo real.', 'error');
     }
 };
+
+// Handlers para eventos WebSocket
+const debouncedHandleTicketCalled = debounce((data) => {
+    updateCurrentTicket(data);
+    debouncedFetchTickets();
+    debouncedFetchRecentCalls();
+    debouncedUpdateDashboardMetrics();
+    debouncedRenderNextQueue();
+    debouncedRenderQueues();
+}, 500);
+
+const debouncedHandleTicketUpdate = debounce(() => {
+    debouncedFetchTickets();
+    debouncedRenderNextQueue();
+    debouncedRenderQueues();
+    debouncedUpdateDashboardMetrics();
+}, 500);
 
 // Atualiza ticket atual
 const updateCurrentTicket = (ticket) => {
@@ -196,11 +220,13 @@ const updateCurrentTicket = (ticket) => {
 // Busca informações do usuário
 const fetchUserInfo = async () => {
     try {
-        const response = await axios.get('/api/attendant/user');
+        const response = await axios.get('/api/attendant/user?refresh=true');
         const user = response.data;
+        localStorage.setItem('institution_id', user.institution_id || '');
+        localStorage.setItem('user_id', user.id || '');
         document.getElementById('user-name').textContent = sanitizeInput(user.name || 'Atendente');
         document.getElementById('user-email').textContent = sanitizeInput(user.email || 'N/A');
-        document.querySelector('#user-info .bg-indigo-500').textContent = (user.name || 'A').slice(0, 2).toUpperCase();
+        document.querySelector('#user-info .bg-indigo-500')?.textContent = (user.name || 'A').slice(0, 2).toUpperCase();
         return user;
     } catch (error) {
         showToast('Não foi possível carregar informações do usuário.', 'warning');
@@ -211,7 +237,7 @@ const fetchUserInfo = async () => {
 // Busca filas
 const fetchQueues = async () => {
     try {
-        const response = await axios.get('/api/attendant/queues');
+        const response = await axios.get('/api/attendant/queues?refresh=true');
         const queues = response.data;
         localStorage.setItem('queues', JSON.stringify(queues));
         renderQueueSelect(queues);
@@ -228,7 +254,7 @@ const fetchQueues = async () => {
 const fetchTickets = async () => {
     try {
         toggleLoading(true, 'Carregando tickets...');
-        const response = await axios.get('/api/attendant/tickets');
+        const response = await axios.get('/api/attendant/tickets?refresh=true');
         const tickets = response.data;
         renderTickets(tickets);
         renderTicketQueueFilter(tickets);
@@ -248,7 +274,7 @@ const fetchTickets = async () => {
 const fetchRecentCalls = async () => {
     try {
         toggleLoading(true, 'Carregando chamadas recentes...');
-        const response = await axios.get('/api/attendant/recent-calls');
+        const response = await axios.get('/api/attendant/recent-calls?refresh=true');
         const calls = response.data;
         renderRecentCalls(calls);
         renderCallFilter(calls);
@@ -265,7 +291,7 @@ const fetchRecentCalls = async () => {
 // Atualiza métricas do dashboard
 const updateDashboardMetrics = async () => {
     try {
-        const response = await axios.get('/api/attendant/tickets');
+        const response = await axios.get('/api/attendant/tickets?refresh=true');
         const tickets = response.data;
         const pending = tickets.filter(t => t.status === 'Pendente').length;
         const called = tickets.filter(t => t.status === 'Chamado').length;
@@ -275,24 +301,6 @@ const updateDashboardMetrics = async () => {
         document.getElementById('completed-tickets').textContent = completed;
     } catch (error) {
         showToast('Falha ao atualizar métricas.', 'warning');
-    }
-};
-
-// Chama um ticket específico
-const callTicket = async (queueId, ticketId) => {
-    try {
-        toggleLoading(true, 'Chamando ticket...');
-        await axios.post('/api/attendant/call-ticket', { queue_id: queueId, ticket_id: ticketId });
-        showToast('Ticket chamado com sucesso.', 'success');
-        fetchTickets();
-        fetchRecentCalls();
-        updateDashboardMetrics();
-        renderNextQueue();
-        renderQueues();
-    } catch (error) {
-        showToast(error.response?.data?.error || 'Falha ao chamar ticket.', 'error');
-    } finally {
-        toggleLoading(false);
     }
 };
 
@@ -388,7 +396,7 @@ const validateQR = async (qrCode) => {
         updateDashboardMetrics();
         renderNextQueue();
         renderQueues();
-        document.getElementById('qr-modal').classList.add('hidden');
+        document.getElementById('qr-modal')?.classList.add('hidden');
     } catch (error) {
         showToast(error.response?.data?.error || 'Falha ao validar QR Code.', 'error');
     } finally {
@@ -445,7 +453,7 @@ const renderNextQueue = async () => {
     try {
         const filteredQueues = selectedQueueId ? queues.filter(queue => queue.id === selectedQueueId) : queues;
         for (const queue of filteredQueues) {
-            const response = await axios.get(`/api/attendant/tickets?queue_id=${queue.id}&status=pending,called`);
+            const response = await axios.get(`/api/attendant/tickets?queue_id=${queue.id}&status=pending,called&refresh=true`);
             const tickets = response.data.filter(ticket => ['Pendente', 'Chamado'].includes(ticket.status)).slice(0, 5);
             if (tickets.length) {
                 tickets.forEach(ticket => {
@@ -469,6 +477,7 @@ const renderNextQueue = async () => {
             }
         }
     } catch (error) {
+        console.error('Erro ao renderizar próximos tickets:', error);
         container.innerHTML = '<p class="text-gray-500 text-center">Erro ao carregar próximos tickets.</p>';
     }
 };
@@ -477,17 +486,18 @@ const renderNextQueue = async () => {
 const renderTickets = (tickets) => {
     const container = document.getElementById('tickets-container');
     if (!container) return;
-    container.innerHTML = '';
     if (!tickets || tickets.length === 0) {
         container.innerHTML = '<p class="text-gray-500 text-center col-span-full">Nenhum ticket disponível.</p>';
         return;
     }
+    const fragment = document.createDocumentFragment();
     tickets.forEach(ticket => {
         const statusColor = ticket.status === 'Atendido' ? 'bg-green-100 text-green-800' :
                           ticket.status === 'Chamado' ? 'bg-indigo-100 text-indigo-800' :
                           'bg-gray-100 text-gray-800';
         const div = document.createElement('div');
         div.dataset.queueId = ticket.queue_id;
+        div.dataset.ticketId = ticket.id;
         div.className = 'ticket-card bg-white rounded-xl shadow-lg p-6 border border-gray-200 animate-zoom-in hover:shadow-xl transition-all';
         div.innerHTML = `
             <div class="flex justify-between items-center mb-4">
@@ -502,7 +512,7 @@ const renderTickets = (tickets) => {
             </div>
             ${ticket.status === 'Pendente' ? `
             <div class="mt-4">
-                <button onclick="callTicket('${ticket.queue_id}', '${ticket.id}')" class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-md transition-colors" aria-label="Chamar ticket ${ticket.number}">
+                <button onclick="callNextTicket('${ticket.queue_id}')" class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-md transition-colors" aria-label="Chamar ticket ${ticket.number}">
                     <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
@@ -510,8 +520,10 @@ const renderTickets = (tickets) => {
                 </button>
             </div>` : ''}
         `;
-        container.appendChild(div);
+        fragment.appendChild(div);
     });
+    container.innerHTML = '';
+    container.appendChild(fragment);
 };
 
 // Renderiza filas
@@ -528,7 +540,7 @@ const renderQueues = async () => {
 
     try {
         for (const queue of queues) {
-            const response = await axios.get(`/api/attendant/tickets?queue_id=${queue.id}&status=pending,called`);
+            const response = await axios.get(`/api/attendant/tickets?queue_id=${queue.id}&status=pending,called&refresh=true`);
             const tickets = response.data.slice(0, 5);
             const div = document.createElement('div');
             div.className = 'queue-card bg-white rounded-xl shadow-lg p-4 border border-gray-200 animate-zoom-in hover:shadow-xl transition-all';
@@ -541,6 +553,7 @@ const renderQueues = async () => {
             container.appendChild(div);
         }
     } catch (error) {
+        console.error('Erro ao renderizar filas:', error);
         container.innerHTML = '<p class="text-gray-500 text-center">Erro ao carregar filas.</p>';
     }
 };
@@ -554,6 +567,7 @@ const renderRecentCalls = (calls) => {
         container.innerHTML = '<p class="text-gray-500 text-center">Nenhuma chamada recente.</p>';
         return;
     }
+    const fragment = document.createDocumentFragment();
     calls.forEach(call => {
         const statusColor = call.status === 'Atendido' ? 'bg-green-100 text-green-800' :
                           call.status === 'Chamado' ? 'bg-indigo-100 text-indigo-800' :
@@ -568,8 +582,9 @@ const renderRecentCalls = (calls) => {
             <p class="text-sm text-gray-600">${sanitizeInput(call.service)}</p>
             <p class="text-sm text-gray-600">Guichê: ${call.counter || 'N/A'}</p>
         `;
-        container.appendChild(div);
+        fragment.appendChild(div);
     });
+    container.appendChild(fragment);
 };
 
 // Renderiza filtro de chamadas
@@ -605,6 +620,13 @@ const renderTicketQueueFilter = (tickets) => {
     select.value = 'all';
 };
 
+// Debounced functions
+const debouncedFetchTickets = debounce(fetchTickets, 500);
+const debouncedFetchRecentCalls = debounce(fetchRecentCalls, 500);
+const debouncedUpdateDashboardMetrics = debounce(updateDashboardMetrics, 500);
+const debouncedRenderNextQueue = debounce(renderNextQueue, 500);
+const debouncedRenderQueues = debounce(renderQueues, 500);
+
 // Configura eventos
 const setupEventListeners = () => {
     // Logout
@@ -638,8 +660,8 @@ const setupEventListeners = () => {
         ticketStatusFilter.addEventListener('change', () => {
             const status = ticketStatusFilter.value.toLowerCase();
             document.querySelectorAll('#tickets-container > div').forEach(card => {
-                const cardStatus = card.querySelector('span').textContent;
-                card.style.display = status === 'all' || cardStatus.toLowerCase() === status ? '' : 'none';
+                const cardStatus = card.querySelector('span').textContent.toLowerCase();
+                card.style.display = status === 'all' || cardStatus === status ? '' : 'none';
             });
         });
     }
@@ -698,7 +720,7 @@ const setupEventListeners = () => {
             document.querySelectorAll('main > div').forEach(section => {
                 section.classList.add('hidden');
             });
-            document.getElementById(sectionId).classList.remove('hidden');
+            document.getElementById(sectionId)?.classList.remove('hidden');
         });
     });
 
@@ -727,22 +749,22 @@ const setupEventListeners = () => {
     const cancelQrBtn = document.getElementById('cancel-qr-btn');
 
     if (validateQrBtn) {
-        validateQrBtn.addEventListener('click', () => qrModal.classList.remove('hidden'));
+        validateQrBtn.addEventListener('click', () => qrModal?.classList.remove('hidden'));
     }
     if (validateQrBtnTickets) {
-        validateQrBtnTickets.addEventListener('click', () => qrModal.classList.remove('hidden'));
+        validateQrBtnTickets.addEventListener('click', () => qrModal?.classList.remove('hidden'));
     }
     if (closeQrModal) {
-        closeQrModal.addEventListener('click', () => qrModal.classList.add('hidden'));
+        closeQrModal.addEventListener('click', () => qrModal?.classList.add('hidden'));
     }
     if (cancelQrBtn) {
-        cancelQrBtn.addEventListener('click', () => qrModal.classList.add('hidden'));
+        cancelQrBtn.addEventListener('click', () => qrModal?.classList.add('hidden'));
     }
     if (qrForm) {
         qrForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const qrCode = document.getElementById('qr_code').value.trim();
-            await validateQR(qrCode);
+            const qrCode = document.getElementById('qr_code')?.value.trim();
+            if (qrCode) await validateQR(qrCode);
         });
     }
 
@@ -769,58 +791,16 @@ const setupEventListeners = () => {
             });
         });
     }
-
-    // Atualizar "Próximos na Fila" quando a fila selecionada mudar
-    const queueSelect = document.getElementById('queue-select');
-    if (queueSelect) {
-        queueSelect.addEventListener('change', renderNextQueue);
-    }
 };
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', async () => {
-    toggleLoading(true, 'Carregando painel...');
-
     setupAxios();
     updateCurrentDate();
-
     initializeWebSocket();
-    try {
-        await Promise.allSettled([
-            fetchUserInfo(),
-            fetchQueues(),
-            fetchTickets(),
-            fetchRecentCalls(),
-            updateDashboardMetrics()
-        ]);
-        setupEventListeners();
-    } catch (error) {
-        showToast('Erro ao inicializar painel. Verifique sua conexão.', 'error');
-    } finally {
-        toggleLoading(false);
-    }
+    await fetchUserInfo();
+    await fetchQueues();
+    await fetchTickets();
+    await fetchRecentCalls();
+    setupEventListeners();
 });
-
-// Adicionar axios-retry
-const axiosRetry = (axios, options) => {
-    const maxRetries = options.retries || 3;
-    const retryDelay = options.retryDelay || (() => 1000);
-    const shouldRetry = options.retryCondition || (() => true);
-
-    axios.interceptors.request.use(config => {
-        config.__retryCount = config.__retryCount || 0;
-        return config;
-    });
-
-    axios.interceptors.response.use(null, async error => {
-        const config = error.config;
-        if (!config || config.__retryCount >= maxRetries || !shouldRetry(error)) {
-            return Promise.reject(error);
-        }
-
-        config.__retryCount += 1;
-        const delay = retryDelay(config.__retryCount);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        return axios(config);
-    });
-};
