@@ -838,7 +838,7 @@ class DashboardManager {
 
     initWebSocket() {
         this.socket = io(`${API_BASE}`, {
-            path: '/real-time',
+            path: '/',
             transports: ['websocket'],
             reconnectionAttempts: 5
         });
