@@ -107,15 +107,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize User Info
     const initUserInfo = () => {
-        const token = localStorage.getItem('adminToken');
-        const userRole = localStorage.getItem('userRole');
-        const storedEmail = localStorage.getItem('email') || 'admin@queue.com'; // Fallback
-
-
-        userName.textContent = storedEmail;
-        userEmailElement.textContent = storedEmail;
-        userInfo.querySelector('.w-8').textContent = storedEmail.split('@')[0].slice(0, 2).toUpperCase();
-        return { email: storedEmail };
+        const email = localStorage.getItem('email') || 'admin@queue.com';
+        userName.textContent = email;
+        userEmailElement.textContent = email;
+        userInfo.querySelector('.w-8').textContent = email.split('@')[0].slice(0, 2).toUpperCase();
+        return { email };
     };
 
     // API Calls
@@ -123,13 +119,17 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             showLoading('Carregando dados do painel...');
             const token = localStorage.getItem('adminToken');
+            const institutionId = localStorage.getItem('institution_id');
+            const branchId = localStorage.getItem('branch_id');
+
             // Tentar usar dados do localStorage primeiro
             const storedQueues = localStorage.getItem('queues');
             let queuesData = storedQueues ? JSON.parse(storedQueues) : [];
 
             // Atualizar com dados do backend
             const queuesRes = await axios.get(`${API_BASE_URL}/queues`, {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` },
+                params: { branch_id: branchId }
             });
             queuesData = queuesRes.data.queues;
 
@@ -137,10 +137,25 @@ document.addEventListener('DOMContentLoaded', () => {
             const activeQueuesCount = queuesData.filter(q => q.status === 'Aberto').length;
             activeQueues.textContent = activeQueuesCount;
 
-            // Placeholder para outros dados (atendentes, departamentos, horários)
-            activeAttendants.textContent = 'N/A';
-            totalDepartments.textContent = 'N/A';
-            configuredSchedules.textContent = 'N/A';
+            // Carregar atendentes
+            const attendantsRes = await axios.get(`${API_BASE_URL}/institutions/${institutionId}/department_admins`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const activeAttendantsCount = attendantsRes.data.attendants.filter(a => a.active).length;
+            activeAttendants.textContent = activeAttendantsCount;
+
+            // Carregar departamentos
+            const departmentsRes = await axios.get(`${API_BASE_URL}/institutions/${institutionId}/departments`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            totalDepartments.textContent = departmentsRes.data.departments.length;
+
+            // Carregar horários
+            const branchesRes = await axios.get(`${API_BASE_URL}/institutions/${institutionId}/branches`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const schedulesCount = branchesRes.data.branches.find(b => b.id === parseInt(branchId))?.schedules?.length || 0;
+            configuredSchedules.textContent = schedulesCount;
 
             // Queues Overview
             queuesOverview.innerHTML = queuesData.slice(0, 5).map(queue => `
@@ -172,11 +187,13 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             showLoading('Carregando filas...');
             const token = localStorage.getItem('adminToken');
+            const branchId = localStorage.getItem('branch_id');
             const response = await axios.get(`${API_BASE_URL}/queues`, {
                 headers: { Authorization: `Bearer ${token}` },
                 params: {
                     page: 1,
-                    per_page: 20
+                    per_page: 20,
+                    branch_id: branchId
                 }
             });
             queuesContainer.innerHTML = response.data.queues.map(queue => `
@@ -212,7 +229,8 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             showLoading('Carregando departamentos...');
             const token = localStorage.getItem('adminToken');
-            const response = await axios.get(`${API_BASE_URL}/institutions/1/departments`, {
+            const institutionId = localStorage.getItem('institution_id');
+            const response = await axios.get(`${API_BASE_URL}/institutions/${institutionId}/departments`, {
                 headers: { Authorization: `Bearer ${token}` },
                 params: { page: 1, per_page: 20 }
             });
@@ -244,7 +262,8 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             showLoading('Carregando atendentes...');
             const token = localStorage.getItem('adminToken');
-            const response = await axios.get(`${API_BASE_URL}/institutions/1/department_admins`, {
+            const institutionId = localStorage.getItem('institution_id');
+            const response = await axios.get(`${API_BASE_URL}/institutions/${institutionId}/department_admins`, {
                 headers: { Authorization: `Bearer ${token}` },
                 params: { page: 1, per_page: 20 }
             });
@@ -284,10 +303,12 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             showLoading('Carregando horários...');
             const token = localStorage.getItem('adminToken');
-            const response = await axios.get(`${API_BASE_URL}/institutions/1/branches`, {
+            const institutionId = localStorage.getItem('institution_id');
+            const branchId = localStorage.getItem('branch_id');
+            const response = await axios.get(`${API_BASE_URL}/institutions/${institutionId}/branches`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            const branch = response.data.branches[0]; // Placeholder: ajustar para branch_id correto
+            const branch = response.data.branches.find(b => b.id === parseInt(branchId));
             schedulesContainer.innerHTML = branch.schedules.map(schedule => `
                 <div class="schedule-card bg-white p-6 rounded-xl shadow-lg border border-gray-200">
                     <h3 class="font-semibold text-gray-800">${schedule.weekday}</h3>
@@ -313,7 +334,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadDepartmentsFilter = async () => {
         try {
             const token = localStorage.getItem('adminToken');
-            const response = await axios.get(`${API_BASE_URL}/institutions/1/departments`, {
+            const institutionId = localStorage.getItem('institution_id');
+            const response = await axios.get(`${API_BASE_URL}/institutions/${institutionId}/departments`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             queueDepartmentFilter.innerHTML = '<option value="all">Todos os departamentos</option>' +
@@ -544,10 +566,12 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             showLoading('Adicionando departamento...');
             const token = localStorage.getItem('adminToken');
-            await axios.post(`${API_BASE_URL}/institutions/1/departments`, {
+            const institutionId = localStorage.getItem('institution_id');
+            const branchId = localStorage.getItem('branch_id');
+            await axios.post(`${API_BASE_URL}/institutions/${institutionId}/departments`, {
                 name,
                 sector,
-                branch_id: 1 // Placeholder: ajustar para branch_id correto
+                branch_id: branchId
             }, { headers: { Authorization: `Bearer ${token}` } });
             document.querySelector('.modal-content').closest('.fixed').remove();
             showToast('Departamento adicionado com sucesso');
@@ -681,7 +705,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     showLoading('Excluindo departamento...');
                     const token = localStorage.getItem('adminToken');
-                    await axios.delete(`${API_BASE_URL}/institutions/1/departments/${departmentId}`, {
+                    const institutionId = localStorage.getItem('institution_id');
+                    await axios.delete(`${API_BASE_URL}/institutions/${institutionId}/departments/${departmentId}`, {
                         headers: { Authorization: `Bearer ${token}` }
                     });
                     showToast('Departamento excluído com sucesso');
@@ -709,7 +734,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     showLoading('Excluindo atendente...');
                     const token = localStorage.getItem('adminToken');
-                    await axios.delete(`${API_BASE_URL}/institutions/1/users/${userId}`, {
+                    const institutionId = localStorage.getItem('institution_id');
+                    await axios.delete(`${API_BASE_URL}/institutions/${institutionId}/users/${userId}`, {
                         headers: { Authorization: `Bearer ${token}` }
                     });
                     showToast('Atendente excluído com sucesso');
