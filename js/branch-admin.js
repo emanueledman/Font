@@ -15,7 +15,7 @@ const sanitizeInput = (input) => {
 const clearSensitiveData = () => {
     ['localStorage', 'sessionStorage'].forEach(storageType => {
         const storage = window[storageType];
-        ['adminToken', 'userRole', 'queues', 'departments', 'managers', 'redirectCount', 'lastRedirect'].forEach(key => storage.removeItem(key));
+        ['adminToken', 'userRole', 'queues', 'departments', 'managers', 'schedules', 'redirectCount', 'lastRedirect'].forEach(key => storage.removeItem(key));
     });
 };
 
@@ -199,6 +199,10 @@ const initializeWebSocket = () => {
             updateDashboardMetrics();
             renderManagers();
         });
+        socket.on('branch_schedule_updated', () => {
+            fetchSchedules();
+            renderSchedules();
+        });
     } catch (err) {
         showToast('Falha ao iniciar conexão em tempo real.', 'warning');
     }
@@ -261,7 +265,7 @@ const fetchDepartments = async () => {
     }
 };
 
-// Busca gestores (equivalente a atendentes)
+// Busca gestores (atendentes com papel ATTENDANT ou BRANCH_ADMIN)
 const fetchManagers = async () => {
     if (!institutionId) return [];
     try {
@@ -275,6 +279,25 @@ const fetchManagers = async () => {
     } catch (error) {
         showToast(error.response?.data?.error || 'Falha ao carregar gestores.', 'warning');
         document.getElementById('attendants-container').innerHTML = '<p class="text-gray-500 text-center col-span-full">Nenhum gestor disponível.</p>';
+        return [];
+    } finally {
+        toggleLoading(false);
+    }
+};
+
+// Busca horários da filial
+const fetchSchedules = async () => {
+    if (!institutionId || !branchId) return [];
+    try {
+        toggleLoading(true, 'Carregando horários...');
+        const response = await axios.get(`/api/admin/institutions/${institutionId}/branches/${branchId}/schedules`);
+        const schedules = response.data;
+        localStorage.setItem('schedules', JSON.stringify(schedules));
+        renderSchedules();
+        return schedules;
+    } catch (error) {
+        showToast(error.response?.data?.error || 'Falha ao carregar horários.', 'warning');
+        document.getElementById('schedules-container').innerHTML = '<p class="text-gray-500 text-center col-span-full">Nenhum horário disponível.</p>';
         return [];
     } finally {
         toggleLoading(false);
@@ -355,6 +378,9 @@ const renderQueues = () => {
                 <button onclick="callNextTicket('${queue.id}')" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors" aria-label="Chamar próximo ticket na fila ${queue.service}">
                     Chamar Próximo
                 </button>
+                <button onclick="editQueue('${queue.id}')" class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors" aria-label="Editar fila ${queue.service}">
+                    Editar
+                </button>
             </div>
         `;
         container.appendChild(div);
@@ -387,6 +413,9 @@ const renderDepartments = () => {
             <div class="mt-4 flex space-x-2">
                 <button onclick="editDepartment('${department.id}')" class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors" aria-label="Editar departamento ${department.name}">
                     Editar
+                </button>
+                <button onclick="deleteDepartment('${department.id}')" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors" aria-label="Excluir departamento ${department.name}">
+                    Excluir
                 </button>
             </div>
         `;
@@ -431,6 +460,39 @@ const renderManagers = () => {
     });
 };
 
+// Renderiza horários da filial
+const renderSchedules = () => {
+    const container = document.getElementById('schedules-container');
+    if (!container) return;
+    container.innerHTML = '';
+    const schedules = JSON.parse(localStorage.getItem('schedules')) || [];
+
+    if (!schedules.length) {
+        container.innerHTML = '<p class="text-gray-500 text-center col-span-full">Nenhum horário configurado.</p>';
+        return;
+    }
+
+    schedules.forEach(schedule => {
+        const div = document.createElement('div');
+        div.className = 'schedule-card bg-white rounded-xl shadow-lg p-6 border border-gray-200 animate-zoom-in hover:shadow-xl transition-all';
+        div.innerHTML = `
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-gray-800">${sanitizeInput(schedule.weekday)}</h3>
+                <span class="px-2 py-1 text-xs font-semibold rounded-full ${schedule.is_closed ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">${schedule.is_closed ? 'Fechado' : 'Aberto'}</span>
+            </div>
+            <div class="space-y-2">
+                <p class="text-sm text-gray-600"><span class="font-medium">Horário:</span> ${schedule.is_closed ? 'Fechado' : `${sanitizeInput(schedule.open_time)} - ${sanitizeInput(schedule.end_time)}`}</p>
+            </div>
+            <div class="mt-4 flex space-x-2">
+                <button onclick="editSchedule('${schedule.id}')" class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors" aria-label="Editar horário para ${schedule.weekday}">
+                    Editar
+                </button>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+};
+
 // Chama próximo ticket
 const callNextTicket = async (queueId) => {
     try {
@@ -448,7 +510,132 @@ const callNextTicket = async (queueId) => {
 
 // Adiciona nova fila
 const addQueue = async () => {
-    showToast('Funcionalidade de adicionar fila não disponível para gestores.', 'warning');
+    if (!institutionId || !branchId) {
+        showToast('Informações de instituição ou filial ausentes.', 'error');
+        return;
+    }
+    const departments = JSON.parse(localStorage.getItem('departments')) || [];
+    if (!departments.length) {
+        showToast('Nenhum departamento disponível para vincular.', 'warning');
+        return;
+    }
+    showModal('Adicionar Fila', `
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Serviço</label>
+            <input type="text" name="service" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Nome do serviço">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Prefixo</label>
+            <input type="text" name="prefix" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Prefixo da fila">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Limite Diário</label>
+            <input type="number" name="daily_limit" required min="1" class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Limite diário de tickets">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Departamento</label>
+            <select name="department_id" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Departamento da fila">
+                ${departments.map(d => `<option value="${d.id}">${sanitizeInput(d.name)}</option>`).join('')}
+            </select>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Serviço da Instituição</label>
+            <input type="text" name="service_id" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="ID do serviço da instituição">
+        </div>
+    `, async (form) => {
+        const data = {
+            service: form.querySelector('[name="service"]').value.trim(),
+            prefix: form.querySelector('[name="prefix"]').value.trim(),
+            daily_limit: parseInt(form.querySelector('[name="daily_limit"]').value),
+            department_id: form.querySelector('[name="department_id"]').value,
+            service_id: form.querySelector('[name="service_id"]').value
+        };
+        if (!data.service || !data.prefix || !data.daily_limit || !data.department_id || !data.service_id) {
+            showToast('Todos os campos são obrigatórios.', 'warning');
+            return;
+        }
+        if (data.prefix.length > 10) {
+            showToast('O prefixo deve ter no máximo 10 caracteres.', 'warning');
+            return;
+        }
+        try {
+            toggleLoading(true, 'Criando fila...');
+            await axios.post(`/api/admin/queues`, data);
+            showToast('Fila criada com sucesso.', 'success');
+            fetchQueues();
+            updateDashboardMetrics();
+        } catch (error) {
+            showToast(error.response?.data?.error || 'Falha ao criar fila.', 'error');
+        } finally {
+            toggleLoading(false);
+        }
+    });
+};
+
+// Edita uma fila
+const editQueue = async (queueId) => {
+    if (!institutionId) {
+        showToast('Informações de instituição ausentes.', 'error');
+        return;
+    }
+    const queues = JSON.parse(localStorage.getItem('queues')) || [];
+    const queue = queues.find(q => q.id === queueId);
+    if (!queue) {
+        showToast('Fila não encontrada.', 'warning');
+        return;
+    }
+    const departments = JSON.parse(localStorage.getItem('departments')) || [];
+    showModal('Editar Fila', `
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Serviço</label>
+            <input type="text" name="service" value="${sanitizeInput(queue.service)}" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Nome do serviço">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Prefixo</label>
+            <input type="text" name="prefix" value="${sanitizeInput(queue.prefix)}" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Prefixo da fila">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Limite Diário</label>
+            <input type="number" name="daily_limit" value="${queue.daily_limit}" required min="1" class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Limite diário de tickets">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Departamento</label>
+            <select name="department_id" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Departamento da fila">
+                ${departments.map(d => `<option value="${d.id}" ${d.id === queue.department_id ? 'selected' : ''}>${sanitizeInput(d.name)}</option>`).join('')}
+            </select>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Serviço da Instituição</label>
+            <input type="text" name="service_id" value="${sanitizeInput(queue.service_id || '')}" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="ID do serviço da instituição">
+        </div>
+    `, async (form) => {
+        const data = {
+            service: form.querySelector('[name="service"]').value.trim(),
+            prefix: form.querySelector('[name="prefix"]').value.trim(),
+            daily_limit: parseInt(form.querySelector('[name="daily_limit"]').value),
+            department_id: form.querySelector('[name="department_id"]').value,
+            service_id: form.querySelector('[name="service_id"]').value
+        };
+        if (!data.service || !data.prefix || !data.daily_limit || !data.department_id || !data.service_id) {
+            showToast('Todos os campos são obrigatórios.', 'warning');
+            return;
+        }
+        if (data.prefix.length > 10) {
+            showToast('O prefixo deve ter no máximo 10 caracteres.', 'warning');
+            return;
+        }
+        try {
+            toggleLoading(true, 'Atualizando fila...');
+            await axios.put(`/api/admin/queues/${queueId}`, data);
+            showToast('Fila atualizada com sucesso.', 'success');
+            fetchQueues();
+            updateDashboardMetrics();
+        } catch (error) {
+            showToast(error.response?.data?.error || 'Falha ao atualizar fila.', 'error');
+        } finally {
+            toggleLoading(false);
+        }
+    });
 };
 
 // Adiciona novo departamento
@@ -477,6 +664,10 @@ const addDepartment = async () => {
             showToast('Todos os campos são obrigatórios.', 'warning');
             return;
         }
+        if (data.name.length > 50 || data.sector.length > 50) {
+            showToast('Nome e setor devem ter no máximo 50 caracteres.', 'warning');
+            return;
+        }
         try {
             toggleLoading(true, 'Criando departamento...');
             await axios.post(`/api/admin/institutions/${institutionId}/departments`, data);
@@ -486,7 +677,7 @@ const addDepartment = async () => {
         } catch (error) {
             showToast(error.response?.data?.error || 'Falha ao criar departamento.', 'error');
         } finally {
-            toggleLoading(false);
+           Loading(false);
         }
     });
 };
@@ -523,6 +714,10 @@ const editDepartment = async (departmentId) => {
             showToast('Todos os campos são obrigatórios.', 'warning');
             return;
         }
+        if (data.name.length > 50 || data.sector.length > 50) {
+            showToast('Nome e setor devem ter no máximo 50 caracteres.', 'warning');
+            return;
+        }
         try {
             toggleLoading(true, 'Atualizando departamento...');
             await axios.put(`/api/admin/institutions/${institutionId}/departments/${departmentId}`, data);
@@ -535,6 +730,26 @@ const editDepartment = async (departmentId) => {
             toggleLoading(false);
         }
     });
+};
+
+// Exclui um departamento
+const deleteDepartment = async (departmentId) => {
+    if (!institutionId) {
+        showToast('Informações de instituição ausentes.', 'error');
+        return;
+    }
+    if (!confirm('Tem certeza que deseja excluir este departamento?')) return;
+    try {
+        toggleLoading(true, 'Excluindo departamento...');
+        await axios.delete(`/api/admin/institutions/${institutionId}/departments/${departmentId}`);
+        showToast('Departamento excluído com sucesso.', 'success');
+        fetchDepartments();
+        updateDashboardMetrics();
+    } catch (error) {
+        showToast(error.response?.data?.error || 'Falha ao excluir departamento.', 'error');
+    } finally {
+        toggleLoading(false);
+    }
 };
 
 // Adiciona novo gestor
@@ -562,6 +777,13 @@ const addManager = async () => {
             <input type="password" name="password" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Senha do gestor">
         </div>
         <div>
+            <label class="block text-sm font-medium text-gray-700">Papel</label>
+            <select name="user_role" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Papel do gestor">
+                <option value="attendant">Atendente</option>
+                <option value="branch_admin">Administrador de Filial</option>
+            </select>
+        </div>
+        <div>
             <label class="block text-sm font-medium text-gray-700">Departamento</label>
             <select name="department_id" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Departamento do gestor">
                 ${departments.map(d => `<option value="${d.id}">${sanitizeInput(d.name)}</option>`).join('')}
@@ -573,10 +795,11 @@ const addManager = async () => {
             name: form.querySelector('[name="name"]').value.trim(),
             email: form.querySelector('[name="email"]').value.trim(),
             password: form.querySelector('[name="password"]').value.trim(),
+            user_role: form.querySelector('[name="user_role"]').value,
             department_id: form.querySelector('[name="department_id"]').value,
             branch_id: form.querySelector('[name="branch_id"]').value
         };
-        if (!data.name || !data.email || !data.password || !data.department_id) {
+        if (!data.name || !data.email || !data.password || !data.user_role || !data.department_id) {
             showToast('Todos os campos são obrigatórios.', 'warning');
             return;
         }
@@ -625,6 +848,13 @@ const editManager = async (managerId) => {
             <input type="password" name="password" class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Nova senha do gestor">
         </div>
         <div>
+            <label class="block text-sm font-medium text-gray-700">Papel</label>
+            <select name="user_role" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Papel do gestor">
+                <option value="attendant" ${manager.user_role === 'attendant' ? 'selected' : ''}>Atendente</option>
+                <option value="branch_admin" ${manager.user_role === 'branch_admin' ? 'selected' : ''}>Administrador de Filial</option>
+            </select>
+        </div>
+        <div>
             <label class="block text-sm font-medium text-gray-700">Departamento</label>
             <select name="department_id" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Departamento do gestor">
                 ${departments.map(d => `<option value="${d.id}" ${d.id === manager.department_id ? 'selected' : ''}>${sanitizeInput(d.name)}</option>`).join('')}
@@ -636,10 +866,11 @@ const editManager = async (managerId) => {
             name: form.querySelector('[name="name"]').value.trim(),
             email: form.querySelector('[name="email"]').value.trim(),
             password: form.querySelector('[name="password"]').value.trim(),
+            user_role: form.querySelector('[name="user_role"]').value,
             department_id: form.querySelector('[name="department_id"]').value,
             branch_id: form.querySelector('[name="branch_id"]').value
         };
-        if (!data.name || !data.email || !data.department_id) {
+        if (!data.name || !data.email || !data.user_role || !data.department_id) {
             showToast('Campos obrigatórios não preenchidos.', 'warning');
             return;
         }
@@ -655,7 +886,8 @@ const editManager = async (managerId) => {
             fetchManagers();
             updateDashboardMetrics();
         } catch (error) {
-            showToast(error.response?.data?.error || 'Falha ao atualizar gestor.', 'error');
+            showToast(error.response?.data?.error || 'Falha ao atualizar gestor NSGator.', 'error');
+            return;
         } finally {
             toggleLoading(false);
         }
@@ -680,6 +912,67 @@ const deleteManager = async (managerId) => {
     } finally {
         toggleLoading(false);
     }
+};
+
+// Adiciona ou edita horário da filial
+const editSchedule = async (scheduleId) => {
+    if (!institutionId || !branchId) {
+        showToast('Informações de instituição ou filial ausentes.', 'error');
+        return;
+    }
+    const schedules = JSON.parse(localStorage.getItem('schedules')) || [];
+    const schedule = schedules.find(s => s.id === scheduleId);
+    showModal('Editar Horário', `
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Dia da Semana</label>
+            <select name="weekday" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Dia da semana">
+                <option value="Monday" ${schedule?.weekday === 'Monday' ? 'selected' : ''}>Segunda-feira</option>
+                <option value="Tuesday" ${schedule?.weekday === 'Tuesday' ? 'selected' : ''}>Terça-feira</option>
+                <option value="Wednesday" ${schedule?.weekday === 'Wednesday' ? 'selected' : ''}>Quarta-feira</option>
+                <option value="Thursday" ${schedule?.weekday === 'Thursday' ? 'selected' : ''}>Quinta-feira</option>
+                <option value="Friday" ${schedule?.weekday === 'Friday' ? 'selected' : ''}>Sexta-feira</option>
+                <option value="Saturday" ${schedule?.weekday === 'Saturday' ? 'selected' : ''}>Sábado</option>
+                <option value="Sunday" ${schedule?.weekday === 'Sunday' ? 'selected' : ''}>Domingo</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Horário de Abertura</label>
+            <input type="time" name="open_time" value="${schedule?.open_time || ''}" class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Horário de abertura">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Horário de Fechamento</label>
+            <input type="time" name="end_time" value="${schedule?.end_time || ''}" class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Horário de fechamento">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Fechado</label>
+            <input type="checkbox" name="is_closed" ${schedule?.is_closed ? 'checked' : ''} class="mt-1 p-2" aria-label="Fechado">
+        </div>
+    `, async (form) => {
+        const data = {
+            weekday: form.querySelector('[name="weekday"]').value,
+            open_time: form.querySelector('[name="open_time"]').value || null,
+            end_time: form.querySelector('[name="end_time"]').value || null,
+            is_closed: form.querySelector('[name="is_closed"]').checked
+        };
+        if (!data.weekday) {
+            showToast('O dia da semana é obrigatório.', 'warning');
+            return;
+        }
+        if (!data.is_closed && (!data.open_time || !data.end_time)) {
+            showToast('Horários de abertura e fechamento são obrigatórios se não estiver fechado.', 'warning');
+            return;
+        }
+        try {
+            toggleLoading(true, 'Atualizando horário...');
+            await axios.put(`/api/admin/institutions/${institutionId}/branches/${branchId}/schedules/${scheduleId}`, data);
+            showToast('Horário atualizado com sucesso.', 'success');
+            fetchSchedules();
+        } catch (error) {
+            showToast(error.response?.data?.error || 'Falha ao atualizar horário.', 'error');
+        } finally {
+            toggleLoading(false);
+        }
+    });
 };
 
 // Configura eventos
@@ -747,6 +1040,18 @@ const setupEventListeners = () => {
         });
     }
 
+    // Filtro de horários
+    const scheduleFilter = document.getElementById('schedule-filter');
+    if (scheduleFilter) {
+        scheduleFilter.addEventListener('input', () => {
+            const filter = sanitizeInput(scheduleFilter.value.toLowerCase());
+            document.querySelectorAll('#schedules-container > div').forEach(card => {
+                const weekday = card.querySelector('h3').textContent.toLowerCase();
+                card.style.display = weekday.includes(filter) ? '' : 'none';
+            });
+        });
+    }
+
     // Navegação entre seções
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -794,8 +1099,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupAxios();
     updateCurrentDate();
     const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
-    if (userRole !== 'department_admin') {
-        showToast('Acesso restrito a gestores de departamento. Algumas funções podem estar limitadas.', 'warning');
+    if (userRole !== 'branch_admin') {
+        showToast('Acesso restrito a administradores de filial. Algumas funções podem estar limitadas.', 'warning');
     }
 
     initializeWebSocket();
@@ -805,6 +1110,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             fetchQueues(),
             fetchDepartments(),
             fetchManagers(),
+            fetchSchedules(),
             updateDashboardMetrics()
         ]);
         setupEventListeners();
