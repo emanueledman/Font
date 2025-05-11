@@ -12,18 +12,6 @@ const sanitizeInput = (input) => {
     return div.innerHTML.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 };
 
-// Limpa dados sensíveis
-const clearSensitiveData = () => {
-    ['adminToken', 'email', 'institution_id', 'branch_id'].forEach(key => {
-        localStorage.removeItem(key);
-        sessionStorage.removeItem(key);
-    });
-    console.log('Dados sensíveis limpos');
-};
-
-// Obtém token
-const getToken = () => localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
-
 // Atualiza data atual
 const updateCurrentDate = () => {
     const currentDateEl = document.getElementById('current-date');
@@ -98,28 +86,17 @@ const validatePassword = (password) => password.length >= 8 && /[A-Z]/.test(pass
 
 // Configura Axios
 const setupAxios = () => {
-    const token = getToken();
-    if (token) {
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    }
     axios.defaults.baseURL = API_BASE;
     axios.defaults.timeout = 15000;
-
     axios.interceptors.response.use(
         response => response,
-        async error => {
-            if (error.response?.status === 401 || error.response?.status === 403) {
-                showToast('Sessão expirada. Redirecionando para login...', 'error');
-                console.log('Erro 401/403 detectado, redirecionando');
-                setTimeout(() => {
-                    clearSensitiveData();
-                    if (socket) socket.disconnect();
-                    window.location.href = '/index.html';
-                }, 3000);
-            } else if (error.response?.status === 404) {
+        error => {
+            if (error.response?.status === 404) {
                 showToast('Recurso não encontrado.', 'warning');
             } else if (error.code === 'ECONNABORTED' || error.message.includes('Network Error')) {
                 showToast('Problema na conexão com o servidor.', 'warning');
+            } else {
+                showToast('Erro ao processar a solicitação.', 'error');
             }
             console.error('Erro Axios:', error.message);
             return Promise.reject(error);
@@ -130,24 +107,14 @@ const setupAxios = () => {
 
 // Inicializa WebSocket
 const initializeWebSocket = () => {
-    const token = getToken();
-    const institution_id = localStorage.getItem('institution_id');
-    if (!token || !institution_id) {
-        showToast('Token ou instituição não encontrados. Redirecionando...', 'error');
-        console.log('Token ou institution_id ausente');
-        setTimeout(() => window.location.href = '/index.html', 3000);
-        return;
-    }
     try {
         socket = io(`${API_BASE}/admin`, {
             transports: ['websocket'],
             reconnectionAttempts: 20,
-            reconnectionDelay: 2000,
-            query: { token, institution_id }
+            reconnectionDelay: 2000
         });
         socket.on('connect', () => {
-            socket.emit('join_room', { room: institution_id });
-            console.log('WebSocket conectado:', socket.id, 'Room:', institution_id);
+            console.log('WebSocket conectado:', socket.id);
             showToast('Conexão em tempo real estabelecida.', 'success');
             document.querySelector('#connection-status')?.classList.remove('bg-red-500');
             document.querySelector('#connection-status')?.classList.add('bg-green-500');
@@ -182,10 +149,11 @@ const initializeWebSocket = () => {
 // Busca informações do usuário
 const fetchUserInfo = async () => {
     try {
-        const email = localStorage.getItem('email') || 'N/A';
+        // Simula usuário genérico, já que não há autenticação
+        const email = 'admin@queue.com';
         document.getElementById('user-name').textContent = sanitizeInput(email.split('@')[0]);
         document.getElementById('user-email').textContent = sanitizeInput(email);
-        const userInitials = email.split('@')[0].slice(0, 2).toUpperCase() || 'JD';
+        const userInitials = email.split('@')[0].slice(0, 2).toUpperCase() || 'AD';
         document.querySelector('#user-info .bg-indigo-500').textContent = userInitials;
         console.log('Informações do usuário carregadas:', email);
     } catch (error) {
@@ -198,25 +166,22 @@ const fetchUserInfo = async () => {
 const loadDashboard = async () => {
     try {
         toggleLoading(true, 'Carregando painel...');
-        const institutionId = localStorage.getItem('institution_id');
-        const branchId = localStorage.getItem('branch_id');
-
         // Buscar filas
-        const queuesRes = await axios.get('/api/admin/queues', { params: { branch_id: branchId } });
+        const queuesRes = await axios.get('/api/admin/queues');
         const queues = queuesRes.data.queues || [];
         document.getElementById('active-queues').textContent = queues.filter(q => q.status === 'Aberto').length;
 
         // Buscar atendentes
-        const attendantsRes = await axios.get(`/api/admin/institutions/${institutionId}/department_admins`);
+        const attendantsRes = await axios.get('/api/admin/department_admins');
         document.getElementById('active-attendants').textContent = attendantsRes.data.attendants.filter(a => a.active).length;
 
         // Buscar departamentos
-        const departmentsRes = await axios.get(`/api/admin/institutions/${institutionId}/departments`);
+        const departmentsRes = await axios.get('/api/admin/departments');
         document.getElementById('total-departments').textContent = departmentsRes.data.departments.length;
 
         // Buscar horários
-        const branchesRes = await axios.get(`/api/admin/institutions/${institutionId}/branches`);
-        const schedulesCount = branchesRes.data.branches.find(b => b.id === parseInt(branchId))?.schedules?.length || 0;
+        const branchesRes = await axios.get('/api/admin/branches');
+        const schedulesCount = branchesRes.data.branches[0]?.schedules?.length || 0;
         document.getElementById('configured-schedules').textContent = schedulesCount;
 
         // Renderizar visão geral das filas
@@ -245,8 +210,7 @@ const loadDashboard = async () => {
 const loadQueues = async () => {
     try {
         toggleLoading(true, 'Carregando filas...');
-        const branchId = localStorage.getItem('branch_id');
-        const response = await axios.get('/api/admin/queues', { params: { branch_id: branchId } });
+        const response = await axios.get('/api/admin/queues');
         const queues = response.data.queues || [];
         renderQueues(queues);
         console.log('Filas carregadas:', queues.length);
@@ -263,8 +227,7 @@ const loadQueues = async () => {
 const loadDepartments = async () => {
     try {
         toggleLoading(true, 'Carregando departamentos...');
-        const institutionId = localStorage.getItem('institution_id');
-        const response = await axios.get(`/api/admin/institutions/${institutionId}/departments`);
+        const response = await axios.get('/api/admin/departments');
         const departments = response.data.departments || [];
         renderDepartments(departments);
         console.log('Departamentos carregados:', departments.length);
@@ -281,8 +244,7 @@ const loadDepartments = async () => {
 const loadAttendants = async () => {
     try {
         toggleLoading(true, 'Carregando atendentes...');
-        const institutionId = localStorage.getItem('institution_id');
-        const response = await axios.get(`/api/admin/institutions/${institutionId}/department_admins`);
+        const response = await axios.get('/api/admin/department_admins');
         const attendants = response.data.attendants || [];
         renderAttendants(attendants);
         console.log('Atendentes carregados:', attendants.length);
@@ -299,11 +261,8 @@ const loadAttendants = async () => {
 const loadSchedules = async () => {
     try {
         toggleLoading(true, 'Carregando horários...');
-        const institutionId = localStorage.getItem('institution_id');
-        const branchId = localStorage.getItem('branch_id');
-        const response = await axios.get(`/api/admin/institutions/${institutionId}/branches`);
-        const branch = response.data.branches.find(b => b.id === parseInt(branchId));
-        const schedules = branch?.schedules || [];
+        const response = await axios.get('/api/admin/branches');
+        const schedules = response.data.branches[0]?.schedules || [];
         renderSchedules(schedules);
         console.log('Horários carregados:', schedules.length);
     } catch (error) {
@@ -426,8 +385,7 @@ const createModal = (title, content, buttons) => {
 // Carrega departamentos para filtro
 const loadQueueDepartmentFilter = async () => {
     try {
-        const institutionId = localStorage.getItem('institution_id');
-        const response = await axios.get(`/api/admin/institutions/${institutionId}/departments`);
+        const response = await axios.get('/api/admin/departments');
         const departments = response.data.departments || [];
         const queueDepartmentFilter = document.getElementById('queue-department-filter');
         if (queueDepartmentFilter) {
@@ -495,12 +453,9 @@ const addDepartment = async () => {
 
     try {
         toggleLoading(true, 'Adicionando departamento...');
-        const institutionId = localStorage.getItem('institution_id');
-        const branchId = localStorage.getItem('branch_id');
-        await axios.post(`/api/admin/institutions/${institutionId}/departments`, {
+        await axios.post('/api/admin/departments', {
             name,
-            sector,
-            branch_id: parseInt(branchId)
+            sector
         });
         showToast('Departamento adicionado com sucesso.', 'success');
         document.querySelector('.modal-content').closest('.fixed').remove();
@@ -600,10 +555,13 @@ const setupEventListeners = () => {
         logoutButton.addEventListener('click', () => {
             toggleLoading(true, 'Saindo...');
             if (socket) socket.disconnect();
-            clearSensitiveData();
             showToast('Sessão encerrada.', 'success');
-            setTimeout(() => window.location.href = '/index.html', 1500);
-            console.log('Logout iniciado');
+            setTimeout(() => {
+                toggleLoading(false);
+                document.getElementById('dashboard-section').classList.remove('hidden');
+                document.querySelectorAll('main > div:not(#dashboard-section)').forEach(section => section.classList.add('hidden'));
+            }, 1500);
+            console.log('Logout simulado');
         });
     }
 
@@ -857,8 +815,7 @@ const setupEventListeners = () => {
             if (confirm('Tem certeza que deseja excluir este departamento?')) {
                 try {
                     toggleLoading(true, 'Excluindo departamento...');
-                    const institutionId = localStorage.getItem('institution_id');
-                    await axios.delete(`/api/admin/institutions/${institutionId}/departments/${departmentId}`);
+                    await axios.delete(`/api/admin/departments/${departmentId}`);
                     showToast('Departamento excluído com sucesso.', 'success');
                     loadDepartments();
                     loadQueueDepartmentFilter();
@@ -878,8 +835,7 @@ const setupEventListeners = () => {
             if (confirm('Tem certeza que deseja excluir este atendente?')) {
                 try {
                     toggleLoading(true, 'Excluindo atendente...');
-                    const institutionId = localStorage.getItem('institution_id');
-                    await axios.delete(`/api/admin/institutions/${institutionId}/users/${userId}`);
+                    await axios.delete(`/api/admin/users/${userId}`);
                     showToast('Atendente excluído com sucesso.', 'success');
                     loadAttendants();
                     console.log('Atendente excluído:', userId);
