@@ -1,19 +1,21 @@
 const API_BASE = 'https://fila-facilita2-0-4uzw.onrender.com';
 let socket = null;
+let institutionId = null;
+let branchId = null;
 
 // Sanitiza entradas
 const sanitizeInput = (input) => {
     if (typeof input !== 'string') return '';
     const div = document.createElement('div');
     div.textContent = input;
-    return div.innerHTML.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return div.innerHTML.replace(/</g, '<').replace(/>/g, '>');
 };
 
 // Limpa dados sensíveis
 const clearSensitiveData = () => {
     ['localStorage', 'sessionStorage'].forEach(storageType => {
         const storage = window[storageType];
-        ['adminToken', 'userRole', 'queues', 'departments', 'attendants', 'redirectCount', 'lastRedirect'].forEach(key => storage.removeItem(key));
+        ['adminToken', 'userRole', 'queues', 'departments', 'managers', 'redirectCount', 'lastRedirect'].forEach(key => storage.removeItem(key));
     });
 };
 
@@ -68,6 +70,32 @@ const showToast = (message, type = 'success') => {
         toast.classList.add('animate-slide-out');
         setTimeout(() => toast.remove(), 500);
     }, 5000);
+};
+
+// Configura modal
+const showModal = (title, formHtml, onSubmit) => {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+        <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">${sanitizeInput(title)}</h3>
+            <form id="modal-form" class="space-y-4">
+                ${formHtml}
+                <div class="flex justify-end space-x-2">
+                    <button type="button" id="modal-cancel" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg">Salvar</button>
+                </div>
+            </form>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    const form = modal.querySelector('#modal-form');
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await onSubmit(form);
+        modal.remove();
+    });
+    modal.querySelector('#modal-cancel').addEventListener('click', () => modal.remove());
 };
 
 // Configura Axios com retry
@@ -127,7 +155,7 @@ const initializeWebSocket = () => {
         return;
     }
     try {
-        socket = io(API_BASE, {
+        socket = io(API_BASE + '/admin', {
             transports: ['websocket'],
             reconnectionAttempts: 10,
             reconnectionDelay: 2000,
@@ -135,15 +163,15 @@ const initializeWebSocket = () => {
         });
         socket.on('connect', () => {
             showToast('Conexão em tempo real estabelecida.', 'success');
-            document.querySelector('.animate-pulse.bg-green-400')?.classList.remove('bg-red-500');
+            document.querySelector('.animate-pulse.bg-green-500')?.classList.remove('bg-red-500');
         });
         socket.on('connect_error', () => {
             showToast('Falha na conexão em tempo real.', 'warning');
-            document.querySelector('.animate-pulse.bg-green-400')?.classList.add('bg-red-500');
+            document.querySelector('.animate-pulse.bg-green-500')?.classList.add('bg-red-500');
         });
         socket.on('disconnect', () => {
             showToast('Conexão em tempo real perdida.', 'warning');
-            document.querySelector('.animate-pulse.bg-green-400')?.classList.add('bg-red-500');
+            document.querySelector('.animate-pulse.bg-green-500')?.classList.add('bg-red-500');
         });
         socket.on('queue_updated', () => {
             fetchQueues();
@@ -151,15 +179,25 @@ const initializeWebSocket = () => {
             renderQueues();
             renderQueuesOverview();
         });
-        socket.on('attendant_updated', () => {
-            fetchAttendants();
-            updateDashboardMetrics();
-            renderAttendants();
-        });
-        socket.on('department_updated', () => {
+        socket.on('department_created', () => {
             fetchDepartments();
             updateDashboardMetrics();
             renderDepartments();
+        });
+        socket.on('user_created', () => {
+            fetchManagers();
+            updateDashboardMetrics();
+            renderManagers();
+        });
+        socket.on('user_updated', () => {
+            fetchManagers();
+            updateDashboardMetrics();
+            renderManagers();
+        });
+        socket.on('user_deleted', () => {
+            fetchManagers();
+            updateDashboardMetrics();
+            renderManagers();
         });
     } catch (err) {
         showToast('Falha ao iniciar conexão em tempo real.', 'warning');
@@ -169,11 +207,13 @@ const initializeWebSocket = () => {
 // Busca informações do usuário
 const fetchUserInfo = async () => {
     try {
-        const response = await axios.get('/api/attendant/user');
+        const response = await axios.get('/api/admin/user');
         const user = response.data;
-        document.getElementById('user-name').textContent = sanitizeInput(user.name || 'Administrador');
+        institutionId = user.institution_id;
+        branchId = user.branch_id;
+        document.getElementById('user-name').textContent = sanitizeInput(user.name || 'Gestor');
         document.getElementById('user-email').textContent = sanitizeInput(user.email || 'N/A');
-        document.querySelector('#user-info .bg-indigo-500').textContent = (user.name || 'A').slice(0, 2).toUpperCase();
+        document.querySelector('#user-info .bg-indigo-500').textContent = (user.name || 'G').slice(0, 2).toUpperCase();
         return user;
     } catch (error) {
         showToast('Não foi possível carregar informações do usuário.', 'warning');
@@ -185,7 +225,7 @@ const fetchUserInfo = async () => {
 const fetchQueues = async () => {
     try {
         toggleLoading(true, 'Carregando filas...');
-        const response = await axios.get('/api/attendant/queues');
+        const response = await axios.get('/api/admin/queues');
         const queues = response.data;
         localStorage.setItem('queues', JSON.stringify(queues));
         renderQueues();
@@ -203,9 +243,10 @@ const fetchQueues = async () => {
 
 // Busca departamentos
 const fetchDepartments = async () => {
+    if (!institutionId) return [];
     try {
         toggleLoading(true, 'Carregando departamentos...');
-        const response = await axios.get('/api/branch/departments');
+        const response = await axios.get(`/api/admin/institutions/${institutionId}/departments`);
         const departments = response.data;
         localStorage.setItem('departments', JSON.stringify(departments));
         renderDepartments();
@@ -220,19 +261,20 @@ const fetchDepartments = async () => {
     }
 };
 
-// Busca atendentes
-const fetchAttendants = async () => {
+// Busca gestores (equivalente a atendentes)
+const fetchManagers = async () => {
+    if (!institutionId) return [];
     try {
-        toggleLoading(true, 'Carregando atendentes...');
-        const response = await axios.get('/api/branch/attendants');
-        const attendants = response.data;
-        localStorage.setItem('attendants', JSON.stringify(attendants));
-        renderAttendants();
+        toggleLoading(true, 'Carregando gestores...');
+        const response = await axios.get(`/api/admin/institutions/${institutionId}/managers`);
+        const managers = response.data;
+        localStorage.setItem('managers', JSON.stringify(managers));
+        renderManagers();
         updateDashboardMetrics();
-        return attendants;
+        return managers;
     } catch (error) {
-        showToast(error.response?.data?.error || 'Falha ao carregar atendentes.', 'warning');
-        document.getElementById('attendants-container').innerHTML = '<p class="text-gray-500 text-center col-span-full">Nenhum atendente disponível.</p>';
+        showToast(error.response?.data?.error || 'Falha ao carregar gestores.', 'warning');
+        document.getElementById('attendants-container').innerHTML = '<p class="text-gray-500 text-center col-span-full">Nenhum gestor disponível.</p>';
         return [];
     } finally {
         toggleLoading(false);
@@ -244,10 +286,10 @@ const updateDashboardMetrics = async () => {
     try {
         const queues = JSON.parse(localStorage.getItem('queues')) || [];
         const departments = JSON.parse(localStorage.getItem('departments')) || [];
-        const attendants = JSON.parse(localStorage.getItem('attendants')) || [];
+        const managers = JSON.parse(localStorage.getItem('managers')) || [];
         document.getElementById('active-queues').textContent = queues.filter(q => q.status === 'Aberto').length;
         document.getElementById('total-departments').textContent = departments.length;
-        document.getElementById('active-attendants').textContent = attendants.length;
+        document.getElementById('active-attendants').textContent = managers.length;
     } catch (error) {
         showToast('Falha ao atualizar métricas.', 'warning');
     }
@@ -310,11 +352,8 @@ const renderQueues = () => {
                 <p class="text-sm text-gray-600"><span class="font-medium">Horário:</span> ${queue.open_time || 'N/A'} - ${queue.end_time || 'N/A'}</p>
             </div>
             <div class="mt-4 flex space-x-2">
-                <button onclick="editQueue('${queue.id}')" class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors" aria-label="Editar fila ${queue.service}">
-                    Editar
-                </button>
-                <button onclick="deleteQueue('${queue.id}')" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors" aria-label="Excluir fila ${queue.service}">
-                    Excluir
+                <button onclick="callNextTicket('${queue.id}')" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors" aria-label="Chamar próximo ticket na fila ${queue.service}">
+                    Chamar Próximo
                 </button>
             </div>
         `;
@@ -343,48 +382,47 @@ const renderDepartments = () => {
             </div>
             <div class="space-y-2">
                 <p class="text-sm text-gray-600"><span class="font-medium">Setor:</span> ${sanitizeInput(department.sector)}</p>
+                <p class="text-sm text-gray-600"><span class="font-medium">Filial:</span> ${sanitizeInput(department.branch_name)}</p>
             </div>
             <div class="mt-4 flex space-x-2">
                 <button onclick="editDepartment('${department.id}')" class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors" aria-label="Editar departamento ${department.name}">
                     Editar
                 </button>
-                <button onclick="deleteDepartment('${department.id}')" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors" aria-label="Excluir departamento ${department.name}">
-                    Excluir
-                </button>
             </div>
         `;
         container.appendChild(div);
     });
 };
 
-// Renderiza atendentes
-const renderAttendants = () => {
+// Renderiza gestores
+const renderManagers = () => {
     const container = document.getElementById('attendants-container');
     if (!container) return;
     container.innerHTML = '';
-    const attendants = JSON.parse(localStorage.getItem('attendants')) || [];
+    const managers = JSON.parse(localStorage.getItem('managers')) || [];
 
-    if (!attendants.length) {
-        container.innerHTML = '<p class="text-gray-500 text-center col-span-full">Nenhum atendente disponível.</p>';
+    if (!managers.length) {
+        container.innerHTML = '<p class="text-gray-500 text-center col-span-full">Nenhum gestor disponível.</p>';
         return;
     }
 
-    attendants.forEach(attendant => {
+    managers.forEach(manager => {
         const div = document.createElement('div');
         div.className = 'attendant-card bg-white rounded-xl shadow-lg p-6 border border-gray-200 animate-zoom-in hover:shadow-xl transition-all';
         div.innerHTML = `
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold text-gray-800">${sanitizeInput(attendant.name)}</h3>
+                <h3 class="text-lg font-semibold text-gray-800">${sanitizeInput(manager.name)}</h3>
             </div>
             <div class="space-y-2">
-                <p class="text-sm text-gray-600"><span class="font-medium">Email:</span> ${sanitizeInput(attendant.email)}</p>
-                <p class="text-sm text-gray-600"><span class="font-medium">Filial:</span> ${sanitizeInput(attendant.branch_name)}</p>
+                <p class="text-sm text-gray-600"><span class="font-medium">Email:</span> ${sanitizeInput(manager.email)}</p>
+                <p class="text-sm text-gray-600"><span class="font-medium">Departamento:</span> ${sanitizeInput(manager.department_name)}</p>
+                <p class="text-sm text-gray-600"><span class="font-medium">Filial:</span> ${sanitizeInput(manager.branch_name)}</p>
             </div>
             <div class="mt-4 flex space-x-2">
-                <button onclick="editAttendant('${attendant.id}')" class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors" aria-label="Editar atendente ${attendant.name}">
+                <button onclick="editManager('${manager.id}')" class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors" aria-label="Editar gestor ${manager.name}">
                     Editar
                 </button>
-                <button onclick="deleteAttendant('${attendant.id}')" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors" aria-label="Excluir atendente ${attendant.name}">
+                <button onclick="deleteManager('${manager.id}')" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors" aria-label="Excluir gestor ${manager.name}">
                     Excluir
                 </button>
             </div>
@@ -393,85 +431,252 @@ const renderAttendants = () => {
     });
 };
 
-// Adiciona nova fila
-const addQueue = async () => {
-    // Implementar modal ou formulário para adicionar fila
-    showToast('Funcionalidade de adicionar fila ainda não implementada.', 'warning');
-};
-
-// Edita uma fila
-const editQueue = async (queueId) => {
-    // Implementar modal ou formulário para editar fila
-    showToast(`Editar fila ${queueId} ainda não implementado.`, 'warning');
-};
-
-// Exclui uma fila
-const deleteQueue = async (queueId) => {
-    if (!confirm('Tem certeza que deseja excluir esta fila?')) return;
+// Chama próximo ticket
+const callNextTicket = async (queueId) => {
     try {
-        toggleLoading(true, 'Excluindo fila...');
-        await axios.delete(`/api/branch/queues/${queueId}`);
-        showToast('Fila excluída com sucesso.', 'success');
+        toggleLoading(true, 'Chamando próximo ticket...');
+        const response = await axios.post(`/api/admin/queue/${queueId}/call`);
+        showToast(response.data.message, 'success');
         fetchQueues();
         updateDashboardMetrics();
     } catch (error) {
-        showToast(error.response?.data?.error || 'Falha ao excluir fila.', 'error');
+        showToast(error.response?.data?.error || 'Falha ao chamar próximo ticket.', 'error');
     } finally {
         toggleLoading(false);
     }
+};
+
+// Adiciona nova fila
+const addQueue = async () => {
+    showToast('Funcionalidade de adicionar fila não disponível para gestores.', 'warning');
 };
 
 // Adiciona novo departamento
 const addDepartment = async () => {
-    // Implementar modal ou formulário para adicionar departamento
-    showToast('Funcionalidade de adicionar departamento ainda não implementada.', 'warning');
+    if (!institutionId || !branchId) {
+        showToast('Informações de instituição ou filial ausentes.', 'error');
+        return;
+    }
+    showModal('Adicionar Departamento', `
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Nome</label>
+            <input type="text" name="name" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Nome do departamento">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Setor</label>
+            <input type="text" name="sector" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Setor do departamento">
+        </div>
+        <input type="hidden" name="branch_id" value="${branchId}">
+    `, async (form) => {
+        const data = {
+            name: form.querySelector('[name="name"]').value.trim(),
+            sector: form.querySelector('[name="sector"]').value.trim(),
+            branch_id: form.querySelector('[name="branch_id"]').value
+        };
+        if (!data.name || !data.sector) {
+            showToast('Todos os campos são obrigatórios.', 'warning');
+            return;
+        }
+        try {
+            toggleLoading(true, 'Criando departamento...');
+            await axios.post(`/api/admin/institutions/${institutionId}/departments`, data);
+            showToast('Departamento criado com sucesso.', 'success');
+            fetchDepartments();
+            updateDashboardMetrics();
+        } catch (error) {
+            showToast(error.response?.data?.error || 'Falha ao criar departamento.', 'error');
+        } finally {
+            toggleLoading(false);
+        }
+    });
 };
 
 // Edita um departamento
 const editDepartment = async (departmentId) => {
-    // Implementar modal ou formulário para editar departamento
-    showToast(`Editar departamento ${departmentId} ainda não implementado.`, 'warning');
-};
-
-// Exclui um departamento
-const deleteDepartment = async (departmentId) => {
-    if (!confirm('Tem certeza que deseja excluir este departamento?')) return;
-    try {
-        toggleLoading(true, 'Excluindo departamento...');
-        await axios.delete(`/api/branch/departments/${departmentId}`);
-        showToast('Departamento excluído com sucesso.', 'success');
-        fetchDepartments();
-        updateDashboardMetrics();
-    } catch (error) {
-        showToast(error.response?.data?.error || 'Falha ao excluir departamento.', 'error');
-    } finally {
-        toggleLoading(false);
+    if (!institutionId) {
+        showToast('Informações de instituição ausentes.', 'error');
+        return;
     }
+    const departments = JSON.parse(localStorage.getItem('departments')) || [];
+    const department = departments.find(d => d.id === departmentId);
+    if (!department) {
+        showToast('Departamento não encontrado.', 'warning');
+        return;
+    }
+    showModal('Editar Departamento', `
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Nome</label>
+            <input type="text" name="name" value="${sanitizeInput(department.name)}" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Nome do departamento">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Setor</label>
+            <input type="text" name="sector" value="${sanitizeInput(department.sector)}" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Setor do departamento">
+        </div>
+        <input type="hidden" name="branch_id" value="${department.branch_id}">
+    `, async (form) => {
+        const data = {
+            name: form.querySelector('[name="name"]').value.trim(),
+            sector: form.querySelector('[name="sector"]').value.trim(),
+            branch_id: form.querySelector('[name="branch_id"]').value
+        };
+        if (!data.name || !data.sector) {
+            showToast('Todos os campos são obrigatórios.', 'warning');
+            return;
+        }
+        try {
+            toggleLoading(true, 'Atualizando departamento...');
+            await axios.put(`/api/admin/institutions/${institutionId}/departments/${departmentId}`, data);
+            showToast('Departamento atualizado com sucesso.', 'success');
+            fetchDepartments();
+            updateDashboardMetrics();
+        } catch (error) {
+            showToast(error.response?.data?.error || 'Falha ao atualizar departamento.', 'error');
+        } finally {
+            toggleLoading(false);
+        }
+    });
 };
 
-// Adiciona novo atendente
-const addAttendant = async () => {
-    // Implementar modal ou formulário para adicionar atendente
-    showToast('Funcionalidade de adicionar atendente ainda não implementada.', 'warning');
+// Adiciona novo gestor
+const addManager = async () => {
+    if (!institutionId || !branchId) {
+        showToast('Informações de instituição ou filial ausentes.', 'error');
+        return;
+    }
+    const departments = JSON.parse(localStorage.getItem('departments')) || [];
+    if (!departments.length) {
+        showToast('Nenhum departamento disponível para vincular.', 'warning');
+        return;
+    }
+    showModal('Adicionar Gestor', `
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Nome</label>
+            <input type="text" name="name" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Nome do gestor">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Email</label>
+            <input type="email" name="email" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Email do gestor">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Senha</label>
+            <input type="password" name="password" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Senha do gestor">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Departamento</label>
+            <select name="department_id" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Departamento do gestor">
+                ${departments.map(d => `<option value="${d.id}">${sanitizeInput(d.name)}</option>`).join('')}
+            </select>
+        </div>
+        <input type="hidden" name="branch_id" value="${branchId}">
+    `, async (form) => {
+        const data = {
+            name: form.querySelector('[name="name"]').value.trim(),
+            email: form.querySelector('[name="email"]').value.trim(),
+            password: form.querySelector('[name="password"]').value.trim(),
+            department_id: form.querySelector('[name="department_id"]').value,
+            branch_id: form.querySelector('[name="branch_id"]').value
+        };
+        if (!data.name || !data.email || !data.password || !data.department_id) {
+            showToast('Todos os campos são obrigatórios.', 'warning');
+            return;
+        }
+        if (data.password.length < 8) {
+            showToast('A senha deve ter pelo menos 8 caracteres.', 'warning');
+            return;
+        }
+        try {
+            toggleLoading(true, 'Criando gestor...');
+            await axios.post(`/api/admin/institutions/${institutionId}/managers`, data);
+            showToast('Gestor criado com sucesso.', 'success');
+            fetchManagers();
+            updateDashboardMetrics();
+        } catch (error) {
+            showToast(error.response?.data?.error || 'Falha ao criar gestor.', 'error');
+        } finally {
+            toggleLoading(false);
+        }
+    });
 };
 
-// Edita um atendente
-const editAttendant = async (attendantId) => {
-    // Implementar modal ou formulário para editar atendente
-    showToast(`Editar atendente ${attendantId} ainda não implementado.`, 'warning');
+// Edita um gestor
+const editManager = async (managerId) => {
+    if (!institutionId) {
+        showToast('Informações de instituição ausentes.', 'error');
+        return;
+    }
+    const managers = JSON.parse(localStorage.getItem('managers')) || [];
+    const manager = managers.find(m => m.id === managerId);
+    if (!manager) {
+        showToast('Gestor não encontrado.', 'warning');
+        return;
+    }
+    const departments = JSON.parse(localStorage.getItem('departments')) || [];
+    showModal('Editar Gestor', `
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Nome</label>
+            <input type="text" name="name" value="${sanitizeInput(manager.name)}" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Nome do gestor">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Email</label>
+            <input type="email" name="email" value="${sanitizeInput(manager.email)}" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Email do gestor">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Nova Senha (opcional)</label>
+            <input type="password" name="password" class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Nova senha do gestor">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Departamento</label>
+            <select name="department_id" required class="mt-1 p-2 border rounded-lg w-full focus:ring-indigo-500" aria-label="Departamento do gestor">
+                ${departments.map(d => `<option value="${d.id}" ${d.id === manager.department_id ? 'selected' : ''}>${sanitizeInput(d.name)}</option>`).join('')}
+            </select>
+        </div>
+        <input type="hidden" name="branch_id" value="${manager.branch_id}">
+    `, async (form) => {
+        const data = {
+            name: form.querySelector('[name="name"]').value.trim(),
+            email: form.querySelector('[name="email"]').value.trim(),
+            password: form.querySelector('[name="password"]').value.trim(),
+            department_id: form.querySelector('[name="department_id"]').value,
+            branch_id: form.querySelector('[name="branch_id"]').value
+        };
+        if (!data.name || !data.email || !data.department_id) {
+            showToast('Campos obrigatórios não preenchidos.', 'warning');
+            return;
+        }
+        if (data.password && data.password.length < 8) {
+            showToast('A nova senha deve ter pelo menos 8 caracteres.', 'warning');
+            return;
+        }
+        if (!data.password) delete data.password;
+        try {
+            toggleLoading(true, 'Atualizando gestor...');
+            await axios.put(`/api/admin/institutions/${institutionId}/users/${managerId}`, data);
+            showToast('Gestor atualizado com sucesso.', 'success');
+            fetchManagers();
+            updateDashboardMetrics();
+        } catch (error) {
+            showToast(error.response?.data?.error || 'Falha ao atualizar gestor.', 'error');
+        } finally {
+            toggleLoading(false);
+        }
+    });
 };
 
-// Exclui um atendente
-const deleteAttendant = async (attendantId) => {
-    if (!confirm('Tem certeza que deseja excluir este atendente?')) return;
+// Exclui um gestor
+const deleteManager = async (managerId) => {
+    if (!institutionId) {
+        showToast('Informações de instituição ausentes.', 'error');
+        return;
+    }
+    if (!confirm('Tem certeza que deseja excluir este gestor?')) return;
     try {
-        toggleLoading(true, 'Excluindo atendente...');
-        await axios.delete(`/api/branch/attendants/${attendantId}`);
-        showToast('Atendente excluído com sucesso.', 'success');
-        fetchAttendants();
+        toggleLoading(true, 'Excluindo gestor...');
+        await axios.delete(`/api/admin/institutions/${institutionId}/users/${managerId}`);
+        showToast('Gestor excluído com sucesso.', 'success');
+        fetchManagers();
         updateDashboardMetrics();
     } catch (error) {
-        showToast(error.response?.data?.error || 'Falha ao excluir atendente.', 'error');
+        showToast(error.response?.data?.error || 'Falha ao excluir gestor.', 'error');
     } finally {
         toggleLoading(false);
     }
@@ -523,13 +728,13 @@ const setupEventListeners = () => {
             const filter = sanitizeInput(departmentFilter.value.toLowerCase());
             document.querySelectorAll('#departments-container > div').forEach(card => {
                 const name = card.querySelector('h3').textContent.toLowerCase();
-                const sector = card.querySelector('p').textContent.toLowerCase();
+                const sector = card.querySelector('p:nth-child(1)').textContent.toLowerCase();
                 card.style.display = name.includes(filter) || sector.includes(filter) ? '' : 'none';
             });
         });
     }
 
-    // Filtro de atendentes
+    // Filtro de gestores
     const attendantFilter = document.getElementById('attendant-filter');
     if (attendantFilter) {
         attendantFilter.addEventListener('input', () => {
@@ -563,7 +768,7 @@ const setupEventListeners = () => {
     if (addDepartmentBtn) addDepartmentBtn.addEventListener('click', addDepartment);
 
     const addAttendantBtn = document.getElementById('add-attendant-btn');
-    if (addAttendantBtn) addAttendantBtn.addEventListener('click', addAttendant);
+    if (addAttendantBtn) addAttendantBtn.addEventListener('click', addManager);
 
     const refreshQueuesBtn = document.getElementById('refresh-queues');
     if (refreshQueuesBtn) refreshQueuesBtn.addEventListener('click', renderQueuesOverview);
@@ -589,8 +794,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupAxios();
     updateCurrentDate();
     const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
-    if (userRole !== 'branch_admin') {
-        showToast('Acesso restrito a administradores de filial. Algumas funções podem estar limitadas.', 'warning');
+    if (userRole !== 'department_admin') {
+        showToast('Acesso restrito a gestores de departamento. Algumas funções podem estar limitadas.', 'warning');
     }
 
     initializeWebSocket();
@@ -599,7 +804,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             fetchUserInfo(),
             fetchQueues(),
             fetchDepartments(),
-            fetchAttendants(),
+            fetchManagers(),
             updateDashboardMetrics()
         ]);
         setupEventListeners();
