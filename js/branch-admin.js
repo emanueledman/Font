@@ -1,3 +1,6 @@
+console.log('branch_admin.js carregado');
+
+// Configurações
 const API_BASE = 'https://fila-facilita2-0-4uzw.onrender.com';
 let socket = null;
 
@@ -6,21 +9,20 @@ const sanitizeInput = (input) => {
     if (typeof input !== 'string') return '';
     const div = document.createElement('div');
     div.textContent = input;
-    return div.innerHTML.replace(/</g, '<').replace(/>/g, '>');
+    return div.innerHTML.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 };
 
 // Limpa dados sensíveis
 const clearSensitiveData = () => {
-    ['localStorage', 'sessionStorage'].forEach(storageType => {
-        const storage = window[storageType];
-        ['adminToken', 'userRole', 'email', 'institution_id', 'branch_id', 'queues'].forEach(key => storage.removeItem(key));
+    ['adminToken', 'email', 'institution_id', 'branch_id'].forEach(key => {
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
     });
+    console.log('Dados sensíveis limpos');
 };
 
 // Obtém token
-const getToken = () => {
-    return localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
-};
+const getToken = () => localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
 
 // Atualiza data atual
 const updateCurrentDate = () => {
@@ -32,6 +34,9 @@ const updateCurrentDate = () => {
             month: 'long',
             day: 'numeric'
         });
+        console.log('Data atualizada:', currentDateEl.textContent);
+    } else {
+        console.error('Elemento #current-date não encontrado');
     }
 };
 
@@ -42,13 +47,19 @@ const toggleLoading = (show, message = 'Carregando...') => {
     if (loadingOverlay && loadingMessage) {
         loadingMessage.textContent = sanitizeInput(message);
         loadingOverlay.classList.toggle('hidden', !show);
+        console.log('Loading:', show, message);
+    } else {
+        console.error('Elemento #loading-overlay ou #loading-message não encontrado');
     }
 };
 
 // Exibe notificações no toast
 const showToast = (message, type = 'success') => {
     const toastContainer = document.getElementById('toast-container');
-    if (!toastContainer) return;
+    if (!toastContainer) {
+        console.error('Elemento #toast-container não encontrado');
+        return;
+    }
     const toast = document.createElement('div');
     toast.className = `toast toast-${type} text-white px-6 py-3 rounded-lg shadow-lg animate-slide-in`;
     toast.innerHTML = `
@@ -64,6 +75,7 @@ const showToast = (message, type = 'success') => {
         </div>
     `;
     toastContainer.appendChild(toast);
+    console.log('Toast exibido:', message, type);
     setTimeout(() => {
         toast.classList.add('animate-slide-out');
         setTimeout(() => toast.remove(), 500);
@@ -79,23 +91,10 @@ const debounce = (func, wait) => {
     };
 };
 
-// Valida nome
-const validateName = (name) => {
-    return /^[A-Za-zÀ-ÿ\s0-9.,-]{1,100}$/.test(name);
-};
-
-// Valida email
-const validateEmail = (email) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-};
-
-// Valida senha
-const validatePassword = (password) => {
-    return password.length >= 8 &&
-           /[A-Z]/.test(password) &&
-           /[a-z]/.test(password) &&
-           /[0-9]/.test(password);
-};
+// Validações
+const validateName = (name) => /^[A-Za-zÀ-ÿ\s0-9.,-]{1,100}$/.test(name);
+const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const validatePassword = (password) => password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password);
 
 // Configura Axios
 const setupAxios = () => {
@@ -111,6 +110,7 @@ const setupAxios = () => {
         async error => {
             if (error.response?.status === 401 || error.response?.status === 403) {
                 showToast('Sessão expirada. Redirecionando para login...', 'error');
+                console.log('Erro 401/403 detectado, redirecionando');
                 setTimeout(() => {
                     clearSensitiveData();
                     if (socket) socket.disconnect();
@@ -119,30 +119,23 @@ const setupAxios = () => {
             } else if (error.response?.status === 404) {
                 showToast('Recurso não encontrado.', 'warning');
             } else if (error.code === 'ECONNABORTED' || error.message.includes('Network Error')) {
-                showToast('Problema na conexão com o servidor. Tentando novamente...', 'warning');
-                if (!error.config.retryCount) {
-                    error.config.retryCount = 0;
-                }
-                if (error.config.retryCount < 3) {
-                    error.config.retryCount++;
-                    await new Promise(resolve => setTimeout(resolve, error.config.retryCount * 1000));
-                    return axios(error.config);
-                }
+                showToast('Problema na conexão com o servidor.', 'warning');
             }
+            console.error('Erro Axios:', error.message);
             return Promise.reject(error);
         }
     );
+    console.log('Axios configurado');
 };
 
 // Inicializa WebSocket
 const initializeWebSocket = () => {
     const token = getToken();
-    const institution_id = localStorage.getItem('institution_id') || '';
+    const institution_id = localStorage.getItem('institution_id');
     if (!token || !institution_id) {
-        showToast('Token ou instituição não encontrados. Redirecionando para login...', 'error');
-        setTimeout(() => {
-            window.location.href = '/index.html';
-        }, 3000);
+        showToast('Token ou instituição não encontrados. Redirecionando...', 'error');
+        console.log('Token ou institution_id ausente');
+        setTimeout(() => window.location.href = '/index.html', 3000);
         return;
     }
     try {
@@ -158,31 +151,31 @@ const initializeWebSocket = () => {
             showToast('Conexão em tempo real estabelecida.', 'success');
             document.querySelector('#connection-status')?.classList.remove('bg-red-500');
             document.querySelector('#connection-status')?.classList.add('bg-green-500');
-            document.querySelector('#connection-text')?.textContent = 'AO VIVO';
+            document.querySelector('#connection-text').textContent = 'AO VIVO';
         });
         socket.on('connect_error', (error) => {
             console.error('Erro na conexão WebSocket:', error.message);
-            showToast('Problema temporário na conexão em tempo real. Tentando reconectar...', 'warning');
+            showToast('Problema na conexão em tempo real.', 'warning');
             document.querySelector('#connection-status')?.classList.remove('bg-green-500');
             document.querySelector('#connection-status')?.classList.add('bg-red-500');
-            document.querySelector('#connection-text')?.textContent = 'DESCONECTADO';
+            document.querySelector('#connection-text').textContent = 'DESCONECTADO';
         });
         socket.on('disconnect', () => {
             console.log('WebSocket desconectado');
-            showToast('Conexão em tempo real perdida. Tentando reconectar...', 'warning');
+            showToast('Conexão em tempo real perdida.', 'warning');
             document.querySelector('#connection-status')?.classList.remove('bg-green-500');
             document.querySelector('#connection-status')?.classList.add('bg-red-500');
-            document.querySelector('#connection-text')?.textContent = 'DESCONECTADO';
+            document.querySelector('#connection-text').textContent = 'DESCONECTADO';
         });
-        socket.on('department_created', debouncedLoadDepartments);
-        socket.on('user_created', debouncedLoadAttendants);
         socket.on('queue_updated', () => {
             debouncedLoadDashboard();
             debouncedLoadQueues();
         });
+        socket.on('department_created', debouncedLoadDepartments);
+        socket.on('user_created', debouncedLoadAttendants);
     } catch (err) {
         console.error('Erro ao iniciar WebSocket:', err);
-        showToast('Falha ao iniciar conexão em tempo real. Verifique sua conexão.', 'error');
+        showToast('Falha ao iniciar conexão em tempo real.', 'error');
     }
 };
 
@@ -192,133 +185,117 @@ const fetchUserInfo = async () => {
         const email = localStorage.getItem('email') || 'N/A';
         document.getElementById('user-name').textContent = sanitizeInput(email.split('@')[0]);
         document.getElementById('user-email').textContent = sanitizeInput(email);
-        const userInitials = email.split('@')[0].slice(0, 2).toUpperCase();
-        document.querySelector('#user-info .bg-indigo-500').textContent = userInitials || 'JD';
-        return { email };
+        const userInitials = email.split('@')[0].slice(0, 2).toUpperCase() || 'JD';
+        document.querySelector('#user-info .bg-indigo-500').textContent = userInitials;
+        console.log('Informações do usuário carregadas:', email);
     } catch (error) {
+        console.error('Erro ao carregar usuário:', error);
         showToast('Não foi possível carregar informações do usuário.', 'warning');
-        return null;
     }
 };
 
-// Busca painel de controle
+// Carrega dashboard
 const loadDashboard = async () => {
     try {
-        toggleLoading(true, 'Carregando dados do painel...');
+        toggleLoading(true, 'Carregando painel...');
         const institutionId = localStorage.getItem('institution_id');
         const branchId = localStorage.getItem('branch_id');
 
-        // Buscar filas do backend
-        const queuesRes = await axios.get('/api/admin/queues', {
-            params: { branch_id: branchId }
-        });
-        const queuesData = queuesRes.data.queues || [];
-        localStorage.setItem('queues', JSON.stringify(queuesData));
+        // Buscar filas
+        const queuesRes = await axios.get('/api/admin/queues', { params: { branch_id: branchId } });
+        const queues = queuesRes.data.queues || [];
+        document.getElementById('active-queues').textContent = queues.filter(q => q.status === 'Aberto').length;
 
-        // Contar filas ativas
-        const activeQueuesCount = queuesData.filter(q => q.status === 'Aberto').length;
-        document.getElementById('active-queues').textContent = activeQueuesCount;
-
-        // Carregar atendentes
+        // Buscar atendentes
         const attendantsRes = await axios.get(`/api/admin/institutions/${institutionId}/department_admins`);
-        const activeAttendantsCount = attendantsRes.data.attendants.filter(a => a.active).length;
-        document.getElementById('active-attendants').textContent = activeAttendantsCount;
+        document.getElementById('active-attendants').textContent = attendantsRes.data.attendants.filter(a => a.active).length;
 
-        // Carregar departamentos
+        // Buscar departamentos
         const departmentsRes = await axios.get(`/api/admin/institutions/${institutionId}/departments`);
         document.getElementById('total-departments').textContent = departmentsRes.data.departments.length;
 
-        // Carregar horários
+        // Buscar horários
         const branchesRes = await axios.get(`/api/admin/institutions/${institutionId}/branches`);
         const schedulesCount = branchesRes.data.branches.find(b => b.id === parseInt(branchId))?.schedules?.length || 0;
         document.getElementById('configured-schedules').textContent = schedulesCount;
 
         // Renderizar visão geral das filas
         const queuesOverview = document.getElementById('queues-overview');
-        if (queuesOverview) {
-            queuesOverview.innerHTML = queuesData.length ? queuesData.slice(0, 5).map(queue => `
-                <div class="queue-card bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200">
-                    <div class="flex items-center justify-between">
-                        <h4 class="font-medium text-gray-800">${sanitizeInput(queue.service)}</h4>
-                        <span class="text-xs px-2 py-1 rounded-full ${queue.status === 'Aberto' ? 'bg-green-100 text-green-800' : queue.status === 'Fechado' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">${sanitizeInput(queue.status)}</span>
-                    </div>
-                    <p class="text-sm text-gray-600 mt-1">Departamento: ${sanitizeInput(queue.department)}</p>
-                    <p class="text-sm text-gray-600">Senhas ativas: ${queue.active_tickets || 0}</p>
-                    <p class="text-sm text-gray-600">Tempo médio: ${queue.avg_wait_time || 'N/A'}</p>
-                    <button class="call-next-btn mt-2 w-full px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" data-queue-id="${queue.id}" ${queue.status !== 'Aberto' ? 'disabled' : ''}>Chamar Próximo</button>
+        queuesOverview.innerHTML = queues.length ? queues.slice(0, 5).map(queue => `
+            <div class="queue-card bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h4 class="font-medium text-gray-800">${sanitizeInput(queue.service)}</h4>
+                    <span class="text-xs px-2 py-1 rounded-full ${queue.status === 'Aberto' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${sanitizeInput(queue.status)}</span>
                 </div>
-            `).join('') : '<p class="text-gray-500 text-center">Nenhuma fila disponível.</p>';
-        }
+                <p class="text-sm text-gray-600 mt-1">Departamento: ${sanitizeInput(queue.department)}</p>
+                <p class="text-sm text-gray-600">Senhas ativas: ${queue.active_tickets || 0}</p>
+                <button class="call-next-btn mt-2 w-full px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" data-queue-id="${queue.id}" ${queue.status !== 'Aberto' ? 'disabled' : ''}>Chamar Próximo</button>
+            </div>
+        `).join('') : '<p class="text-gray-500 text-center">Nenhuma fila disponível.</p>';
+        console.log('Dashboard carregado:', queues.length, 'filas');
     } catch (error) {
-        showToast(error.response?.data?.error || 'Falha ao carregar painel.', 'error');
+        console.error('Erro ao carregar dashboard:', error);
+        showToast('Falha ao carregar painel.', 'error');
     } finally {
         toggleLoading(false);
     }
 };
 
-// Busca filas
+// Carrega filas
 const loadQueues = async () => {
     try {
         toggleLoading(true, 'Carregando filas...');
         const branchId = localStorage.getItem('branch_id');
-        const response = await axios.get('/api/admin/queues', {
-            params: {
-                page: 1,
-                per_page: 20,
-                branch_id: branchId
-            }
-        });
+        const response = await axios.get('/api/admin/queues', { params: { branch_id: branchId } });
         const queues = response.data.queues || [];
-        localStorage.setItem('queues', JSON.stringify(queues));
         renderQueues(queues);
-        renderQueueFilters(queues);
+        console.log('Filas carregadas:', queues.length);
     } catch (error) {
-        showToast(error.response?.data?.error || 'Falha ao carregar filas.', 'error');
+        console.error('Erro ao carregar filas:', error);
+        showToast('Falha ao carregar filas.', 'error');
         document.getElementById('queues-container').innerHTML = '<p class="text-gray-500 text-center col-span-full">Nenhuma fila disponível.</p>';
     } finally {
         toggleLoading(false);
     }
 };
 
-// Busca departamentos
+// Carrega departamentos
 const loadDepartments = async () => {
     try {
         toggleLoading(true, 'Carregando departamentos...');
         const institutionId = localStorage.getItem('institution_id');
-        const response = await axios.get(`/api/admin/institutions/${institutionId}/departments`, {
-            params: { page: 1, per_page: 20 }
-        });
+        const response = await axios.get(`/api/admin/institutions/${institutionId}/departments`);
         const departments = response.data.departments || [];
         renderDepartments(departments);
-        renderDepartmentFilters(departments);
+        console.log('Departamentos carregados:', departments.length);
     } catch (error) {
-        showToast(error.response?.data?.error || 'Falha ao carregar departamentos.', 'error');
+        console.error('Erro ao carregar departamentos:', error);
+        showToast('Falha ao carregar departamentos.', 'error');
         document.getElementById('departments-container').innerHTML = '<p class="text-gray-500 text-center">Nenhum departamento disponível.</p>';
     } finally {
         toggleLoading(false);
     }
 };
 
-// Busca atendentes
+// Carrega atendentes
 const loadAttendants = async () => {
     try {
         toggleLoading(true, 'Carregando atendentes...');
         const institutionId = localStorage.getItem('institution_id');
-        const response = await axios.get(`/api/admin/institutions/${institutionId}/department_admins`, {
-            params: { page: 1, per_page: 20 }
-        });
+        const response = await axios.get(`/api/admin/institutions/${institutionId}/department_admins`);
         const attendants = response.data.attendants || [];
         renderAttendants(attendants);
-        renderAttendantFilters(attendants);
+        console.log('Atendentes carregados:', attendants.length);
     } catch (error) {
-        showToast(error.response?.data?.error || 'Falha ao carregar atendentes.', 'error');
+        console.error('Erro ao carregar atendentes:', error);
+        showToast('Falha ao carregar atendentes.', 'error');
         document.getElementById('attendants-container').innerHTML = '<p class="text-gray-500 text-center">Nenhum atendente disponível.</p>';
     } finally {
         toggleLoading(false);
     }
 };
 
-// Busca horários
+// Carrega horários
 const loadSchedules = async () => {
     try {
         toggleLoading(true, 'Carregando horários...');
@@ -328,8 +305,10 @@ const loadSchedules = async () => {
         const branch = response.data.branches.find(b => b.id === parseInt(branchId));
         const schedules = branch?.schedules || [];
         renderSchedules(schedules);
+        console.log('Horários carregados:', schedules.length);
     } catch (error) {
-        showToast(error.response?.data?.error || 'Falha ao carregar horários.', 'error');
+        console.error('Erro ao carregar horários:', error);
+        showToast('Falha ao carregar horários.', 'error');
         document.getElementById('schedules-container').innerHTML = '<p class="text-gray-500 text-center">Nenhum horário disponível.</p>';
     } finally {
         toggleLoading(false);
@@ -339,50 +318,36 @@ const loadSchedules = async () => {
 // Renderiza filas
 const renderQueues = (queues) => {
     const container = document.getElementById('queues-container');
-    if (!container) return;
-    if (!queues || queues.length === 0) {
-        container.innerHTML = '<p class="text-gray-500 text-center col-span-full">Nenhuma fila disponível.</p>';
+    if (!container) {
+        console.error('Elemento #queues-container não encontrado');
         return;
     }
-    const fragment = document.createDocumentFragment();
-    queues.forEach(queue => {
-        const div = document.createElement('div');
-        div.dataset.queueId = queue.id;
-        div.className = 'queue-card bg-white rounded-xl shadow-lg p-6 border border-gray-200 animate-zoom-in hover:shadow-xl transition-all';
-        div.innerHTML = `
+    container.innerHTML = queues.length ? queues.map(queue => `
+        <div class="queue-card bg-white rounded-xl shadow-lg p-6 border border-gray-200 animate-zoom-in" data-queue-id="${queue.id}">
             <div class="flex justify-between items-center mb-2">
                 <h3 class="font-semibold text-gray-800">${sanitizeInput(queue.service)}</h3>
-                <span class="text-xs px-2 py-1 rounded-full ${queue.status === 'Aberto' ? 'bg-green-100 text-green-800' : queue.status === 'Fechado' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">${sanitizeInput(queue.status)}</span>
+                <span class="text-xs px-2 py-1 rounded-full ${queue.status === 'Aberto' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${sanitizeInput(queue.status)}</span>
             </div>
             <p class="text-sm text-gray-600">Prefixo: ${sanitizeInput(queue.prefix)}</p>
             <p class="text-sm text-gray-600">Departamento: ${sanitizeInput(queue.department)}</p>
-            <p class="text-sm text-gray-600">Senhas ativas: ${queue.active_tickets || 0}/${queue.daily_limit || 'N/A'}</p>
-            <p class="text-sm text-gray-600">Tempo médio: ${queue.avg_wait_time || 'N/A'}</p>
+            <p class="text-sm text-gray-600">Senhas ativas: ${queue.active_tickets || 0}</p>
             <div class="flex space-x-2 mt-4">
                 <button class="call-next-btn flex-1 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" data-queue-id="${queue.id}" ${queue.status !== 'Aberto' ? 'disabled' : ''}>Chamar Próximo</button>
                 <button class="edit-queue-btn flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300" data-queue-id="${queue.id}">Editar</button>
             </div>
-        `;
-        fragment.appendChild(div);
-    });
-    container.innerHTML = '';
-    container.appendChild(fragment);
+        </div>
+    `).join('') : '<p class="text-gray-500 text-center col-span-full">Nenhuma fila disponível.</p>';
 };
 
 // Renderiza departamentos
 const renderDepartments = (departments) => {
     const container = document.getElementById('departments-container');
-    if (!container) return;
-    if (!departments || departments.length === 0) {
-        container.innerHTML = '<p class="text-gray-500 text-center">Nenhum departamento disponível.</p>';
+    if (!container) {
+        console.error('Elemento #departments-container não encontrado');
         return;
     }
-    const fragment = document.createDocumentFragment();
-    departments.forEach(dept => {
-        const div = document.createElement('div');
-        div.dataset.departmentId = dept.id;
-        div.className = 'department-card bg-white p-6 rounded-xl shadow-lg border border-gray-200 animate-zoom-in hover:shadow-xl transition-all';
-        div.innerHTML = `
+    container.innerHTML = departments.length ? departments.map(dept => `
+        <div class="department-card bg-white p-6 rounded-xl shadow-lg border border-gray-200 animate-zoom-in" data-department-id="${dept.id}">
             <h3 class="font-semibold text-gray-800">${sanitizeInput(dept.name)}</h3>
             <p class="text-sm text-gray-600 mt-1">Setor: ${sanitizeInput(dept.sector)}</p>
             <p class="text-sm text-gray-600">Filial: ${sanitizeInput(dept.branch_name)}</p>
@@ -390,27 +355,19 @@ const renderDepartments = (departments) => {
                 <button class="edit-department-btn flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300" data-department-id="${dept.id}">Editar</button>
                 <button class="delete-department-btn flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700" data-department-id="${dept.id}">Excluir</button>
             </div>
-        `;
-        fragment.appendChild(div);
-    });
-    container.innerHTML = '';
-    container.appendChild(fragment);
+        </div>
+    `).join('') : '<p class="text-gray-500 text-center">Nenhum departamento disponível.</p>';
 };
 
 // Renderiza atendentes
 const renderAttendants = (attendants) => {
     const container = document.getElementById('attendants-container');
-    if (!container) return;
-    if (!attendants || attendants.length === 0) {
-        container.innerHTML = '<p class="text-gray-500 text-center">Nenhum atendente disponível.</p>';
+    if (!container) {
+        console.error('Elemento #attendants-container não encontrado');
         return;
     }
-    const fragment = document.createDocumentFragment();
-    attendants.forEach(attendant => {
-        const div = document.createElement('div');
-        div.dataset.userId = attendant.id;
-        div.className = 'attendant-card bg-white p-6 rounded-xl shadow-lg border border-gray-200 animate-zoom-in hover:shadow-xl transition-all';
-        div.innerHTML = `
+    container.innerHTML = attendants.length ? attendants.map(attendant => `
+        <div class="attendant-card bg-white p-6 rounded-xl shadow-lg border border-gray-200 animate-zoom-in" data-user-id="${attendant.id}">
             <div class="flex items-center mb-2">
                 <div class="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold mr-3">
                     ${attendant.name ? attendant.name.split(' ').map(n => n[0]).join('').toUpperCase() : attendant.email.slice(0, 2).toUpperCase()}
@@ -426,76 +383,26 @@ const renderAttendants = (attendants) => {
                 <button class="edit-attendant-btn flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300" data-user-id="${attendant.id}">Editar</button>
                 <button class="delete-attendant-btn flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700" data-user-id="${attendant.id}">Excluir</button>
             </div>
-        `;
-        fragment.appendChild(div);
-    });
-    container.innerHTML = '';
-    container.appendChild(fragment);
+        </div>
+    `).join('') : '<p class="text-gray-500 text-center">Nenhum atendente disponível.</p>';
 };
 
 // Renderiza horários
 const renderSchedules = (schedules) => {
     const container = document.getElementById('schedules-container');
-    if (!container) return;
-    if (!schedules || schedules.length === 0) {
-        container.innerHTML = '<p class="text-gray-500 text-center">Nenhum horário disponível.</p>';
+    if (!container) {
+        console.error('Elemento #schedules-container não encontrado');
         return;
     }
-    const fragment = document.createDocumentFragment();
-    schedules.forEach(schedule => {
-        const div = document.createElement('div');
-        div.dataset.scheduleId = schedule.id;
-        div.className = 'schedule-card bg-white p-6 rounded-xl shadow-lg border border-gray-200 animate-zoom-in hover:shadow-xl transition-all';
-        div.innerHTML = `
+    container.innerHTML = schedules.length ? schedules.map(schedule => `
+        <div class="schedule-card bg-white p-6 rounded-xl shadow-lg border border-gray-200 animate-zoom-in" data-schedule-id="${schedule.id}">
             <h3 class="font-semibold text-gray-800">${sanitizeInput(schedule.weekday)}</h3>
             <p class="text-sm text-gray-600 mt-1">${schedule.is_closed ? 'Fechado' : `${sanitizeInput(schedule.open_time)} - ${sanitizeInput(schedule.end_time)}`}</p>
             <div class="flex space-x-2 mt-4">
                 <button class="edit-schedule-btn flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300" data-schedule-id="${schedule.id}">Editar</button>
             </div>
-        `;
-        fragment.appendChild(div);
-    });
-    container.innerHTML = '';
-    container.appendChild(fragment);
-};
-
-// Renderiza filtros de filas
-const renderQueueFilters = (queues) => {
-    const queueFilter = document.getElementById('queue-filter');
-    const queueStatusFilter = document.getElementById('queue-status-filter');
-    const queueDepartmentFilter = document.getElementById('queue-department-filter');
-
-    if (queueDepartmentFilter) {
-        queueDepartmentFilter.innerHTML = '<option value="all">Todos os departamentos</option>';
-        if (queues && queues.length > 0) {
-            const departments = [...new Set(queues.map(q => q.department))];
-            departments.forEach(dept => {
-                const option = document.createElement('option');
-                option.value = dept;
-                option.textContent = sanitizeInput(dept);
-                queueDepartmentFilter.appendChild(option);
-            });
-        }
-        queueDepartmentFilter.value = 'all';
-    }
-};
-
-// Renderiza filtros de departamentos
-const renderDepartmentFilters = (departments) => {
-    const departmentFilter = document.getElementById('department-filter');
-    if (departmentFilter) {
-        departmentFilter.value = '';
-    }
-};
-
-// Renderiza filtros de atendentes
-const renderAttendantFilters = (attendants) => {
-    const attendantFilter = document.getElementById('attendant-filter');
-    const attendantRoleFilter = document.getElementById('attendant-role-filter');
-    if (attendantRoleFilter) {
-        attendantRoleFilter.innerHTML = '<option value="all">Todos os papéis</option><option value="attendant">Atendente</option><option value="branch_admin">Administrador de Filial</option>';
-        attendantRoleFilter.value = 'all';
-    }
+        </div>
+    `).join('') : '<p class="text-gray-500 text-center">Nenhum horário disponível.</p>';
 };
 
 // Cria modal genérico
@@ -507,26 +414,32 @@ const createModal = (title, content, buttons) => {
             <h3 class="text-xl font-semibold text-gray-800 mb-4">${sanitizeInput(title)}</h3>
             <div class="modal-content">${content}</div>
             <div class="flex justify-end space-x-2 mt-6">
-                ${buttons.map(btn => `<button class="${btn.class} px-4 py-2 rounded-lg" ${btn.onclick ? `onclick="${btn.onclick}"` : ''}>${sanitizeInput(btn.label)}</button>`).join('')}
+                ${buttons.map(btn => `<button class="${btn.class}" ${btn.onclick ? `onclick="${btn.onclick}"` : ''}>${sanitizeInput(btn.label)}</button>`).join('')}
             </div>
         </div>
     `;
     document.body.appendChild(modal);
+    console.log('Modal criado:', title);
     return modal;
 };
 
-// Chama próximo ticket
-const callNextTicket = async (queueId) => {
+// Carrega departamentos para filtro
+const loadQueueDepartmentFilter = async () => {
     try {
-        toggleLoading(true, 'Chamando próximo ticket...');
-        const response = await axios.post(`/api/admin/queue/${queueId}/call`);
-        showToast('Próximo ticket chamado com sucesso.', 'success');
-        loadDashboard();
-        loadQueues();
+        const institutionId = localStorage.getItem('institution_id');
+        const response = await axios.get(`/api/admin/institutions/${institutionId}/departments`);
+        const departments = response.data.departments || [];
+        const queueDepartmentFilter = document.getElementById('queue-department-filter');
+        if (queueDepartmentFilter) {
+            queueDepartmentFilter.innerHTML = '<option value="all">Todos os departamentos</option>' +
+                departments.map(dept => `<option value="${dept.id}">${sanitizeInput(dept.name)}</option>`).join('');
+        }
+        console.log('Filtro de departamentos carregado:', departments.length);
+        return departments;
     } catch (error) {
-        showToast(error.response?.data?.error || 'Falha ao chamar próximo ticket.', 'error');
-    } finally {
-        toggleLoading(false);
+        console.error('Erro ao carregar filtro de departamentos:', error);
+        showToast('Falha ao carregar departamentos.', 'error');
+        return [];
     }
 };
 
@@ -539,22 +452,25 @@ const addQueue = async () => {
 
     if (!service || !prefix || !limit || !departmentId) {
         showToast('Preencha todos os campos.', 'error');
+        console.log('Campos de fila incompletos');
         return;
     }
 
     try {
         toggleLoading(true, 'Adicionando fila...');
         await axios.post('/api/admin/queues', {
-            service_id: service, // Supondo que o serviço já existe
+            service,
             prefix,
             daily_limit: parseInt(limit),
-            department_id: departmentId
+            department_id: parseInt(departmentId)
         });
         showToast('Fila adicionada com sucesso.', 'success');
         document.querySelector('.modal-content').closest('.fixed').remove();
         loadQueues();
+        console.log('Fila adicionada');
     } catch (error) {
-        showToast(error.response?.data?.error || 'Falha ao adicionar fila.', 'error');
+        console.error('Erro ao adicionar fila:', error);
+        showToast('Falha ao adicionar fila.', 'error');
     } finally {
         toggleLoading(false);
     }
@@ -567,11 +483,13 @@ const addDepartment = async () => {
 
     if (!name || !sector) {
         showToast('Preencha todos os campos.', 'error');
+        console.log('Campos de departamento incompletos');
         return;
     }
 
-    if (!validateName(name) || !/^[A-Za-zÀ-ÿ\s]{1,50}$/.test(sector)) {
+    if (!validateName(name) || !validateName(sector)) {
         showToast('Nome ou setor inválido.', 'error');
+        console.log('Validação de departamento falhou');
         return;
     }
 
@@ -582,14 +500,16 @@ const addDepartment = async () => {
         await axios.post(`/api/admin/institutions/${institutionId}/departments`, {
             name,
             sector,
-            branch_id: branchId
+            branch_id: parseInt(branchId)
         });
         showToast('Departamento adicionado com sucesso.', 'success');
         document.querySelector('.modal-content').closest('.fixed').remove();
         loadDepartments();
         loadQueueDepartmentFilter();
+        console.log('Departamento adicionado');
     } catch (error) {
-        showToast(error.response?.data?.error || 'Falha ao adicionar departamento.', 'error');
+        console.error('Erro ao adicionar departamento:', error);
+        showToast('Falha ao adicionar departamento.', 'error');
     } finally {
         toggleLoading(false);
     }
@@ -603,13 +523,15 @@ const addAttendant = async () => {
     const departmentId = document.getElementById('attendant-department')?.value;
     const role = document.getElementById('attendant-role')?.value;
 
-    if (!name || !email || !password || !departmentId) {
+    if (!name || !email || !password || !departmentId || !role) {
         showToast('Preencha todos os campos.', 'error');
+        console.log('Campos de atendente incompletos');
         return;
     }
 
     if (!validateName(name) || !validateEmail(email) || !validatePassword(password)) {
         showToast('Dados inválidos. Verifique nome, email ou senha.', 'error');
+        console.log('Validação de atendente falhou');
         return;
     }
 
@@ -624,28 +546,29 @@ const addAttendant = async () => {
         showToast('Atendente adicionado com sucesso.', 'success');
         document.querySelector('.modal-content').closest('.fixed').remove();
         loadAttendants();
+        console.log('Atendente adicionado');
     } catch (error) {
-        showToast(error.response?.data?.error || 'Falha ao adicionar atendente.', 'error');
+        console.error('Erro ao adicionar atendente:', error);
+        showToast('Falha ao adicionar atendente.', 'error');
     } finally {
         toggleLoading(false);
     }
 };
 
-// Carrega filtro de departamentos para filas
-const loadQueueDepartmentFilter = async () => {
+// Chama próximo ticket
+const callNextTicket = async (queueId) => {
     try {
-        const institutionId = localStorage.getItem('institution_id');
-        const response = await axios.get(`/api/admin/institutions/${institutionId}/departments`);
-        const departments = response.data.departments || [];
-        const queueDepartmentFilter = document.getElementById('queue-department-filter');
-        if (queueDepartmentFilter) {
-            queueDepartmentFilter.innerHTML = '<option value="all">Todos os departamentos</option>' +
-                departments.map(dept => `<option value="${dept.id}">${sanitizeInput(dept.name)}</option>`).join('');
-        }
-        return departments;
+        toggleLoading(true, 'Chamando próximo ticket...');
+        await axios.post(`/api/admin/queue/${queueId}/call`);
+        showToast('Próximo ticket chamado com sucesso.', 'success');
+        loadDashboard();
+        loadQueues();
+        console.log('Ticket chamado:', queueId);
     } catch (error) {
-        showToast(error.response?.data?.error || 'Falha ao carregar departamentos.', 'error');
-        return [];
+        console.error('Erro ao chamar ticket:', error);
+        showToast('Falha ao chamar próximo ticket.', 'error');
+    } finally {
+        toggleLoading(false);
     }
 };
 
@@ -665,9 +588,9 @@ const setupEventListeners = () => {
         sidebarToggle.addEventListener('click', () => {
             sidebar.classList.toggle('w-20');
             sidebar.classList.toggle('md:w-64');
-            document.querySelectorAll('.hidden-md').forEach(el => {
-                el.classList.toggle('hidden');
-            });
+            document.querySelectorAll('.hidden-md').forEach(el => el.classList.toggle('hidden'));
+            showToast('Sidebar alternada', 'success');
+            console.log('Sidebar toggled');
         });
     }
 
@@ -680,10 +603,11 @@ const setupEventListeners = () => {
             clearSensitiveData();
             showToast('Sessão encerrada.', 'success');
             setTimeout(() => window.location.href = '/index.html', 1500);
+            console.log('Logout iniciado');
         });
     }
 
-    // Navegação entre seções
+    // Navegação
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.nav-btn').forEach(b => {
@@ -693,14 +617,14 @@ const setupEventListeners = () => {
             btn.classList.add('active', 'bg-indigo-600');
             btn.classList.remove('hover:bg-indigo-500');
             const sectionId = btn.id.replace('nav-', '') + '-section';
-            document.querySelectorAll('main > div').forEach(section => {
-                section.classList.add('hidden');
-            });
+            document.querySelectorAll('main > div').forEach(section => section.classList.add('hidden'));
             document.getElementById(sectionId)?.classList.remove('hidden');
-            if (sectionId === 'queues-section') loadQueues();
+            if (sectionId === 'dashboard-section') loadDashboard();
+            else if (sectionId === 'queues-section') loadQueues();
             else if (sectionId === 'departments-section') loadDepartments();
             else if (sectionId === 'attendants-section') loadAttendants();
             else if (sectionId === 'schedules-section') loadSchedules();
+            console.log('Navegação para:', sectionId);
         });
     });
 
@@ -709,11 +633,12 @@ const setupEventListeners = () => {
     if (queueFilter) {
         queueFilter.addEventListener('input', () => {
             const filter = sanitizeInput(queueFilter.value.toLowerCase());
-            document.querySelectorAll('#queues-container > div').forEach(card => {
+            document.querySelectorAll('#queues-container .queue-card').forEach(card => {
                 const service = card.querySelector('h3').textContent.toLowerCase();
                 const department = card.querySelector('p:nth-child(3)').textContent.toLowerCase();
                 card.style.display = service.includes(filter) || department.includes(filter) ? '' : 'none';
             });
+            console.log('Filtro de filas aplicado:', filter);
         });
     }
 
@@ -722,10 +647,11 @@ const setupEventListeners = () => {
     if (queueStatusFilter) {
         queueStatusFilter.addEventListener('change', () => {
             const status = queueStatusFilter.value === 'open' ? 'Aberto' : queueStatusFilter.value === 'closed' ? 'Fechado' : 'all';
-            document.querySelectorAll('#queues-container > div').forEach(card => {
+            document.querySelectorAll('#queues-container .queue-card').forEach(card => {
                 const cardStatus = card.querySelector('span').textContent;
                 card.style.display = status === 'all' || cardStatus === status ? '' : 'none';
             });
+            console.log('Filtro de status de filas aplicado:', status);
         });
     }
 
@@ -733,11 +659,12 @@ const setupEventListeners = () => {
     const queueDepartmentFilter = document.getElementById('queue-department-filter');
     if (queueDepartmentFilter) {
         queueDepartmentFilter.addEventListener('change', () => {
-            const dept = queueDepartmentFilter.value;
-            document.querySelectorAll('#queues-container > div').forEach(card => {
-                const cardDept = card.querySelector('p:nth-child(3)').textContent;
-                card.style.display = dept === 'all' || cardDept === dept ? '' : 'none';
+            const deptId = queueDepartmentFilter.value;
+            document.querySelectorAll('#queues-container .queue-card').forEach(card => {
+                const cardDeptId = card.dataset.departmentId || '';
+                card.style.display = deptId === 'all' || cardDeptId === deptId ? '' : 'none';
             });
+            console.log('Filtro de departamento de filas aplicado:', deptId);
         });
     }
 
@@ -746,11 +673,12 @@ const setupEventListeners = () => {
     if (departmentFilter) {
         departmentFilter.addEventListener('input', () => {
             const filter = sanitizeInput(departmentFilter.value.toLowerCase());
-            document.querySelectorAll('#departments-container > div').forEach(card => {
+            document.querySelectorAll('#departments-container .department-card').forEach(card => {
                 const name = card.querySelector('h3').textContent.toLowerCase();
                 const sector = card.querySelector('p:nth-child(2)').textContent.toLowerCase();
                 card.style.display = name.includes(filter) || sector.includes(filter) ? '' : 'none';
             });
+            console.log('Filtro de departamentos aplicado:', filter);
         });
     }
 
@@ -759,11 +687,12 @@ const setupEventListeners = () => {
     if (attendantFilter) {
         attendantFilter.addEventListener('input', () => {
             const filter = sanitizeInput(attendantFilter.value.toLowerCase());
-            document.querySelectorAll('#attendants-container > div').forEach(card => {
+            document.querySelectorAll('#attendants-container .attendant-card').forEach(card => {
                 const name = card.querySelector('h3').textContent.toLowerCase();
                 const email = card.querySelector('p').textContent.toLowerCase();
                 card.style.display = name.includes(filter) || email.includes(filter) ? '' : 'none';
             });
+            console.log('Filtro de atendentes aplicado:', filter);
         });
     }
 
@@ -772,10 +701,11 @@ const setupEventListeners = () => {
     if (attendantRoleFilter) {
         attendantRoleFilter.addEventListener('change', () => {
             const role = attendantRoleFilter.value;
-            document.querySelectorAll('#attendants-container > div').forEach(card => {
+            document.querySelectorAll('#attendants-container .attendant-card').forEach(card => {
                 const cardRole = card.querySelector('p:nth-child(4)').textContent.toLowerCase();
                 card.style.display = role === 'all' || cardRole.includes(role) ? '' : 'none';
             });
+            console.log('Filtro de papéis aplicado:', role);
         });
     }
 
@@ -784,17 +714,21 @@ const setupEventListeners = () => {
     if (scheduleFilter) {
         scheduleFilter.addEventListener('input', () => {
             const filter = sanitizeInput(scheduleFilter.value.toLowerCase());
-            document.querySelectorAll('#schedules-container > div').forEach(card => {
+            document.querySelectorAll('#schedules-container .schedule-card').forEach(card => {
                 const weekday = card.querySelector('h3').textContent.toLowerCase();
                 card.style.display = weekday.includes(filter) ? '' : 'none';
             });
+            console.log('Filtro de horários aplicado:', filter);
         });
     }
 
-    // Atualizar painel
+    // Atualizar dashboard
     const refreshQueues = document.getElementById('refresh-queues');
     if (refreshQueues) {
-        refreshQueues.addEventListener('click', loadDashboard);
+        refreshQueues.addEventListener('click', () => {
+            loadDashboard();
+            console.log('Dashboard atualizado');
+        });
     }
 
     // Adicionar nova fila
@@ -827,10 +761,11 @@ const setupEventListeners = () => {
                     </div>
                 `,
                 [
-                    { label: 'Cancelar', class: 'bg-gray-200 text-gray-800 hover:bg-gray-300' },
-                    { label: 'Adicionar', class: 'bg-indigo-600 text-white hover:bg-indigo-700', onclick: 'addQueue()' }
+                    { label: 'Cancelar', class: 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-4 py-2 rounded-lg' },
+                    { label: 'Adicionar', class: 'bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-lg', onclick: 'addQueue()' }
                 ]
             );
+            console.log('Botão de adicionar fila clicado');
         });
     }
 
@@ -853,10 +788,11 @@ const setupEventListeners = () => {
                     </div>
                 `,
                 [
-                    { label: 'Cancelar', class: 'bg-gray-200 text-gray-800 hover:bg-gray-300' },
-                    { label: 'Adicionar', class: 'bg-indigo-600 text-white hover:bg-indigo-700', onclick: 'addDepartment()' }
+                    { label: 'Cancelar', class: 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-4 py-2 rounded-lg' },
+                    { label: 'Adicionar', class: 'bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-lg', onclick: 'addDepartment()' }
                 ]
             );
+            console.log('Botão de adicionar departamento clicado');
         });
     }
 
@@ -897,90 +833,73 @@ const setupEventListeners = () => {
                     </div>
                 `,
                 [
-                    { label: 'Cancelar', class: 'bg-gray-200 text-gray-800 hover:bg-gray-300' },
-                    { label: 'Adicionar', class: 'bg-indigo-600 text-white hover:bg-indigo-700', onclick: 'addAttendant()' }
+                    { label: 'Cancelar', class: 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-4 py-2 rounded-lg' },
+                    { label: 'Adicionar', class: 'bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-lg', onclick: 'addAttendant()' }
                 ]
             );
+            console.log('Botão de adicionar atendente clicado');
         });
     }
 
-    // Ações em filas
-    const queuesContainer = document.getElementById('queues-container');
-    if (queuesContainer) {
-        queuesContainer.addEventListener('click', async (e) => {
-            if (e.target.classList.contains('call-next-btn')) {
-                const queueId = e.target.dataset.queueId;
-                await callNextTicket(queueId);
-            } else if (e.target.classList.contains('edit-queue-btn')) {
-                showToast('Funcionalidade de edição de fila ainda não implementada.', 'warning');
-            }
-        });
-    }
-
-    // Ações em departamentos
-    const departmentsContainer = document.getElementById('departments-container');
-    if (departmentsContainer) {
-        departmentsContainer.addEventListener('click', async (e) => {
-            if (e.target.classList.contains('delete-department-btn')) {
-                const departmentId = e.target.dataset.departmentId;
-                if (confirm('Tem certeza que deseja excluir este departamento?')) {
-                    try {
-                        toggleLoading(true, 'Excluindo departamento...');
-                        const institutionId = localStorage.getItem('institution_id');
-                        await axios.delete(`/api/admin/institutions/${institutionId}/departments/${departmentId}`);
-                        showToast('Departamento excluído com sucesso.', 'success');
-                        loadDepartments();
-                        loadQueueDepartmentFilter();
-                    } catch (error) {
-                        showToast(error.response?.data?.error || 'Falha ao excluir departamento.', 'error');
-                    } finally {
-                        toggleLoading(false);
-                    }
+    // Ações dinâmicas
+    document.addEventListener('click', async (e) => {
+        if (e.target.classList.contains('call-next-btn')) {
+            const queueId = e.target.dataset.queueId;
+            await callNextTicket(queueId);
+        } else if (e.target.classList.contains('edit-queue-btn')) {
+            showToast('Edição de fila não implementada.', 'warning');
+            console.log('Edição de fila clicada, não implementada');
+        } else if (e.target.classList.contains('edit-department-btn')) {
+            showToast('Edição de departamento não implementada.', 'warning');
+            console.log('Edição de departamento clicada, não implementada');
+        } else if (e.target.classList.contains('delete-department-btn')) {
+            const departmentId = e.target.dataset.departmentId;
+            if (confirm('Tem certeza que deseja excluir este departamento?')) {
+                try {
+                    toggleLoading(true, 'Excluindo departamento...');
+                    const institutionId = localStorage.getItem('institution_id');
+                    await axios.delete(`/api/admin/institutions/${institutionId}/departments/${departmentId}`);
+                    showToast('Departamento excluído com sucesso.', 'success');
+                    loadDepartments();
+                    loadQueueDepartmentFilter();
+                    console.log('Departamento excluído:', departmentId);
+                } catch (error) {
+                    console.error('Erro ao excluir departamento:', error);
+                    showToast('Falha ao excluir departamento.', 'error');
+                } finally {
+                    toggleLoading(false);
                 }
-            } else if (e.target.classList.contains('edit-department-btn')) {
-                showToast('Funcionalidade de edição de departamento ainda não implementada.', 'warning');
             }
-        });
-    }
-
-    // Ações em atendentes
-    const attendantsContainer = document.getElementById('attendants-container');
-    if (attendantsContainer) {
-        attendantsContainer.addEventListener('click', async (e) => {
-            if (e.target.classList.contains('delete-attendant-btn')) {
-                const userId = e.target.dataset.userId;
-                if (confirm('Tem certeza que deseja excluir este atendente?')) {
-                    try {
-                        toggleLoading(true, 'Excluindo atendente...');
-                        const institutionId = localStorage.getItem('institution_id');
-                        await axios.delete(`/api/admin/institutions/${institutionId}/users/${userId}`);
-                        showToast('Atendente excluído com sucesso.', 'success');
-                        loadAttendants();
-                    } catch (error) {
-                        showToast(error.response?.data?.error || 'Falha ao excluir atendente.', 'error');
-                    } finally {
-                        toggleLoading(false);
-                    }
+        } else if (e.target.classList.contains('edit-attendant-btn')) {
+            showToast('Edição de atendente não implementada.', 'warning');
+            console.log('Edição de atendente clicada, não implementada');
+        } else if (e.target.classList.contains('delete-attendant-btn')) {
+            const userId = e.target.dataset.userId;
+            if (confirm('Tem certeza que deseja excluir este atendente?')) {
+                try {
+                    toggleLoading(true, 'Excluindo atendente...');
+                    const institutionId = localStorage.getItem('institution_id');
+                    await axios.delete(`/api/admin/institutions/${institutionId}/users/${userId}`);
+                    showToast('Atendente excluído com sucesso.', 'success');
+                    loadAttendants();
+                    console.log('Atendente excluído:', userId);
+                } catch (error) {
+                    console.error('Erro ao excluir atendente:', error);
+                    showToast('Falha ao excluir atendente.', 'error');
+                } finally {
+                    toggleLoading(false);
                 }
-            } else if (e.target.classList.contains('edit-attendant-btn')) {
-                showToast('Funcionalidade de edição de atendente ainda não implementada.', 'warning');
             }
-        });
-    }
-
-    // Ações em horários
-    const schedulesContainer = document.getElementById('schedules-container');
-    if (schedulesContainer) {
-        schedulesContainer.addEventListener('click', (e) => {
-            if (e.target.classList.contains('edit-schedule-btn')) {
-                showToast('Funcionalidade de edição de horário ainda não implementada.', 'warning');
-            }
-        });
-    }
+        } else if (e.target.classList.contains('edit-schedule-btn')) {
+            showToast('Edição de horário não implementada.', 'warning');
+            console.log('Edição de horário clicada, não implementada');
+        }
+    });
 };
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOMContentLoaded disparado');
     setupAxios();
     updateCurrentDate();
     initializeWebSocket();
@@ -988,4 +907,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadDashboard();
     await loadQueueDepartmentFilter();
     setupEventListeners();
+    showToast('Página carregada com sucesso!', 'success');
 });
