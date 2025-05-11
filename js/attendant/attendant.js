@@ -7,7 +7,7 @@ const sanitizeInput = (input) => {
     if (typeof input !== 'string') return '';
     const div = document.createElement('div');
     div.textContent = input;
-    return div.innerHTML.replace(/</g, '<').replace(/>/g, '>');
+    return div.innerHTML.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 };
 
 // Valida código QR
@@ -54,7 +54,6 @@ const toggleLoading = (show, message = 'Carregando...') => {
 
 // Exibe notificações
 const showToast = (message, type = 'success') => {
-    if (type === 'warning' && message.includes('conexão em tempo real')) return;
     const toastContainer = document.getElementById('toast-container');
     if (!toastContainer) return;
     const toast = document.createElement('div');
@@ -100,19 +99,24 @@ const setupAxios = () => {
         response => response,
         error => {
             if (error.response?.status === 401 || error.response?.status === 403) {
-                clearSensitiveData();
-                window.location.href = '/index.html';
+                showToast('Sessão expirada. Faça login novamente.', 'error');
+                setTimeout(() => {
+                    clearSensitiveData();
+                    if (socket) socket.disconnect();
+                    window.location.href = '/index.html';
+                }, 2000);
             } else if (error.response?.status === 404) {
                 showToast('Recurso não encontrado.', 'warning');
             } else if (error.code === 'ECONNABORTED') {
-                showToast('Tempo de conexão excedido.', 'error');
+                showToast('Tempo de conexão excedido. Verifique sua conexão.', 'error');
             } else if (error.message.includes('Network Error')) {
-                showToast('Falha na conexão com o servidor.', 'error');
+                showToast('Falha na conexão com o servidor. Tentando novamente...', 'error');
             }
             return Promise.reject(error);
         }
     );
 
+    // Configura retry apenas para erros de rede
     axiosRetry(axios, {
         retries: 3,
         retryDelay: (retryCount) => retryCount * 1000,
@@ -127,13 +131,15 @@ const initializeWebSocket = () => {
     const token = getToken();
     if (!token) {
         showToast('Token não encontrado. Faça login novamente.', 'error');
-        window.location.href = '/index.html';
+        setTimeout(() => {
+            window.location.href = '/index.html';
+        }, 2000);
         return;
     }
     try {
         socket = io(`${API_BASE}/dashboard`, {
             transports: ['websocket'],
-            reconnectionAttempts: 10,
+            reconnectionAttempts: 15, // Aumentado para mais tentativas
             reconnectionDelay: 2000,
             query: { 
                 token, 
@@ -146,29 +152,24 @@ const initializeWebSocket = () => {
             socket.emit('join_room', { room: institution_id });
             console.log('WebSocket conectado:', socket.id, 'Room:', institution_id);
             showToast('Conexão em tempo real estabelecida.', 'success');
-            document.querySelector('.animate-pulse.bg-green-400')?.classList.remove('bg-red-500');
+            document.querySelector('.w-3.h-3.bg-green-400.animate-pulse')?.classList.remove('bg-red-500');
         });
         socket.on('connect_error', (error) => {
             console.error('Erro na conexão WebSocket:', error.message);
-            if (error.message.includes('Token expirado') || error.message.includes('Token revogado')) {
-                clearSensitiveData();
-                window.location.href = '/index.html';
-            } else {
-                showToast(`Falha na conexão em tempo real: ${error.message}`, 'error');
-                document.querySelector('.animate-pulse.bg-green-400')?.classList.add('bg-red-500');
-            }
+            showToast('Problema temporário na conexão em tempo real. Tentando reconectar...', 'warning');
+            document.querySelector('.w-3.h-3.bg-green-400.animate-pulse')?.classList.add('bg-red-500');
         });
         socket.on('disconnect', () => {
             console.log('WebSocket desconectado');
-            showToast('Conexão em tempo real perdida.', 'warning');
-            document.querySelector('.animate-pulse.bg-green-400')?.classList.add('bg-red-500');
+            showToast('Conexão em tempo real perdida. Tentando reconectar...', 'warning');
+            document.querySelector('.w-3.h-3.bg-green-400.animate-pulse')?.classList.add('bg-red-500');
         });
         socket.on('ticket_called', debouncedHandleTicketCalled);
         socket.on('ticket_completed', debouncedHandleTicketUpdate);
         socket.on('ticket_recalled', debouncedHandleTicketCalled);
     } catch (err) {
         console.error('Erro ao iniciar WebSocket:', err);
-        showToast('Falha ao iniciar conexão em tempo real.', 'error');
+        showToast('Falha ao iniciar conexão em tempo real. Verifique sua conexão.', 'error');
     }
 };
 
@@ -226,7 +227,8 @@ const fetchUserInfo = async () => {
         localStorage.setItem('user_id', user.id || '');
         document.getElementById('user-name').textContent = sanitizeInput(user.name || 'Atendente');
         document.getElementById('user-email').textContent = sanitizeInput(user.email || 'N/A');
-        document.querySelector('#user-info .bg-indigo-500')?.textContent = (user.name || 'A').slice(0, 2).toUpperCase();
+        const userInitials = (user.name || 'A').slice(0, 2).toUpperCase();
+        document.querySelector('#user-info .bg-indigo-500').textContent = userInitials;
         return user;
     } catch (error) {
         showToast('Não foi possível carregar informações do usuário.', 'warning');
@@ -300,7 +302,7 @@ const updateDashboardMetrics = async () => {
         document.getElementById('called-tickets').textContent = called;
         document.getElementById('completed-tickets').textContent = completed;
     } catch (error) {
-        showToast('Falha ao atualizar métricas.', 'warning');
+        showToast('Falha ao atualizar métricas. Tentando novamente...', 'warning');
     }
 };
 
@@ -510,15 +512,6 @@ const renderTickets = (tickets) => {
                 <p class="text-sm text-gray-600"><span class="font-medium">Emitido em:</span> ${new Date(ticket.issued_at).toLocaleString('pt-BR')}</p>
                 <p class="text-sm text-gray-600"><span class="font-medium">Espera:</span> ${typeof ticket.avg_wait_time === 'number' ? `${ticket.avg_wait_time.toFixed(1)} min` : 'N/A'}</p>
             </div>
-            ${ticket.status === 'Pendente' ? `
-            <div class="mt-4">
-                <button onclick="callNextTicket('${ticket.queue_id}')" class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-md transition-colors" aria-label="Chamar ticket ${ticket.number}">
-                    <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                    Chamar
-                </button>
-            </div>` : ''}
         `;
         fragment.appendChild(div);
     });
@@ -629,6 +622,19 @@ const debouncedRenderQueues = debounce(renderQueues, 500);
 
 // Configura eventos
 const setupEventListeners = () => {
+    // Toggle da sidebar
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+    if (sidebarToggle && sidebar) {
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('w-20');
+            sidebar.classList.toggle('md:w-64');
+            document.querySelectorAll('.hidden.md\\:block').forEach(el => {
+                el.classList.toggle('hidden');
+            });
+        });
+    }
+
     // Logout
     const logoutButton = document.getElementById('logout');
     if (logoutButton) {
@@ -714,8 +720,12 @@ const setupEventListeners = () => {
     // Navegação entre seções
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active', 'bg-indigo-600'));
+            document.querySelectorAll('.nav-btn').forEach(b => {
+                b.classList.remove('active', 'bg-indigo-600');
+                b.classList.add('hover:bg-indigo-500');
+            });
             btn.classList.add('active', 'bg-indigo-600');
+            btn.classList.remove('hover:bg-indigo-500');
             const sectionId = btn.id.replace('nav-', '') + '-section';
             document.querySelectorAll('main > div').forEach(section => {
                 section.classList.add('hidden');
