@@ -126,7 +126,7 @@ const setupAxios = () => {
     });
 };
 
-// Inicializa WebSocket
+
 const initializeWebSocket = () => {
     const token = getToken();
     if (!token) {
@@ -166,6 +166,17 @@ const initializeWebSocket = () => {
                 console.log('Tickets recebidos:', tickets);
             }).catch(err => {
                 console.error('Erro ao buscar tickets:', err);
+            });
+            renderNextQueue();
+            renderQueues();
+            updateDashboardMetrics();
+        });
+        socket.on('ticket_completed', () => {
+            console.log('Evento ticket_completed recebido, atualizando tickets');
+            fetchTickets().then(tickets => {
+                console.log('Tickets atualizados:', tickets);
+            }).catch(err => {
+                console.error('Erro ao atualizar tickets:', err);
             });
             renderNextQueue();
             renderQueues();
