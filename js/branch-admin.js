@@ -1,3 +1,4 @@
+// js/branch-admin.js
 document.addEventListener('DOMContentLoaded', () => {
     const userRole = localStorage.getItem('userRole');
 
@@ -113,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const switchSection = (sectionId) => {
-        Object.values(sections).forEach(section => section.classList.add('hidden'));
+        Object.values(sections).forEach(section => section?.classList.add('hidden'));
         if (sections[sectionId]) {
             sections[sectionId].classList.remove('hidden');
         }
@@ -169,7 +170,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (userName && userEmailElement && userInfo) {
             userName.textContent = storedEmail;
             userEmailElement.textContent = storedEmail;
-            userInfo.querySelector('.w-8').textContent = storedEmail.split('@')[0].slice(0, 2).toUpperCase();
+            const initialsElement = userInfo.querySelector('.w-8');
+            if (initialsElement) {
+                initialsElement.textContent = storedEmail.split('@')[0].slice(0, 2).toUpperCase();
+            }
         }
         return { email: storedEmail };
     };
@@ -209,9 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 `).join('');
             }
         } catch (error) {
-            if (!handleApiError(error)) {
-                // Tratar outros erros, se necessário
-            }
+            handleApiError(error);
         } finally {
             hideLoading();
         }
@@ -223,10 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const token = localStorage.getItem('adminToken');
             const response = await axios.get(`${API_BASE_URL}/queues`, {
                 headers: { Authorization: `Bearer ${token}` },
-                params: {
-                    page: 1,
-                    per_page: 20
-                }
+                params: { page: 1, per_page: 20 }
             });
             const queues = response.data.queues || [];
             if (queuesContainer) {
@@ -248,9 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 `).join('');
             }
         } catch (error) {
-            if (!handleApiError(error)) {
-                // Tratar outros erros, se necessário
-            }
+            handleApiError(error);
         } finally {
             hideLoading();
         }
@@ -279,9 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 `).join('');
             }
         } catch (error) {
-            if (!handleApiError(error)) {
-                // Tratar outros erros, se necessário
-            }
+            handleApiError(error);
         } finally {
             hideLoading();
         }
@@ -318,9 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 `).join('');
             }
         } catch (error) {
-            if (!handleApiError(error)) {
-                // Tratar outros erros, se necessário
-            }
+            handleApiError(error);
         } finally {
             hideLoading();
         }
@@ -346,9 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 `).join('');
             }
         } catch (error) {
-            if (!handleApiError(error)) {
-                // Tratar outros erros, se necessário
-            }
+            handleApiError(error);
         } finally {
             hideLoading();
         }
@@ -366,9 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     departments.map(dept => `<option value="${dept.id}">${dept.name || 'N/A'}</option>`).join('');
             }
         } catch (error) {
-            if (!handleApiError(error)) {
-                // Tratar outros erros, se necessário
-            }
+            handleApiError(error);
         }
     };
 
@@ -423,7 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (queueFilter) {
         queueFilter.addEventListener('input', () => {
             const filter = queueFilter.value.toLowerCase();
-            const cards = queuesContainer.querySelectorAll('.queue-card');
+            const cards = queuesContainer?.querySelectorAll('.queue-card') || [];
             cards.forEach(card => {
                 const service = card.querySelector('h3')?.textContent.toLowerCase() || '';
                 const department = card.querySelector('p:nth-child(3)')?.textContent.toLowerCase() || '';
@@ -435,7 +424,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (queueStatusFilter) {
         queueStatusFilter.addEventListener('change', () => {
             const status = queueStatusFilter.value;
-            const cards = queuesContainer.querySelectorAll('.queue-card');
+            const cards = queuesContainer?.querySelectorAll('.queue-card') || [];
             cards.forEach(card => {
                 const cardStatus = card.querySelector('span')?.textContent || '';
                 card.style.display = (status === 'all' || (status === 'open' && cardStatus === 'Aberto') || (status === 'closed' && cardStatus === 'Fechado')) ? '' : 'none';
@@ -446,7 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (queueDepartmentFilter) {
         queueDepartmentFilter.addEventListener('change', () => {
             const deptId = queueDepartmentFilter.value;
-            const cards = queuesContainer.querySelectorAll('.queue-card');
+            const cards = queuesContainer?.querySelectorAll('.queue-card') || [];
             cards.forEach(card => {
                 const cardDept = card.querySelector('p:nth-child(3)')?.textContent || '';
                 card.style.display = (deptId === 'all' || cardDept.includes(queueDepartmentFilter.selectedOptions[0]?.text)) ? '' : 'none';
@@ -457,7 +446,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (departmentFilter) {
         departmentFilter.addEventListener('input', () => {
             const filter = departmentFilter.value.toLowerCase();
-            const cards = departmentsContainer.querySelectorAll('.department-card');
+            const cards = departmentsContainer?.querySelectorAll('.department-card') || [];
             cards.forEach(card => {
                 const name = card.querySelector('h3')?.textContent.toLowerCase() || '';
                 const sector = card.querySelector('p:nth-child(2)')?.textContent.toLowerCase() || '';
@@ -469,7 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (attendantFilter) {
         attendantFilter.addEventListener('input', () => {
             const filter = attendantFilter.value.toLowerCase();
-            const cards = attendantsContainer.querySelectorAll('.attendant-card');
+            const cards = attendantsContainer?.querySelectorAll('.attendant-card') || [];
             cards.forEach(card => {
                 const name = card.querySelector('h3')?.textContent.toLowerCase() || '';
                 const email = card.querySelector('p')?.textContent.toLowerCase() || '';
@@ -481,10 +470,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (attendantRoleFilter) {
         attendantRoleFilter.addEventListener('change', () => {
             const role = attendantRoleFilter.value;
-            const cards = attendantsContainer.querySelectorAll('.attendant-card');
+            const cards = attendantsContainer?.querySelectorAll('.attendant-card') || [];
             cards.forEach(card => {
                 const cardRole = card.querySelector('p:nth-child(3)')?.textContent.toLowerCase() || '';
-                card.style.display = (role === 'all' || cardRole.includes(role)) ? '' : 'none';
+                card.style.display = (role === 'all' || cardRole.includes(role.toLowerCase())) ? '' : 'none';
             });
         });
     }
@@ -492,7 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (scheduleFilter) {
         scheduleFilter.addEventListener('input', () => {
             const filter = scheduleFilter.value.toLowerCase();
-            const cards = schedulesContainer.querySelectorAll('.schedule-card');
+            const cards = schedulesContainer?.querySelectorAll('.schedule-card') || [];
             cards.forEach(card => {
                 const weekday = card.querySelector('h3')?.textContent.toLowerCase() || '';
                 card.style.display = weekday.includes(filter) ? '' : 'none';
@@ -553,15 +542,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 service_id: service, // Ajustar conforme a API
                 prefix,
                 daily_limit: parseInt(limit),
-                department_id: departmentId
+                department_id: parseInt(departmentId)
             }, { headers: { Authorization: `Bearer ${token}` } });
             document.querySelector('.modal-content')?.closest('.fixed')?.remove();
             showToast('Fila adicionada com sucesso');
             loadQueues();
         } catch (error) {
-            if (!handleApiError(error)) {
-                // Tratar outros erros, se necessário
-            }
+            handleApiError(error);
         } finally {
             hideLoading();
         }
@@ -611,16 +598,14 @@ document.addEventListener('DOMContentLoaded', () => {
             await axios.post(`${API_BASE_URL}/institutions/1/departments`, {
                 name,
                 sector,
-                branch_id: localStorage.getItem('branch_id') || 1 // Ajustar conforme necessário
+                branch_id: localStorage.getItem('branch_id') || 1
             }, { headers: { Authorization: `Bearer ${token}` } });
             document.querySelector('.modal-content')?.closest('.fixed')?.remove();
             showToast('Departamento adicionado com sucesso');
             loadDepartments();
             loadDepartmentsFilter();
         } catch (error) {
-            if (!handleApiError(error)) {
-                // Tratar outros erros, se necessário
-            }
+            handleApiError(error);
         } finally {
             hideLoading();
         }
@@ -698,9 +683,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Atendente adicionado com sucesso');
             loadAttendants();
         } catch (error) {
-            if (!handleApiError(error)) {
-                // Tratar outros erros, se necessário
-            }
+            handleApiError(error);
         } finally {
             hideLoading();
         }
@@ -720,16 +703,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     loadDashboard();
                     loadQueues();
                 } catch (error) {
-                    if (!handleApiError(error)) {
-                        // Tratar outros erros, se necessário
-                    }
+                    handleApiError(error);
                 } finally {
                     hideLoading();
                 }
             } else if (e.target.classList.contains('edit-queue-btn')) {
-                const queueId = e.target.dataset.queueId;
-                // Implementar lógica de edição (exemplo abaixo)
-                showToast('Funcionalidade de edição de fila ainda não implementada', 'warning');
+                showToast('Funcionalidade de edição de fila não implementada', 'warning');
             }
         });
     }
@@ -749,17 +728,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         loadDepartments();
                         loadDepartmentsFilter();
                     } catch (error) {
-                        if (!handleApiError(error)) {
-                            // Tratar outros erros, se necessário
-                        }
+                        handleApiError(error);
                     } finally {
                         hideLoading();
                     }
                 }
             } else if (e.target.classList.contains('edit-department-btn')) {
-                const departmentId = e.target.dataset.departmentId;
-                // Implementar lógica de edição (exemplo abaixo)
-                showToast('Funcionalidade de edição de departamento ainda não implementada', 'warning');
+                showToast('Funcionalidade de edição de departamento não implementada', 'warning');
             }
         });
     }
@@ -778,17 +753,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         showToast('Atendente excluído com sucesso');
                         loadAttendants();
                     } catch (error) {
-                        if (!handleApiError(error)) {
-                            // Tratar outros erros, se necessário
-                        }
+                        handleApiError(error);
                     } finally {
                         hideLoading();
                     }
                 }
             } else if (e.target.classList.contains('edit-attendant-btn')) {
-                const userId = e.target.dataset.userId;
-                // Implementar lógica de edição (exemplo abaixo)
-                showToast('Funcionalidade de edição de atendente ainda não implementada', 'warning');
+                showToast('Funcionalidade de edição de atendente não implementada', 'warning');
             }
         });
     }
@@ -796,9 +767,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (schedulesContainer) {
         schedulesContainer.addEventListener('click', async (e) => {
             if (e.target.classList.contains('edit-schedule-btn')) {
-                const scheduleId = e.target.dataset.scheduleId;
-                // Implementar lógica de edição (exemplo abaixo)
-                showToast('Funcionalidade de edição de horário ainda não implementada', 'warning');
+                showToast('Funcionalidade de edição de horário não implementada', 'warning');
             }
         });
     }
