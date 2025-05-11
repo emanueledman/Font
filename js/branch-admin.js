@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             showToast('Erro ao carregar informações do usuário', 'error');
             console.error('Error fetching user info:', error);
-            setTimeout(() => window.location.href = '/login.html', 2000);
+            setTimeout(() => window.location.href = '/index.html', 2000);
         } finally {
             hideLoading();
         }
@@ -346,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     logoutBtn.addEventListener('click', () => {
         localStorage.removeItem('authToken');
-        window.location.href = '/login.html';
+        window.location.href = '/index.html';
     });
 
     refreshQueues.addEventListener('click', loadDashboard);
