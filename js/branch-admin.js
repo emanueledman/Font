@@ -111,12 +111,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const userRole = localStorage.getItem('userRole');
         const storedEmail = localStorage.getItem('email') || 'admin@queue.com'; // Fallback
 
-        if (!token || userRole !== 'branch_admin') {
-            showToast('Acesso não autorizado. Faça login novamente.', 'error');
-            localStorage.clear();
-            setTimeout(() => window.location.href = '/index.html', 2000);
-            return null;
-        }
 
         userName.textContent = storedEmail;
         userEmailElement.textContent = storedEmail;
