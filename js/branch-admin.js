@@ -3,9 +3,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const socket = io('https://fila-facilita2-0-4uzw.onrender.com/admin', { 
         auth: { token: localStorage.getItem('adminToken') } 
     });
-    let currentUser = null;
-    let institutionId = null;
-    let branchId = null;
+    let institutionId = localStorage.getItem('institution_id');
+    let branchId = localStorage.getItem('branch_id');
+    let userEmail = localStorage.getItem('email');
 
     // DOM Elements
     const sidebar = document.getElementById('sidebar');
@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const userInfo = document.getElementById('user-info');
     const userName = document.getElementById('user-name');
-    const userEmail = document.getElementById('user-email');
+    const userEmailElement = document.getElementById('user-email');
     const logoutBtn = document.getElementById('logout');
     const currentDate = document.getElementById('current-date');
     const connectionStatus = document.getElementById('connection-status');
@@ -108,38 +108,29 @@ document.addEventListener('DOMContentLoaded', () => {
                /[0-9]/.test(password);
     };
 
-    // API Calls
-    const fetchUserInfo = async () => {
-        try {
-            showLoading('Carregando informações do usuário...');
-            const token = localStorage.getItem('adminToken');
-            if (!token) {
-                throw new Error('No token found');
-            }
-            const response = await axios.get('https://fila-facilita2-0-4uzw.onrender.com/api/auth/verify-token', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            currentUser = response.data;
-            institutionId = currentUser.institution_id;
-            branchId = currentUser.branch_id;
-            userName.textContent = currentUser.email; // Backend não retorna 'name', usando email
-            userEmail.textContent = currentUser.email;
-            userInfo.querySelector('.w-8').textContent = currentUser.email.split('@')[0].slice(0, 2).toUpperCase();
-            await Promise.all([
-                loadDashboard(),
-                loadDepartmentsFilter()
-            ]);
-        } catch (error) {
-            showToast('Erro ao carregar informações do usuário', 'error');
-            console.error('Error fetching user info:', error);
-            localStorage.removeItem('adminToken');
-            localStorage.removeItem('userRole');
+    // Initialize User Info
+    const initUserInfo = () => {
+        const token = localStorage.getItem('adminToken');
+        const userRole = localStorage.getItem('userRole');
+        if (!token || !userRole || !institutionId || !branchId || !userEmail) {
+            showToast('Sessão inválida. Faça login novamente.', 'error');
+            localStorage.clear();
             setTimeout(() => window.location.href = '/index.html', 2000);
-        } finally {
-            hideLoading();
+            return false;
         }
+        if (userRole !== 'branch_admin') {
+            showToast('Acesso não autorizado.', 'error');
+            localStorage.clear();
+            setTimeout(() => window.location.href = '/index.html', 2000);
+            return false;
+        }
+        userName.textContent = userEmail;
+        userEmailElement.textContent = userEmail;
+        userInfo.querySelector('.w-8').textContent = userEmail.split('@')[0].slice(0, 2).toUpperCase();
+        return true;
     };
 
+    // API Calls
     const loadDashboard = async () => {
         try {
             showLoading('Carregando dados do painel...');
@@ -182,6 +173,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             showToast('Erro ao carregar dados do painel', 'error');
             console.error('Error loading dashboard:', error);
+            if (error.response && error.response.status === 401) {
+                showToast('Sessão expirada. Faça login novamente.', 'error');
+                localStorage.clear();
+                setTimeout(() => window.location.href = '/index.html', 2000);
+            }
         } finally {
             hideLoading();
         }
@@ -218,6 +214,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             showToast('Erro ao carregar filas', 'error');
             console.error('Error loading queues:', error);
+            if (error.response && error.response.status === 401) {
+                showToast('Sessão expirada. Faça login novamente.', 'error');
+                localStorage.clear();
+                setTimeout(() => window.location.href = '/index.html', 2000);
+            }
         } finally {
             hideLoading();
         }
@@ -245,6 +246,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             showToast('Erro ao carregar departamentos', 'error');
             console.error('Error loading departments:', error);
+            if (error.response && error.response.status === 401) {
+                showToast('Sessão expirada. Faça login novamente.', 'error');
+                localStorage.clear();
+                setTimeout(() => window.location.href = '/index.html', 2000);
+            }
         } finally {
             hideLoading();
         }
@@ -280,6 +286,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             showToast('Erro ao carregar atendentes', 'error');
             console.error('Error loading attendants:', error);
+            if (error.response && error.response.status === 401) {
+                showToast('Sessão expirada. Faça login novamente.', 'error');
+                localStorage.clear();
+                setTimeout(() => window.location.href = '/index.html', 2000);
+            }
         } finally {
             hideLoading();
         }
@@ -305,6 +316,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             showToast('Erro ao carregar horários', 'error');
             console.error('Error loading schedules:', error);
+            if (error.response && error.response.status === 401) {
+                showToast('Sessão expirada. Faça login novamente.', 'error');
+                localStorage.clear();
+                setTimeout(() => window.location.href = '/index.html', 2000);
+            }
         } finally {
             hideLoading();
         }
@@ -320,6 +336,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 response.data.departments.map(dept => `<option value="${dept.id}">${dept.name}</option>`).join('');
         } catch (error) {
             console.error('Error loading departments filter:', error);
+            if (error.response && error.response.status === 401) {
+                showToast('Sessão expirada. Faça login novamente.', 'error');
+                localStorage.clear();
+                setTimeout(() => window.location.href = '/index.html', 2000);
+            }
         }
     };
 
@@ -359,8 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     logoutBtn.addEventListener('click', () => {
-        localStorage.removeItem('adminToken');
-        localStorage.removeItem('userRole');
+        localStorage.clear();
         window.location.href = '/index.html';
     });
 
@@ -491,6 +511,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             showToast('Erro ao adicionar fila', 'error');
             console.error('Error adding queue:', error);
+            if (error.response && error.response.status === 401) {
+                showToast('Sessão expirada. Faça login novamente.', 'error');
+                localStorage.clear();
+                setTimeout(() => window.location.href = '/index.html', 2000);
+            }
         } finally {
             hideLoading();
         }
@@ -547,6 +572,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             showToast('Erro ao adicionar departamento', 'error');
             console.error('Error adding department:', error);
+            if (error.response && error.response.status === 401) {
+                showToast('Sessão expirada. Faça login novamente.', 'error');
+                localStorage.clear();
+                setTimeout(() => window.location.href = '/index.html', 2000);
+            }
         } finally {
             hideLoading();
         }
@@ -624,6 +654,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             showToast('Erro ao adicionar atendente', 'error');
             console.error('Error adding attendant:', error);
+            if (error.response && error.response.status === 401) {
+                showToast('Sessão expirada. Faça login novamente.', 'error');
+                localStorage.clear();
+                setTimeout(() => window.location.href = '/index.html', 2000);
+            }
         } finally {
             hideLoading();
         }
@@ -644,6 +679,11 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 showToast('Erro ao chamar próximo ticket', 'error');
                 console.error('Error calling next ticket:', error);
+                if (error.response && error.response.status === 401) {
+                    showToast('Sessão expirada. Faça login novamente.', 'error');
+                    localStorage.clear();
+                    setTimeout(() => window.location.href = '/index.html', 2000);
+                }
             } finally {
                 hideLoading();
             }
@@ -666,6 +706,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (error) {
                     showToast('Erro ao excluir departamento', 'error');
                     console.error('Error deleting department:', error);
+                    if (error.response && error.response.status === 401) {
+                        showToast('Sessão expirada. Faça login novamente.', 'error');
+                        localStorage.clear();
+                        setTimeout(() => window.location.href = '/index.html', 2000);
+                    }
                 } finally {
                     hideLoading();
                 }
@@ -688,6 +733,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (error) {
                     showToast('Erro ao excluir atendente', 'error');
                     console.error('Error deleting attendant:', error);
+                    if (error.response && error.response.status === 401) {
+                        showToast('Sessão expirada. Faça login novamente.', 'error');
+                        localStorage.clear();
+                        setTimeout(() => window.location.href = '/index.html', 2000);
+                    }
                 } finally {
                     hideLoading();
                 }
@@ -725,5 +775,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize
     currentDate.textContent = formatDate(new Date());
-    fetchUserInfo();
+    if (initUserInfo()) {
+        loadDashboard();
+        loadDepartmentsFilter();
+    }
 });
