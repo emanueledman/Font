@@ -1,4 +1,6 @@
 // Configurar interceptor do Axios
+const API_BASE = 'https://fila-facilita2-0-4uzw.onrender.com';
+
 axios.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
@@ -41,14 +43,14 @@ class AuthManager {
 
     async handleLogout() {
         try {
-            await axios.post('/api/auth/logout');
+            await axios.post(`${API_BASE}/api/auth/logout`);
             localStorage.removeItem('adminToken');
             sessionStorage.removeItem('adminToken');
             localStorage.removeItem('userRole');
             sessionStorage.removeItem('userRole');
             localStorage.removeItem('email');
             sessionStorage.removeItem('email');
-            localStorage.removeItem('branchId'); // Clear branchId
+            localStorage.removeItem('branchId');
             sessionStorage.removeItem('branchId');
             window.location.href = '/index.html';
         } catch (error) {
@@ -115,11 +117,6 @@ class QueueManager {
     }
 
     async loadQueues() {
-        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-        if (!branchId) {
-            Utils.showToast('ID da filial não encontrado. Faça login novamente.', 'error');
-            return;
-        }
         const container = document.getElementById('queues-container');
         const loading = document.getElementById('queues-loading');
         
@@ -127,8 +124,8 @@ class QueueManager {
         loading.classList.remove('hidden');
         
         try {
-            const response = await axios.get(`/api/branch_admin/branches/${branchId}/queues?page=${this.currentPage}&per_page=${this.perPage}`);
-            this.queues = response.data;
+            const response = await axios.get(`${API_BASE}/api/queues?page=${this.currentPage}&per_page=${this.perPage}`);
+            this.queues = response.data.queues;
             
             loading.classList.add('hidden');
             
@@ -137,14 +134,14 @@ class QueueManager {
                 queueCard.className = 'bg-white rounded-xl shadow-lg p-6 border border-gray-100';
                 queueCard.innerHTML = `
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-semibold">${queue.service_name}</h3>
-                        <span class="px-2 py-1 text-xs font-medium rounded-full ${queue.status === 'Aberto' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
-                            ${queue.status}
+                        <h3 class="text-lg font-semibold">${queue.service}</h3>
+                        <span class="px-2 py-1 text-xs font-medium rounded-full ${queue.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                            ${queue.status === 'active' ? 'Ativa' : 'Inativa'}
                         </span>
                     </div>
                     <p class="text-sm text-gray-500 mb-2">Prefixo: ${queue.prefix}</p>
-                    <p class="text-sm text-gray-500 mb-2">Tickets pendentes: ${queue.active_tickets}</p>
-                    <p class="text-sm text-gray-500 mb-4">Horário: ${queue.open_time || 'N/A'} - ${queue.close_time || 'N/A'}</p>
+                    <p class="text-sm text-gray-500 mb-2">Tickets pendentes: ${queue.pending_tickets}</p>
+                    <p class="text-sm text-gray-500 mb-4">Horário: ${queue.open_time} - ${queue.close_time}</p>
                     <div class="flex space-x-2">
                         <button class="edit-queue-btn px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm" data-id="${queue.id}">Editar</button>
                         <button class="delete-queue-btn px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm" data-id="${queue.id}">Excluir</button>
@@ -153,7 +150,7 @@ class QueueManager {
                 container.appendChild(queueCard);
             });
 
-            this.updatePagination(response.data.length); // Adjust based on backend response
+            this.updatePagination(response.data.total);
             this.setupQueueActions();
         } catch (error) {
             console.error('Failed to load queues:', error);
@@ -181,17 +178,16 @@ class QueueManager {
         if (queueId) {
             title.textContent = 'Editar Fila';
             const queue = this.queues.find(q => q.id === queueId);
-            form.service.value = queue.service_name;
+            form.service.value = queue.service;
             form.prefix.value = queue.prefix;
             form.daily_limit.value = queue.daily_limit;
-            form.open_time.value = queue.open_time || '';
-            form.close_time.value = queue.close_time || '';
+            form.open_time.value = queue.open_time;
+            form.close_time.value = queue.close_time;
             form.num_counters.value = queue.num_counters;
             form.queue_description.value = queue.description || '';
             form.queue_id.value = queue.id;
             
-            // Adjust working days based on backend response
-            (queue.working_days || []).forEach(day => {
+            queue.working_days.forEach(day => {
                 form.querySelector(`input[name="working_days"][value="${day}"]`).checked = true;
             });
         } else {
@@ -215,16 +211,10 @@ class QueueManager {
     }
 
     async saveQueue() {
-        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-        if (!branchId) {
-            Utils.showToast('ID da filial não encontrado. Faça login novamente.', 'error');
-            return;
-        }
         const form = document.getElementById('queue-form');
         const data = {
             id: form.queue_id.value,
-            department_id: form.department_id?.value || '', // Adjust based on form
-            service_id: form.service_id?.value || '', // Adjust based on form
+            service: form.service.value,
             prefix: form.prefix.value,
             daily_limit: parseInt(form.daily_limit.value),
             open_time: form.open_time.value,
@@ -236,7 +226,7 @@ class QueueManager {
 
         try {
             Utils.showLoading(true, 'Salvando fila...');
-            const response = await axios.post(`/api/branch_admin/branches/${branchId}/queues`, data);
+            const response = await axios.post(`${API_BASE}/api/queues`, data);
             Utils.showLoading(false);
             
             document.getElementById('queue-modal').classList.add('hidden');
@@ -250,16 +240,11 @@ class QueueManager {
     }
 
     async deleteQueue(queueId) {
-        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-        if (!branchId) {
-            Utils.showToast('ID da filial não encontrado. Faça login novamente.', 'error');
-            return;
-        }
         if (!confirm('Tem certeza que deseja excluir esta fila?')) return;
 
         try {
             Utils.showLoading(true, 'Excluindo fila...');
-            await axios.delete(`/api/branch_admin/branches/${branchId}/queues/${queueId}`);
+            await axios.delete(`${API_BASE}/api/queues/${queueId}`);
             Utils.showLoading(false);
             Utils.showToast('Fila excluída com sucesso', 'success');
             this.loadQueues();
@@ -309,11 +294,6 @@ class TicketManager {
     }
 
     async loadTickets() {
-        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-        if (!branchId) {
-            Utils.showToast('ID da filial não encontrado. Faça login novamente.', 'error');
-            return;
-        }
         const container = document.getElementById('tickets-container');
         const loading = document.getElementById('tickets-loading');
         
@@ -321,8 +301,8 @@ class TicketManager {
         loading.classList.remove('hidden');
         
         try {
-            const response = await axios.get(`/api/branch_admin/branches/${branchId}/tickets?page=${this.currentPage}&per_page=${this.perPage}`);
-            this.tickets = response.data;
+            const response = await axios.get(`${API_BASE}/api/tickets?page=${this.currentPage}&per_page=${this.perPage}`);
+            this.tickets = response.data.tickets;
             
             loading.classList.add('hidden');
             
@@ -331,13 +311,13 @@ class TicketManager {
                 ticketCard.className = 'bg-white rounded-xl shadow-lg p-6 border border-gray-100';
                 ticketCard.innerHTML = `
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-semibold">${ticket.ticket_number}</h3>
+                        <h3 class="text-lg font-semibold">${ticket.number}</h3>
                         <span class="px-2 py-1 text-xs font-medium rounded-full ${this.getStatusColor(ticket.status)}">
                             ${ticket.status}
                         </span>
                     </div>
-                    <p class="text-sm text-gray-500 mb-2">Fila: ${ticket.queue_prefix}</p>
-                    <p class="text-sm text-gray-500 mb-2">Criado: ${Utils.formatDate(ticket.issued_at)}</p>
+                    <p class="text-sm text-gray-500 mb-2">Fila: ${ticket.queue_name}</p>
+                    <p class="text-sm text-gray-500 mb-2">Criado: ${Utils.formatDate(ticket.created_at)}</p>
                     <p class="text-sm text-gray-500 mb-4">Prioridade: ${ticket.priority}</p>
                     <div class="flex space-x-2">
                         <button class="edit-ticket-btn px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm" data-id="${ticket.id}">Editar</button>
@@ -347,7 +327,7 @@ class TicketManager {
                 container.appendChild(ticketCard);
             });
 
-            this.updatePagination(response.data.length);
+            this.updatePagination(response.data.total);
             this.setupTicketActions();
         } catch (error) {
             console.error('Failed to load tickets:', error);
@@ -359,7 +339,7 @@ class TicketManager {
         switch (status.toLowerCase()) {
             case 'pendente': return 'bg-yellow-100 text-yellow-800';
             case 'chamado': return 'bg-blue-100 text-blue-800';
-            case 'atendido': return 'bg-green-100 text-green-800';
+            case 'finalizado': return 'bg-green-100 text-green-800';
             case 'cancelado': return 'bg-red-100 text-red-800';
             default: return 'bg-gray-100 text-gray-800';
         }
@@ -403,11 +383,6 @@ class TicketManager {
     }
 
     async saveTicket() {
-        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-        if (!branchId) {
-            Utils.showToast('ID da filial não encontrado. Faça login novamente.', 'error');
-            return;
-        }
         const form = document.getElementById('ticket-form');
         const data = {
             queue_id: form['ticket-queue'].value,
@@ -417,7 +392,7 @@ class TicketManager {
 
         try {
             Utils.showLoading(true, 'Gerando ticket...');
-            const response = await axios.post(`/api/branch_admin/branches/${branchId}/tickets`, data);
+            const response = await axios.post(`${API_BASE}/api/tickets`, data);
             Utils.showLoading(false);
             
             document.getElementById('ticket-modal').classList.add('hidden');
@@ -431,16 +406,11 @@ class TicketManager {
     }
 
     async deleteTicket(ticketId) {
-        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-        if (!branchId) {
-            Utils.showToast('ID da filial não encontrado. Faça login novamente.', 'error');
-            return;
-        }
         if (!confirm('Tem certeza que deseja excluir este ticket?')) return;
 
         try {
             Utils.showLoading(true, 'Excluindo ticket...');
-            await axios.delete(`/api/branch_admin/branches/${branchId}/tickets/${ticketId}`);
+            await axios.delete(`${API_BASE}/api/tickets/${ticketId}`);
             Utils.showLoading(false);
             Utils.showToast('Ticket excluído com sucesso', 'success');
             this.loadTickets();
@@ -468,17 +438,12 @@ class TicketManager {
     }
 
     async validateQR() {
-        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-        if (!branchId) {
-            Utils.showToast('ID da filial não encontrado. Faça login novamente.', 'error');
-            return;
-        }
         const form = document.getElementById('qr-form');
         const qrCode = form.qr_code.value;
 
         try {
             Utils.showLoading(true, 'Validando QR Code...');
-            const response = await axios.post(`/api/branch_admin/branches/${branchId}/tickets/validate-qr`, { qr_code: qrCode });
+            const response = await axios.post(`${API_BASE}/api/tickets/validate-qr`, { qr_code: qrCode });
             Utils.showLoading(false);
             
             document.getElementById('qr-modal').classList.add('hidden');
@@ -527,11 +492,6 @@ class ReportManager {
     }
 
     async generateReport() {
-        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-        if (!branchId) {
-            Utils.showToast('ID da filial não encontrado. Faça login novamente.', 'error');
-            return;
-        }
         const period = document.getElementById('report-period').value;
         const type = document.getElementById('report-type').value;
         const queue = document.getElementById('report-queue').value;
@@ -551,7 +511,7 @@ class ReportManager {
 
         try {
             Utils.showLoading(true, 'Gerando relatório...');
-            const response = await axios.get(`/api/branch_admin/branches/${branchId}/report?${params}`);
+            const response = await axios.get(`${API_BASE}/api/reports?${params}`);
             Utils.showLoading(false);
             
             this.renderReport(response.data);
@@ -567,17 +527,17 @@ class ReportManager {
         const container = document.getElementById('report-results');
         container.innerHTML = `
             <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-                <h3 class="text-xl font-semibold mb-4">${data.title || 'Relatório'}</h3>
+                <h3 class="text-xl font-semibold mb-4">${data.title}</h3>
                 <div class="h-96">
                     <canvas id="report-chart"></canvas>
                 </div>
                 <div class="mt-6">
                     <h4 class="text-lg font-semibold mb-2">Resumo</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        ${data.map(item => `
+                        ${data.summary.map(item => `
                             <div class="p-4 bg-gray-50 rounded-lg">
-                                <p class="text-sm text-gray-500">${item.service_name}</p>
-                                <p class="text-lg font-semibold">${item.attended} atendidos</p>
+                                <p class="text-sm text-gray-500">${item.label}</p>
+                                <p class="text-lg font-semibold">${item.value}</p>
                             </div>
                         `).join('')}
                     </div>
@@ -585,7 +545,7 @@ class ReportManager {
             </div>
         `;
 
-        this.initChart(data);
+        this.initChart(data.chart_data);
     }
 
     initChart(data) {
@@ -595,10 +555,10 @@ class ReportManager {
         this.chart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: data.map(item => item.service_name),
+                labels: data.labels,
                 datasets: [{
                     label: 'Desempenho',
-                    data: data.map(item => item.attended),
+                    data: data.values,
                     borderColor: '#3B82F6',
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     fill: true
@@ -624,32 +584,26 @@ class SettingsManager {
     }
 
     async loadSettings() {
-        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-        if (!branchId) {
-            Utils.showToast('ID da filial não encontrado. Faça login novamente.', 'error');
-            return;
-        }
         try {
-            const response = await axios.get(`/api/branch_admin/branches/${branchId}/schedules`);
-            this.settings = { schedules: response.data };
+            const response = await axios.get(`${API_BASE}/api/settings`);
+            this.settings = response.data;
             
-            // Update settings form (adjust based on backend response)
-            document.getElementById('dept-name').value = this.settings.department?.name || '';
-            document.getElementById('dept-id').value = this.settings.department?.id || '';
-            document.getElementById('dept-description').value = this.settings.department?.description || '';
-            document.getElementById('dept-email').value = this.settings.department?.email || '';
-            document.getElementById('dept-phone').value = this.settings.department?.phone || '';
-            document.getElementById('dept-location').value = this.settings.department?.location || '';
+            document.getElementById('dept-name').value = this.settings.department.name;
+            document.getElementById('dept-id').value = this.settings.department.id;
+            document.getElementById('dept-description').value = this.settings.department.description || '';
+            document.getElementById('dept-email').value = this.settings.department.email || '';
+            document.getElementById('dept-phone').value = this.settings.department.phone || '';
+            document.getElementById('dept-location').value = this.settings.department.location || '';
             
-            document.getElementById('theme-select').value = this.settings.display?.theme || 'light';
-            document.getElementById('density-select').value = this.settings.display?.density || 'normal';
-            document.getElementById('notifications-toggle').checked = this.settings.notifications?.panel || false;
-            document.getElementById('email-notifications-toggle').checked = this.settings.notifications?.email || false;
+            document.getElementById('theme-select').value = this.settings.display.theme;
+            document.getElementById('density-select').value = this.settings.display.density;
+            document.getElementById('notifications-toggle').checked = this.settings.notifications.panel;
+            document.getElementById('email-notifications-toggle').checked = this.settings.notifications.email;
             
-            document.getElementById('call-interval').value = this.settings.call?.interval || 30;
-            document.getElementById('call-attempts').value = this.settings.call?.attempts || 3;
-            document.getElementById('max-wait-time').value = this.settings.call?.max_wait || 60;
-            document.getElementById('call-sound').value = this.settings.call?.sound || 'default';
+            document.getElementById('call-interval').value = this.settings.call.interval;
+            document.getElementById('call-attempts').value = this.settings.call.attempts;
+            document.getElementById('max-wait-time').value = this.settings.call.max_wait;
+            document.getElementById('call-sound').value = this.settings.call.sound;
         } catch (error) {
             console.error('Failed to load settings:', error);
             Utils.showToast('Erro ao carregar configurações', 'error');
@@ -657,11 +611,6 @@ class SettingsManager {
     }
 
     async saveSettings() {
-        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-        if (!branchId) {
-            Utils.showToast('ID da filial não encontrado. Faça login novamente.', 'error');
-            return;
-        }
         const form = document.getElementById('department-form');
         const data = {
             department: {
@@ -689,7 +638,7 @@ class SettingsManager {
 
         try {
             Utils.showLoading(true, 'Salvando configurações...');
-            const response = await axios.post(`/api/branch_admin/branches/${branchId}/schedules`, data);
+            const response = await axios.post(`${API_BASE}/api/settings`, data);
             Utils.showLoading(false);
             Utils.showToast('Configurações salvas com sucesso', 'success');
         } catch (error) {
@@ -700,11 +649,6 @@ class SettingsManager {
     }
 
     async addMember() {
-        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-        if (!branchId) {
-            
-            return;
-        }
         const form = document.getElementById('member-form');
         const data = {
             name: form['member-name'].value,
@@ -715,7 +659,7 @@ class SettingsManager {
 
         try {
             Utils.showLoading(true, 'Adicionando membro...');
-            const response = await axios.post(`/api/branch_admin/branches/${branchId}/attendants`, data);
+            const response = await axios.post(`${API_BASE}/api/members`, data);
             Utils.showLoading(false);
             document.getElementById('member-modal').classList.add('hidden');
             Utils.showToast('Membro adicionado com sucesso', 'success');
@@ -728,16 +672,11 @@ class SettingsManager {
     }
 
     async loadMembers() {
-        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-        if (!branchId) {
-            Utils.showToast('ID da filial não encontrado. Faça login novamente.', 'error');
-            return;
-        }
         const container = document.getElementById('team-members');
         container.innerHTML = '';
         
         try {
-            const response = await axios.get(`/api/branch_admin/branches/${branchId}/attendants`);
+            const response = await axios.get(`${API_BASE}/api/members`);
             response.data.forEach(member => {
                 const memberCard = document.createElement('div');
                 memberCard.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100';
@@ -768,16 +707,11 @@ class SettingsManager {
     }
 
     async deleteMember(memberId) {
-        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-        if (!branchId) {
-            Utils.showToast('ID da filial não encontrado. Faça login novamente.', 'error');
-            return;
-        }
         if (!confirm('Tem certeza que deseja remover este membro?')) return;
 
         try {
             Utils.showLoading(true, 'Removendo membro...');
-            await axios.delete(`/api/branch_admin/branches/${branchId}/attendants/${memberId}`);
+            await axios.delete(`${API_BASE}/api/members/${memberId}`);
             Utils.showLoading(false);
             Utils.showToast('Membro removido com sucesso', 'success');
             this.loadMembers();
@@ -797,11 +731,6 @@ class DashboardManager {
     }
 
     async loadDashboardData() {
-        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-        if (!branchId) {
-            Utils.showToast('ID da filial não encontrado. Faça login novamente.', 'error');
-            return;
-        }
         const skeletonAreas = [
             'active-queues', 'pending-tickets', 'today-calls', 'active-users',
             'top-queues', 'system-alerts'
@@ -814,36 +743,42 @@ class DashboardManager {
         });
 
         try {
-            const response = await axios.get(`/api/branch_admin/branches/${branchId}/dashboard`);
-            const data = response.data;
+            const [queuesRes, ticketsRes, callsRes, usersRes, topQueuesRes, alertsRes] = await Promise.all([
+                axios.get(`${API_BASE}/api/queues/active`),
+                axios.get(`${API_BASE}/api/tickets/pending`),
+                axios.get(`${API_BASE}/api/calls/today`),
+                axios.get(`${API_BASE}/api/users/active`),
+                axios.get(`${API_BASE}/api/queues/top`),
+                axios.get(`${API_BASE}/api/alerts`)
+            ]);
 
-            document.getElementById('active-queues').textContent = data.queues.filter(q => q.status === 'Aberto').length;
-            document.getElementById('pending-tickets').textContent = data.metrics.pending_tickets;
-            document.getElementById('today-calls').textContent = data.metrics.attended_tickets;
-            document.getElementById('active-users').textContent = data.metrics.active_attendants;
+            document.getElementById('active-queues').textContent = queuesRes.data.count;
+            document.getElementById('pending-tickets').textContent = ticketsRes.data.count;
+            document.getElementById('today-calls').textContent = callsRes.data.count;
+            document.getElementById('active-users').textContent = usersRes.data.count;
 
             const topQueues = document.getElementById('top-queues');
-            topQueues.innerHTML = data.queues.slice(0, 5).map(queue => `
+            topQueues.innerHTML = topQueuesRes.data.map(queue => `
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="font-medium">${queue.service_name}</p>
-                        <p class="text-sm text-gray-500">${queue.active_tickets} tickets</p>
+                        <p class="font-medium">${queue.service}</p>
+                        <p class="text-sm text-gray-500">${queue.tickets} tickets</p>
                     </div>
-                    <span class="text-sm ${queue.status === 'Aberto' ? 'text-green-500' : 'text-red-500'}">
-                        ${queue.status === 'Aberto' ? '↑' : '↓'} ${queue.active_tickets}%
+                    <span class="text-sm ${queue.trend === 'up' ? 'text-green-500' : 'text-red-500'}">
+                        ${queue.trend === 'up' ? '↑' : '↓'} ${queue.change}%
                     </span>
                 </div>
             `).join('');
 
             const alerts = document.getElementById('system-alerts');
-            alerts.innerHTML = (data.recent_tickets || []).map(ticket => `
-                <div class="flex items-center p-3 bg-${ticket.status === 'Pendente' ? 'yellow' : 'red'}-50 rounded-lg">
-                    <svg class="w-5 h-5 text-${ticket.status === 'Pendente' ? 'yellow' : 'red'}-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            alerts.innerHTML = alertsRes.data.map(alert => `
+                <div class="flex items-center p-3 bg-${alert.type === 'warning' ? 'yellow' : 'red'}-50 rounded-lg">
+                    <svg class="w-5 h-5 text-${alert.type === 'warning' ? 'yellow' : 'red'}-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <div>
-                        <p class="text-sm font-medium">Ticket ${ticket.ticket_number} ${ticket.status}</p>
-                        <p class="text-xs text-gray-500">${Utils.formatDate(ticket.issued_at)}</p>
+                        <p class="text-sm font-medium">${alert.message}</p>
+                        <p class="text-xs text-gray-500">${Utils.formatDate(alert.created_at)}</p>
                     </div>
                 </div>
             `).join('');
@@ -902,53 +837,49 @@ class DashboardManager {
     }
 
     initWebSocket() {
-        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-        if (!branchId) {
-            Utils.showToast('ID da filial não encontrado. Faça login novamente.', 'error');
-            return;
-        }
-        this.socket = io('/', {
+        this.socket = io(`${API_BASE}`, {
             path: '/real-time',
             transports: ['websocket'],
-            reconnectionAttempts: 5,
-            query: { branch_id: branchId }
+            reconnectionAttempts: 5
         });
 
-        this.socket.on('dashboard_update', (data) => {
-            if (data.event_type === 'ticket_issued') {
-                Utils.showToast(`Novo ticket: ${data.data.ticket_number}`, 'info');
-                if (!document.getElementById('tickets-section').classList.contains('hidden')) {
-                    ticketManager.loadTickets();
-                }
-            } else if (data.event_type === 'ticket_called') {
-                if (!document.getElementById('call-section').classList.contains('hidden')) {
-                    this.updateCurrentTicket(data.data);
-                }
-            } else if (data.event_type === 'queue_updated') {
-                if (!document.getElementById('queues-section').classList.contains('hidden')) {
-                    queueManager.loadQueues();
-                }
+        this.socket.on('new_ticket', (data) => {
+            Utils.showToast(`Novo ticket: ${data.ticket_number}`, 'info');
+            if (!document.getElementById('tickets-section').classList.contains('hidden')) {
+                ticketManager.loadTickets();
+            }
+        });
+
+        this.socket.on('called_ticket', (data) => {
+            if (!document.getElementById('call-section').classList.contains('hidden')) {
+                this.updateCurrentTicket(data);
+            }
+        });
+
+        this.socket.on('queue_update', () => {
+            if (!document.getElementById('queues-section').classList.contains('hidden')) {
+                queueManager.loadQueues();
             }
         });
     }
 
     updateCurrentTicket(data) {
         document.getElementById('current-ticket').textContent = data.ticket_number;
-        document.getElementById('current-service').textContent = data.service_name;
-        document.getElementById('current-counter').textContent = data.counter;
-        document.getElementById('avg-wait-time').textContent = `${data.avg_wait_time || 0} min`;
+        document.getElementById('current-service').textContent = data.service;
+        document.getElementById('current-counter').textContent = `Guichê ${data.counter}`;
+        document.getElementById('avg-wait-time').textContent = `${data.avg_wait_time} min`;
         
         const waitBar = document.getElementById('wait-bar');
-        waitBar.style.width = `${Math.min((data.avg_wait_time || 0 / 30) * 100, 100)}%`;
+        waitBar.style.width = `${Math.min((data.avg_wait_time / 30) * 100, 100)}%`;
         
         const nextQueue = document.getElementById('next-queue');
-        nextQueue.innerHTML = (data.next_tickets || []).map(ticket => `
+        nextQueue.innerHTML = data.next_tickets.map(ticket => `
             <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div>
                     <p class="font-medium">${ticket.number}</p>
-                    <p class="text-sm text-gray-500">${ticket.service_name}</p>
+                    <p class="text-sm text-gray-500">${ticket.service}</p>
                 </div>
-                <p class="text-sm text-gray-500">${ticket.wait_time || 0} min</p>
+                <p class="text-sm text-gray-500">${ticket.wait_time} min</p>
             </div>
         `).join('');
     }
@@ -1042,13 +973,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('refresh-data').addEventListener('click', () => dashboardManager.loadDashboardData());
     document.getElementById('call-next-btn').addEventListener('click', async () => {
-        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-        if (!branchId) {
-            Utils.showToast('ID da filial não encontrado. Faça login novamente.', 'error');
-            return;
-        }
         try {
-            const response = await axios.post(`/api/branch_admin/branches/${branchId}/calls/next`);
+            const response = await axios.post(`${API_BASE}/api/calls/next`);
             dashboardManager.updateCurrentTicket(response.data);
         } catch (error) {
             console.error('Failed to call next ticket:', error);
@@ -1056,13 +982,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     document.getElementById('recall-btn').addEventListener('click', async () => {
-        const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-        if (!branchId) {
-            Utils.showToast('ID da filial não encontrado. Faça login novamente.', 'error');
-            return;
-        }
         try {
-            const response = await axios.post(`/api/branch_admin/branches/${branchId}/calls/recall`);
+            const response = await axios.post(`${API_BASE}/api/calls/recall`);
             dashboardManager.updateCurrentTicket(response.data);
         } catch (error) {
             console.error('Failed to recall ticket:', error);
