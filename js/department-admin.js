@@ -1,5 +1,3 @@
-const API_BASE = 'https://fila-facilita2-0-4uzw.onrender.com';
-
 // Configurar interceptor do Axios
 axios.interceptors.request.use(
     (config) => {
@@ -7,7 +5,6 @@ axios.interceptors.request.use(
         if (token) {
             config.headers['Authorization'] = `Bearer ${token}`;
         }
-        config.baseURL = API_BASE;
         return config;
     },
     (error) => Promise.reject(error)
@@ -16,12 +13,9 @@ axios.interceptors.request.use(
 axios.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response?.status === 401 || error.response?.status === 403) {
-            Utils.showToast('Erro de autenticação. Verifique sua sessão.', 'error');
-        } else if (error.response?.status === 404) {
-            Utils.showToast('Recurso não encontrado.', 'warning');
-        } else if (error.code === 'ECONNABORTED' || error.message.includes('Network Error')) {
-            Utils.showToast('Problema na conexão com o servidor.', 'error');
+        if (error.response && error.response.status === 401) {
+            console.log('Authentication error:', error.response.data?.error);
+            Utils.showToast(error.response.data?.error || 'Erro de autenticação. Por favor, faça login novamente.', 'error');
         }
         return Promise.reject(error);
     }
@@ -33,27 +27,28 @@ class AuthManager {
         this.user = null;
     }
 
-    // Exibe os dados do usuário do localStorage/sessionStorage
+    // Exibe os dados do usuário armazenados (sem verificar com o backend)
     setUserInfo() {
         const email = localStorage.getItem('email') || sessionStorage.getItem('email');
-        const name = email ? email.split('@')[0] : 'Administrador'; // Deriva nome do email
+        const name = email ? email.split('@')[0] : 'Usuário'; // Usa parte do email como nome, se disponível
         if (email) {
             document.getElementById('user-name').textContent = name;
             document.getElementById('user-email').textContent = email;
-            const userInitials = name.slice(0, 2).toUpperCase();
-            document.querySelector('#user-info .bg-indigo-500')?.textContent = userInitials;
         } else {
-            Utils.showToast('Dados do usuário não encontrados.', 'warning');
+            console.warn('No email found in storage');
+            Utils.showToast('Dados do usuário não encontrados. Faça login novamente.', 'error');
         }
     }
 
     async handleLogout() {
         try {
-            await axios.post(`${API_BASE}/api/auth/logout`);
-            ['adminToken', 'userRole', 'email'].forEach(key => {
-                localStorage.removeItem(key);
-                sessionStorage.removeItem(key);
-            });
+            await axios.post('https://fila-facilita2-0-4uzw.onrender.com/api/auth/logout');
+            localStorage.removeItem('adminToken');
+            sessionStorage.removeItem('adminToken');
+            localStorage.removeItem('userRole');
+            sessionStorage.removeItem('userRole');
+            localStorage.removeItem('email');
+            sessionStorage.removeItem('email');
             window.location.href = '/index.html';
         } catch (error) {
             console.error('Logout failed:', error);
@@ -77,8 +72,8 @@ const Utils = {
     showToast(message, type = 'success') {
         const toast = document.importNode(document.getElementById('toast-template').content, true);
         const toastElement = toast.querySelector('.toast');
-        toastElement.classList.add(`bg-${type === 'success' ? 'green' : type === 'error' ? 'red' : 'yellow'}-100`, `text-${type === 'success' ? 'green' : type === 'error' ? 'red' : 'yellow'}-800`);
-        toast.querySelector('.toast-title').textContent = type === 'success' ? 'Sucesso' : type === 'error' ? 'Erro' : 'Aviso';
+        toastElement.classList.add(`bg-${type === 'success' ? 'green' : 'red'}-100`, `text-${type === 'success' ? 'green' : 'red'}-800`);
+        toast.querySelector('.toast-title').textContent = type === 'success' ? 'Sucesso' : 'Erro';
         toast.querySelector('.toast-message').textContent = message;
         
         const container = document.getElementById('toast-container');
@@ -116,14 +111,9 @@ class QueueManager {
         this.currentPage = 1;
         this.perPage = 9;
         this.queues = [];
-        this.branchId = localStorage.getItem('branch_id') || ''; // Assume que branch_id é armazenado no login
     }
 
     async loadQueues() {
-        if (!this.branchId) {
-            Utils.showToast('ID da filial não encontrado.', 'error');
-            return;
-        }
         const container = document.getElementById('queues-container');
         const loading = document.getElementById('queues-loading');
         
@@ -131,8 +121,8 @@ class QueueManager {
         loading.classList.remove('hidden');
         
         try {
-            const response = await axios.get(`/api/branch_admin/branches/${this.branchId}/queues?page=${this.currentPage}&per_page=${this.perPage}`);
-            this.queues = response.data;
+            const response = await axios.get(`https://fila-facilita2-0-4uzw.onrender.com/api/queues?page=${this.currentPage}&per_page=${this.perPage}`);
+            this.queues = response.data.queues;
             
             loading.classList.add('hidden');
             
@@ -141,14 +131,14 @@ class QueueManager {
                 queueCard.className = 'bg-white rounded-xl shadow-lg p-6 border border-gray-100';
                 queueCard.innerHTML = `
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-semibold">${queue.service_name}</h3>
-                        <span class="px-2 py-1 text-xs font-medium rounded-full ${queue.status === 'Aberto' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
-                            ${queue.status}
+                        <h3 class="text-lg font-semibold">${queue.service}</h3>
+                        <span class="px-2 py-1 text-xs font-medium rounded-full ${queue.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                            ${queue.status === 'active' ? 'Ativa' : 'Inativa'}
                         </span>
                     </div>
                     <p class="text-sm text-gray-500 mb-2">Prefixo: ${queue.prefix}</p>
-                    <p class="text-sm text-gray-500 mb-2">Tickets pendentes: ${queue.active_tickets}</p>
-                    <p class="text-sm text-gray-500 mb-4">Tempo médio de espera: ${queue.avg_wait_time || 'N/A'} min</p>
+                    <p class="text-sm text-gray-500 mb-2">Tickets pendentes: ${queue.pending_tickets}</p>
+                    <p class="text-sm text-gray-500 mb-4">Horário: ${queue.open_time} - ${queue.close_time}</p>
                     <div class="flex space-x-2">
                         <button class="edit-queue-btn px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm" data-id="${queue.id}">Editar</button>
                         <button class="delete-queue-btn px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm" data-id="${queue.id}">Excluir</button>
@@ -157,7 +147,7 @@ class QueueManager {
                 container.appendChild(queueCard);
             });
 
-            this.updatePagination(response.data.length); // Ajustar conforme resposta do backend
+            this.updatePagination(response.data.total);
             this.setupQueueActions();
         } catch (error) {
             console.error('Failed to load queues:', error);
@@ -185,16 +175,25 @@ class QueueManager {
         if (queueId) {
             title.textContent = 'Editar Fila';
             const queue = this.queues.find(q => q.id === queueId);
-            form.service_id.value = queue.service_id;
+            form.service.value = queue.service;
             form.prefix.value = queue.prefix;
             form.daily_limit.value = queue.daily_limit;
+            form.open_time.value = queue.open_time;
+            form.close_time.value = queue.close_time;
             form.num_counters.value = queue.num_counters;
-            form.department_id.value = queue.department_id;
+            form.queue_description.value = queue.description || '';
             form.queue_id.value = queue.id;
+            
+            queue.working_days.forEach(day => {
+                form.querySelector(`input[name="working_days"][value="${day}"]`).checked = true;
+            });
         } else {
             title.textContent = 'Nova Fila';
             form.reset();
             form.queue_id.value = '';
+            form.querySelectorAll('input[name="working_days"]').forEach(checkbox => {
+                checkbox.checked = ['0', '6'].includes(checkbox.value) ? false : true;
+            });
         }
 
         modal.classList.remove('hidden');
@@ -212,16 +211,19 @@ class QueueManager {
         const form = document.getElementById('queue-form');
         const data = {
             id: form.queue_id.value,
-            department_id: form.department_id.value,
-            service_id: form.service_id.value,
+            service: form.service.value,
             prefix: form.prefix.value,
             daily_limit: parseInt(form.daily_limit.value),
-            num_counters: parseInt(form.num_counters.value)
+            open_time: form.open_time.value,
+            close_time: form.close_time.value,
+            num_counters: parseInt(form.num_counters.value),
+            description: form.queue_description.value,
+            working_days: Array.from(form.querySelectorAll('input[name="working_days"]:checked')).map(cb => parseInt(cb.value))
         };
 
         try {
             Utils.showLoading(true, 'Salvando fila...');
-            const response = await axios.post(`/api/branch_admin/branches/${this.branchId}/queues`, data);
+            const response = await axios.post('https://fila-facilita2-0-4uzw.onrender.com/api/queues', data);
             Utils.showLoading(false);
             
             document.getElementById('queue-modal').classList.add('hidden');
@@ -239,7 +241,7 @@ class QueueManager {
 
         try {
             Utils.showLoading(true, 'Excluindo fila...');
-            await axios.delete(`/api/branch_admin/branches/${this.branchId}/queues/${queueId}`);
+            await axios.delete(`https://fila-facilita2-0-4uzw.onrender.com/api/queues/${queueId}`);
             Utils.showLoading(false);
             Utils.showToast('Fila excluída com sucesso', 'success');
             this.loadQueues();
@@ -286,14 +288,9 @@ class TicketManager {
         this.currentPage = 1;
         this.perPage = 9;
         this.tickets = [];
-        this.branchId = localStorage.getItem('branch_id') || '';
     }
 
     async loadTickets() {
-        if (!this.branchId) {
-            Utils.showToast('ID da filial não encontrado.', 'error');
-            return;
-        }
         const container = document.getElementById('tickets-container');
         const loading = document.getElementById('tickets-loading');
         
@@ -301,8 +298,8 @@ class TicketManager {
         loading.classList.remove('hidden');
         
         try {
-            const response = await axios.get(`/api/branch_admin/branches/${this.branchId}/tickets?page=${this.currentPage}&per_page=${this.perPage}`);
-            this.tickets = response.data;
+            const response = await axios.get(`https://fila-facilita2-0-4uzw.onrender.com/api/tickets?page=${this.currentPage}&per_page=${this.perPage}`);
+            this.tickets = response.data.tickets;
             
             loading.classList.add('hidden');
             
@@ -311,13 +308,13 @@ class TicketManager {
                 ticketCard.className = 'bg-white rounded-xl shadow-lg p-6 border border-gray-100';
                 ticketCard.innerHTML = `
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-semibold">${ticket.ticket_number}</h3>
+                        <h3 class="text-lg font-semibold">${ticket.number}</h3>
                         <span class="px-2 py-1 text-xs font-medium rounded-full ${this.getStatusColor(ticket.status)}">
                             ${ticket.status}
                         </span>
                     </div>
-                    <p class="text-sm text-gray-500 mb-2">Fila: ${ticket.queue_prefix}</p>
-                    <p class="text-sm text-gray-500 mb-2">Criado: ${Utils.formatDate(ticket. approfondirissued_at)}</p>
+                    <p class="text-sm text-gray-500 mb-2">Fila: ${ticket.queue_name}</p>
+                    <p class="text-sm text-gray-500 mb-2">Criado: ${Utils.formatDate(ticket.created_at)}</p>
                     <p class="text-sm text-gray-500 mb-4">Prioridade: ${ticket.priority}</p>
                     <div class="flex space-x-2">
                         <button class="edit-ticket-btn px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm" data-id="${ticket.id}">Editar</button>
@@ -327,7 +324,7 @@ class TicketManager {
                 container.appendChild(ticketCard);
             });
 
-            this.updatePagination(response.data.length);
+            this.updatePagination(response.data.total);
             this.setupTicketActions();
         } catch (error) {
             console.error('Failed to load tickets:', error);
@@ -339,7 +336,7 @@ class TicketManager {
         switch (status.toLowerCase()) {
             case 'pendente': return 'bg-yellow-100 text-yellow-800';
             case 'chamado': return 'bg-blue-100 text-blue-800';
-            case 'atendido': return 'bg-green-100 text-green-800';
+            case 'finalizado': return 'bg-green-100 text-green-800';
             case 'cancelado': return 'bg-red-100 text-red-800';
             default: return 'bg-gray-100 text-gray-800';
         }
@@ -392,7 +389,7 @@ class TicketManager {
 
         try {
             Utils.showLoading(true, 'Gerando ticket...');
-            const response = await axios.post(`/api/branch_admin/branches/${this.branchId}/tickets`, data);
+            const response = await axios.post('https://fila-facilita2-0-4uzw.onrender.com/api/tickets', data);
             Utils.showLoading(false);
             
             document.getElementById('ticket-modal').classList.add('hidden');
@@ -410,7 +407,7 @@ class TicketManager {
 
         try {
             Utils.showLoading(true, 'Excluindo ticket...');
-            await axios.delete(`/api/branch_admin/branches/${this.branchId}/tickets/${ticketId}`);
+            await axios.delete(`https://fila-facilita2-0-4uzw.onrender.com/api/tickets/${ticketId}`);
             Utils.showLoading(false);
             Utils.showToast('Ticket excluído com sucesso', 'success');
             this.loadTickets();
@@ -443,7 +440,7 @@ class TicketManager {
 
         try {
             Utils.showLoading(true, 'Validando QR Code...');
-            const response = await axios.post(`${API_BASE}/api/tickets/validate-qr`, { qr_code: qrCode });
+            const response = await axios.post('https://fila-facilita2-0-4uzw.onrender.com/api/tickets/validate-qr', { qr_code: qrCode });
             Utils.showLoading(false);
             
             document.getElementById('qr-modal').classList.add('hidden');
@@ -489,19 +486,29 @@ class TicketManager {
 class ReportManager {
     constructor() {
         this.chart = null;
-        this.branchId = localStorage.getItem('branch_id') || '';
     }
 
     async generateReport() {
-        if (!this.branchId) {
-            Utils.showToast('ID da filial não encontrado.', 'error');
-            return;
-        }
-        const date = document.getElementById('report-date').value;
+        const period = document.getElementById('report-period').value;
+        const type = document.getElementById('report-type').value;
+        const queue = document.getElementById('report-queue').value;
+        const attendant = document.getElementById('report-attendant').value;
+        const group = document.getElementById('report-group').value;
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+
+        const params = new URLSearchParams({
+            period,
+            type,
+            queue,
+            attendant,
+            group,
+            ...(period === 'custom' && { start_date: startDate, end_date: endDate })
+        });
 
         try {
             Utils.showLoading(true, 'Gerando relatório...');
-            const response = await axios.get(`/api/branch_admin/branches/${this.branchId}/report?date=${date}`);
+            const response = await axios.get(`https://fila-facilita2-0-4uzw.onrender.com/api/reports?${params}`);
             Utils.showLoading(false);
             
             this.renderReport(response.data);
@@ -517,18 +524,17 @@ class ReportManager {
         const container = document.getElementById('report-results');
         container.innerHTML = `
             <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-                <h3 class="text-xl font-semibold mb-4">Relatório da Filial</h3>
+                <h3 class="text-xl font-semibold mb-4">${data.title}</h3>
                 <div class="h-96">
                     <canvas id="report-chart"></canvas>
                 </div>
                 <div class="mt-6">
                     <h4 class="text-lg font-semibold mb-2">Resumo</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        ${data.map(item => `
+                        ${data.summary.map(item => `
                             <div class="p-4 bg-gray-50 rounded-lg">
-                                <p class="text-sm text-gray-500">${item.service_name} (${item.department_name})</p>
-                                <p class="text-lg font-semibold">Emitidos: ${item.issued}, Atendidos: ${item.attended}</p>
-                                <p class="text-sm text-gray-500">Tempo médio: ${item.avg_time || 'N/A'} min</p>
+                                <p class="text-sm text-gray-500">${item.label}</p>
+                                <p class="text-lg font-semibold">${item.value}</p>
                             </div>
                         `).join('')}
                     </div>
@@ -536,7 +542,7 @@ class ReportManager {
             </div>
         `;
 
-        this.initChart(data);
+        this.initChart(data.chart_data);
     }
 
     initChart(data) {
@@ -544,21 +550,15 @@ class ReportManager {
         if (this.chart) this.chart.destroy();
 
         this.chart = new Chart(ctx, {
-            type: 'bar',
+            type: 'line',
             data: {
-                labels: data.map(item => item.service_name),
+                labels: data.labels,
                 datasets: [{
-                    label: 'Tickets Emitidos',
-                    data: data.map(item => item.issued),
-                    backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                    label: 'Desempenho',
+                    data: data.values,
                     borderColor: '#3B82F6',
-                    borderWidth: 1
-                }, {
-                    label: 'Tickets Atendidos',
-                    data: data.map(item => item.attended),
-                    backgroundColor: 'rgba(34, 197, 94, 0.5)',
-                    borderColor: '#22C55E',
-                    borderWidth: 1
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    fill: true
                 }]
             },
             options: {
@@ -578,25 +578,29 @@ class ReportManager {
 class SettingsManager {
     constructor() {
         this.settings = {};
-        this.branchId = localStorage.getItem('branch_id') || '';
     }
 
     async loadSettings() {
-        if (!this.branchId) {
-            Utils.showToast('ID da filial não encontrado.', 'error');
-            return;
-        }
         try {
-            const response = await axios.get(`/api/branch_admin/branches/${this.branchId}/schedules`);
+            const response = await axios.get('https://fila-facilita2-0-4uzw.onrender.com/api/settings');
             this.settings = response.data;
             
-            const schedulesContainer = document.getElementById('schedules-container');
-            schedulesContainer.innerHTML = this.settings.map(schedule => `
-                <div class="p-4 bg-gray-50 rounded-lg">
-                    <p class="text-sm text-gray-500">${schedule.weekday}</p>
-                    <p class="text-lg font-semibold">${schedule.is_closed ? 'Fechado' : `${schedule.open_time} - ${schedule.end_time}`}</p>
-                </div>
-            `).join('');
+            document.getElementById('dept-name').value = this.settings.department.name;
+            document.getElementById('dept-id').value = this.settings.department.id;
+            document.getElementById('dept-description').value = this.settings.department.description || '';
+            document.getElementById('dept-email').value = this.settings.department.email || '';
+            document.getElementById('dept-phone').value = this.settings.department.phone || '';
+            document.getElementById('dept-location').value = this.settings.department.location || '';
+            
+            document.getElementById('theme-select').value = this.settings.display.theme;
+            document.getElementById('density-select').value = this.settings.display.density;
+            document.getElementById('notifications-toggle').checked = this.settings.notifications.panel;
+            document.getElementById('email-notifications-toggle').checked = this.settings.notifications.email;
+            
+            document.getElementById('call-interval').value = this.settings.call.interval;
+            document.getElementById('call-attempts').value = this.settings.call.attempts;
+            document.getElementById('max-wait-time').value = this.settings.call.max_wait;
+            document.getElementById('call-sound').value = this.settings.call.sound;
         } catch (error) {
             console.error('Failed to load settings:', error);
             Utils.showToast('Erro ao carregar configurações', 'error');
@@ -604,20 +608,36 @@ class SettingsManager {
     }
 
     async saveSettings() {
-        const form = document.getElementById('schedule-form');
+        const form = document.getElementById('department-form');
         const data = {
-            weekday: form['weekday'].value,
-            open_time: form['open_time'].value,
-            end_time: form['end_time'].value,
-            is_closed: form['is_closed'].checked
+            department: {
+                name: form['dept-name'].value,
+                description: form['dept-description'].value,
+                email: form['dept-email'].value,
+                phone: form['dept-phone'].value,
+                location: form['dept-location'].value
+            },
+            display: {
+                theme: document.getElementById('theme-select').value,
+                density: document.getElementById('density-select').value
+            },
+            notifications: {
+                panel: document.getElementById('notifications-toggle').checked,
+                email: document.getElementById('email-notifications-toggle').checked
+            },
+            call: {
+                interval: document.getElementById('call-interval').value,
+                attempts: document.getElementById('call-attempts').value,
+                max_wait: document.getElementById('max-wait-time').value,
+                sound: document.getElementById('call-sound').value
+            }
         };
 
         try {
             Utils.showLoading(true, 'Salvando configurações...');
-            const response = await axios.post(`/api/branch_admin/branches/${this.branchId}/schedules`, data);
+            const response = await axios.post('https://fila-facilita2-0-4uzw.onrender.com/api/settings', data);
             Utils.showLoading(false);
             Utils.showToast('Configurações salvas com sucesso', 'success');
-            this.loadSettings();
         } catch (error) {
             console.error('Failed to save settings:', error);
             Utils.showLoading(false);
@@ -628,35 +648,32 @@ class SettingsManager {
     async addMember() {
         const form = document.getElementById('member-form');
         const data = {
-            email: form['member-email'].value,
             name: form['member-name'].value,
-            password: form['member-password'].value
+            email: form['member-email'].value,
+            role: form['member-role'].value,
+            permissions: Array.from(form.querySelectorAll('input[name="member-permissions"]:checked')).map(cb => cb.value)
         };
 
         try {
-            Utils.showLoading(true, 'Adicionando atendente...');
-            const response = await axios.post(`/api/branch_admin/branches/${this.branchId}/attendants`, data);
+            Utils.showLoading(true, 'Adicionando membro...');
+            const response = await axios.post('https://fila-facilita2-0-4uzw.onrender.com/api/members', data);
             Utils.showLoading(false);
             document.getElementById('member-modal').classList.add('hidden');
-            Utils.showToast('Atendente adicionado com sucesso', 'success');
+            Utils.showToast('Membro adicionado com sucesso', 'success');
             this.loadMembers();
         } catch (error) {
             console.error('Failed to add member:', error);
             Utils.showLoading(false);
-            Utils.showToast('Erro ao adicionar atendente', 'error');
+            Utils.showToast('Erro ao adicionar membro', 'error');
         }
     }
 
     async loadMembers() {
-        if (!this.branchId) {
-            Utils.showToast('ID da filial não encontrado.', 'error');
-            return;
-        }
         const container = document.getElementById('team-members');
         container.innerHTML = '';
         
         try {
-            const response = await axios.get(`/api/branch_admin/branches/${this.branchId}/attendants`);
+            const response = await axios.get('https://fila-facilita2-0-4uzw.onrender.com/api/members');
             response.data.forEach(member => {
                 const memberCard = document.createElement('div');
                 memberCard.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100';
@@ -665,7 +682,7 @@ class SettingsManager {
                         <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold mr-3">${member.name[0]}</div>
                         <div>
                             <p class="font-medium">${member.name}</p>
-                            <p class="text-xs text-gray-500">${member.email}</p>
+                            <p class="text-xs text-gray-500">${member.role}</p>
                         </div>
                     </div>
                     <button class="delete-member-btn text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50" data-id="${member.id}">
@@ -682,23 +699,23 @@ class SettingsManager {
             });
         } catch (error) {
             console.error('Failed to load members:', error);
-            Utils.showToast('Erro ao carregar atendentes', 'error');
+            Utils.showToast('Erro ao carregar membros', 'error');
         }
     }
 
     async deleteMember(memberId) {
-        if (!confirm('Tem certeza que deseja remover este atendente?')) return;
+        if (!confirm('Tem certeza que deseja remover este membro?')) return;
 
         try {
-            Utils.showLoading(true, 'Removendo atendente...');
-            await axios.delete(`/api/branch_admin/branches/${this.branchId}/attendants/${memberId}`);
+            Utils.showLoading(true, 'Removendo membro...');
+            await axios.delete(`https://fila-facilita2-0-4uzw.onrender.com/api/members/${memberId}`);
             Utils.showLoading(false);
-            Utils.showToast('Atendente removido com sucesso', 'success');
+            Utils.showToast('Membro removido com sucesso', 'success');
             this.loadMembers();
         } catch (error) {
             console.error('Failed to delete member:', error);
             Utils.showLoading(false);
-            Utils.showToast('Erro ao remover atendente', 'error');
+            Utils.showToast('Erro ao remover membro', 'error');
         }
     }
 }
@@ -708,14 +725,9 @@ class DashboardManager {
     constructor() {
         this.activityChart = null;
         this.socket = null;
-        this.branchId = localStorage.getItem('branch_id') || '';
     }
 
     async loadDashboardData() {
-        if (!this.branchId) {
-            Utils.showToast('ID da filial não encontrado.', 'error');
-            return;
-        }
         const skeletonAreas = [
             'active-queues', 'pending-tickets', 'today-calls', 'active-users',
             'top-queues', 'system-alerts'
@@ -728,36 +740,42 @@ class DashboardManager {
         });
 
         try {
-            const response = await axios.get(`/api/branch_admin/branches/${this.branchId}/dashboard`);
-            const data = response.data;
+            const [queuesRes, ticketsRes, callsRes, usersRes, topQueuesRes, alertsRes] = await Promise.all([
+                axios.get('https://fila-facilita2-0-4uzw.onrender.com/api/queues/active'),
+                axios.get('https://fila-facilita2-0-4uzw.onrender.com/api/tickets/pending'),
+                axios.get('https://fila-facilita2-0-4uzw.onrender.com/api/calls/today'),
+                axios.get('https://fila-facilita2-0-4uzw.onrender.com/api/users/active'),
+                axios.get('https://fila-facilita2-0-4uzw.onrender.com/api/queues/top'),
+                axios.get('https://fila-facilita2-0-4uzw.onrender.com/api/alerts')
+            ]);
 
-            document.getElementById('active-queues').textContent = data.queues.filter(q => q.status === 'Aberto').length;
-            document.getElementById('pending-tickets').textContent = data.metrics.pending_tickets;
-            document.getElementById('today-calls').textContent = data.metrics.attended_tickets;
-            document.getElementById('active-users').textContent = data.metrics.active_attendants;
+            document.getElementById('active-queues').textContent = queuesRes.data.count;
+            document.getElementById('pending-tickets').textContent = ticketsRes.data.count;
+            document.getElementById('today-calls').textContent = callsRes.data.count;
+            document.getElementById('active-users').textContent = usersRes.data.count;
 
             const topQueues = document.getElementById('top-queues');
-            topQueues.innerHTML = data.queues.slice(0, 5).map(queue => `
+            topQueues.innerHTML = topQueuesRes.data.map(queue => `
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="font-medium">${queue.service_name}</p>
-                        <p class="text-sm text-gray-500">${queue.active_tickets} tickets</p>
+                        <p class="font-medium">${queue.service}</p>
+                        <p class="text-sm text-gray-500">${queue.tickets} tickets</p>
                     </div>
-                    <span class="text-sm ${queue.status === 'Aberto' ? 'text-green-500' : 'text-red-500'}">
-                        ${queue.status}
+                    <span class="text-sm ${queue.trend === 'up' ? 'text-green-500' : 'text-red-500'}">
+                        ${queue.trend === 'up' ? '↑' : '↓'} ${queue.change}%
                     </span>
                 </div>
             `).join('');
 
             const alerts = document.getElementById('system-alerts');
-            alerts.innerHTML = data.recent_tickets.filter(t => t.status === 'Pendente').map(ticket => `
-                <div class="flex items-center p-3 bg-yellow-50 rounded-lg">
-                    <svg class="w-5 h-5 text-yellow-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            alerts.innerHTML = alertsRes.data.map(alert => `
+                <div class="flex items-center p-3 bg-${alert.type === 'warning' ? 'yellow' : 'red'}-50 rounded-lg">
+                    <svg class="w-5 h-5 text-${alert.type === 'warning' ? 'yellow' : 'red'}-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <div>
-                        <p class="text-sm font-medium">Ticket ${ticket.ticket_number} pendente</p>
-                        <p class="text-xs text-gray-500">${ticket.service_name}</p>
+                        <p class="text-sm font-medium">${alert.message}</p>
+                        <p class="text-xs text-gray-500">${Utils.formatDate(alert.created_at)}</p>
                     </div>
                 </div>
             `).join('');
@@ -816,43 +834,51 @@ class DashboardManager {
     }
 
     initWebSocket() {
-        const token = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
-        this.socket = io(`${API_BASE}/dashboard`, {
+        this.socket = io('https://fila-facilita2-0-4uzw.onrender.com', {
+            path: '/real-time',
             transports: ['websocket'],
-            reconnectionAttempts: 5,
-            query: { token, branch_id: this.branchId }
+            reconnectionAttempts: 5
         });
 
-        this.socket.on('connect', () => {
-            this.socket.emit('join_room', { room: this.branchId });
-            console.log('WebSocket conectado:', this.socket.id, 'Room:', this.branchId);
-            Utils.showToast('Conexão em tempo real estabelecida.', 'success');
+        this.socket.on('new_ticket', (data) => {
+            Utils.showToast(`Novo ticket: ${data.ticket_number}`, 'info');
+            if (!document.getElementById('tickets-section').classList.contains('hidden')) {
+                ticketManager.loadTickets();
+            }
         });
 
-        this.socket.on('connect_error', (error) => {
-            console.error('Erro na conexão WebSocket:', error);
-            Utils.showToast('Problema na conexão em tempo real. Tentando reconectar...', 'warning');
+        this.socket.on('called_ticket', (data) => {
+            if (!document.getElementById('call-section').classList.contains('hidden')) {
+                this.updateCurrentTicket(data);
+            }
         });
 
-        this.socket.on('dashboard_update', (data) => {
-            if (data.event_type === 'ticket_issued') {
-                Utils.showToast(`Novo ticket: ${data.data.ticket_number}`, 'info');
-                if (!document.getElementById('tickets-section').classList.contains('hidden')) {
-                    ticketManager.loadTickets();
-                }
-            } else if (data.event_type === 'queue_created') {
-                if (!document.getElementById('queues-section').classList.contains('hidden')) {
-                    queueManager.loadQueues();
-                }
+        this.socket.on('queue_update', () => {
+            if (!document.getElementById('queues-section').classList.contains('hidden')) {
+                queueManager.loadQueues();
             }
         });
     }
 
     updateCurrentTicket(data) {
         document.getElementById('current-ticket').textContent = data.ticket_number;
-        document.getElementById('current-service').textContent = data.service_name;
-        document.getElementById('current-counter').textContent = data.counter;
-        document.getElementById('avg-wait-time').textContent = `${data.avg_wait_time || 'N/A'} min`;
+        document.getElementById('current-service').textContent = data.service;
+        document.getElementById('current-counter').textContent = `Guichê ${data.counter}`;
+        document.getElementById('avg-wait-time').textContent = `${data.avg_wait_time} min`;
+        
+        const waitBar = document.getElementById('wait-bar');
+        waitBar.style.width = `${Math.min((data.avg_wait_time / 30) * 100, 100)}%`;
+        
+        const nextQueue = document.getElementById('next-queue');
+        nextQueue.innerHTML = data.next_tickets.map(ticket => `
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                    <p class="font-medium">${ticket.number}</p>
+                    <p class="text-sm text-gray-500">${ticket.service}</p>
+                </div>
+                <p class="text-sm text-gray-500">${ticket.wait_time} min</p>
+            </div>
+        `).join('');
     }
 }
 
@@ -865,7 +891,7 @@ const settingsManager = new SettingsManager();
 const dashboardManager = new DashboardManager();
 
 function setupNavigation() {
-    const navButtons = ['dashboard', 'queues', 'tickets', 'reports', 'settings'];
+    const navButtons = ['dashboard', 'call', 'queues', 'tickets', 'reports', 'settings'];
     navButtons.forEach(button => {
         document.getElementById(`nav-${button}`).addEventListener('click', () => {
             document.querySelectorAll('main > div').forEach(section => {
@@ -919,6 +945,7 @@ function updateCurrentDateTime() {
 document.addEventListener('DOMContentLoaded', () => {
     if (window.location.pathname.includes('index.html')) return;
 
+    // Carrega os dados do usuário do storage e inicializa a aplicação
     authManager.setUserInfo();
     dashboardManager.loadDashboardData();
     setupNavigation();
@@ -943,4 +970,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('refresh-data').addEventListener('click', () => dashboardManager.loadDashboardData());
+    document.getElementById('call-next-btn').addEventListener('click', async () => {
+        try {
+            const response = await axios.post('https://fila-facilita2-0-4uzw.onrender.com/api/calls/next');
+            dashboardManager.updateCurrentTicket(response.data);
+        } catch (error) {
+            console.error('Failed to call next ticket:', error);
+            Utils.showToast('Erro ao chamar próximo ticket', 'error');
+        }
+    });
+    document.getElementById('recall-btn').addEventListener('click', async () => {
+        try {
+            const response = await axios.post('https://fila-facilita2-0-4uzw.onrender.com/api/calls/recall');
+            dashboardManager.updateCurrentTicket(response.data);
+        } catch (error) {
+            console.error('Failed to recall ticket:', error);
+            Utils.showToast('Erro ao rechamar ticket', 'error');
+        }
+    });
 });
