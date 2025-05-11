@@ -29,25 +29,25 @@ class AuthManager {
 
     async checkAuthStatus() {
         try {
-            const response = await axios.get('/api/auth/status');
+            const response = await axios.get('https://fila-facilita2-0-4uzw.onrender.com/api/auth/status');
             this.user = response.data.user;
             if (this.user) {
                 document.getElementById('user-name').textContent = this.user.name;
                 document.getElementById('user-email').textContent = this.user.email;
                 return true;
             }
-            window.location.href = '/index.html';
+            console.warn('No user data returned from auth status');
             return false;
         } catch (error) {
             console.error('Auth check failed:', error);
-            window.location.href = '/index.html';
+            Utils.showToast('Falha na verificação de autenticação. Tente novamente.', 'error');
             return false;
         }
     }
 
     async handleLogout() {
         try {
-            await axios.post('/api/auth/logout');
+            await axios.post('https://fila-facilita2-0-4uzw.onrender.com/api/auth/logout');
             localStorage.removeItem('adminToken');
             sessionStorage.removeItem('adminToken');
             localStorage.removeItem('userRole');
@@ -124,7 +124,7 @@ class QueueManager {
         loading.classList.remove('hidden');
         
         try {
-            const response = await axios.get(`/api/queues?page=${this.currentPage}&per_page=${this.perPage}`);
+            const response = await axios.get(`https://fila-facilita2-0-4uzw.onrender.com/api/queues?page=${this.currentPage}&per_page=${this.perPage}`);
             this.queues = response.data.queues;
             
             loading.classList.add('hidden');
@@ -226,7 +226,7 @@ class QueueManager {
 
         try {
             Utils.showLoading(true, 'Salvando fila...');
-            const response = await axios.post('/api/queues', data);
+            const response = await axios.post('https://fila-facilita2-0-4uzw.onrender.com/api/queues', data);
             Utils.showLoading(false);
             
             document.getElementById('queue-modal').classList.add('hidden');
@@ -243,7 +243,7 @@ class QueueManager {
 
         try {
             Utils.showLoading(true, 'Excluindo fila...');
-            await axios.delete(`/api/queues/${queueId}`);
+            await axios.delete(`https://fila-facilita2-0-4uzw.onrender.com/api/queues/${queueId}`);
             Utils.showLoading(false);
             Utils.showToast('Fila excluída com sucesso', 'success');
             this.loadQueues();
@@ -299,7 +299,7 @@ class TicketManager {
         loading.classList.remove('hidden');
         
         try {
-            const response = await axios.get(`/api/tickets?page=${this.currentPage}&per_page=${this.perPage}`);
+            const response = await axios.get(`https://fila-facilita2-0-4uzw.onrender.com/api/tickets?page=${this.currentPage}&per_page=${this.perPage}`);
             this.tickets = response.data.tickets;
             
             loading.classList.add('hidden');
@@ -390,14 +390,13 @@ class TicketManager {
 
         try {
             Utils.showLoading(true, 'Gerando ticket...');
-            const response = await axios.post('/api/tickets', data);
+            const response = await axios.post('https://fila-facilita2-0-4uzw.onrender.com/api/tickets', data);
             Utils.showLoading(false);
             
             document.getElementById('ticket-modal').classList.add('hidden');
             Utils.showToast('Ticket gerado com sucesso', 'success');
             this.loadTickets();
         } catch (error) {
-            Utils.showLoading(false);
             Utils.showToast('Erro ao gerar ticket', 'error');
         }
     }
@@ -407,7 +406,7 @@ class TicketManager {
 
         try {
             Utils.showLoading(true, 'Excluindo ticket...');
-            await axios.delete(`/api/tickets/${ticketId}`);
+            await axios.delete(`https://fila-facilita2-0-4uzw.onrender.com/api/tickets/${ticketId}`);
             Utils.showLoading(false);
             Utils.showToast('Ticket excluído com sucesso', 'success');
             this.loadTickets();
@@ -439,7 +438,7 @@ class TicketManager {
 
         try {
             Utils.showLoading(true, 'Validando QR Code...');
-            const response = await axios.post('/api/tickets/validate-qr', { qr_code: qrCode });
+            const response = await axios.post('https://fila-facilita2-0-4uzw.onrender.com/api/tickets/validate-qr', { qr_code: qrCode });
             Utils.showLoading(false);
             
             document.getElementById('qr-modal').classList.add('hidden');
@@ -506,7 +505,7 @@ class ReportManager {
 
         try {
             Utils.showLoading(true, 'Gerando relatório...');
-            const response = await axios.get(`/api/reports?${params}`);
+            const response = await axios.get(`https://fila-facilita2-0-4uzw.onrender.com/api/reports?${params}`);
             Utils.showLoading(false);
             
             this.renderReport(response.data);
@@ -579,7 +578,7 @@ class SettingsManager {
 
     async loadSettings() {
         try {
-            const response = await axios.get('/api/settings');
+            const response = await axios.get('https://fila-facilita2-0-4uzw.onrender.com/api/settings');
             this.settings = response.data;
             
             document.getElementById('dept-name').value = this.settings.department.name;
@@ -632,7 +631,7 @@ class SettingsManager {
 
         try {
             Utils.showLoading(true, 'Salvando configurações...');
-            await axios.post('/api/settings', data);
+            await axios.post('https://fila-facilita2-0-4uzw.onrender.com/api/settings', data);
             Utils.showLoading(false);
             Utils.showToast('Configurações salvas com sucesso', 'success');
         } catch (error) {
@@ -652,7 +651,7 @@ class SettingsManager {
 
         try {
             Utils.showLoading(true, 'Adicionando membro...');
-            await axios.post('/api/members', data);
+            await axios.post('https://fila-facilita2-0-4uzw.onrender.com/api/members', data);
             Utils.showLoading(false);
             document.getElementById('member-modal').classList.add('hidden');
             Utils.showToast('Membro adicionado com sucesso', 'success');
@@ -668,7 +667,7 @@ class SettingsManager {
         container.innerHTML = '';
         
         try {
-            const response = await axios.get('/api/members');
+            const response = await axios.get('https://fila-facilita2-0-4uzw.onrender.com/api/members');
             response.data.forEach(member => {
                 const memberCard = document.createElement('div');
                 memberCard.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100';
@@ -703,7 +702,7 @@ class SettingsManager {
 
         try {
             Utils.showLoading(true, 'Removendo membro...');
-            await axios.delete(`/api/members/${memberId}`);
+            await axios.delete(`https://fila-facilita2-0-4uzw.onrender.com/api/members/${memberId}`);
             Utils.showLoading(false);
             Utils.showToast('Membro removido com sucesso', 'success');
             this.loadMembers();
@@ -735,12 +734,12 @@ class DashboardManager {
 
         try {
             const [queuesRes, ticketsRes, callsRes, usersRes, topQueuesRes, alertsRes] = await Promise.all([
-                axios.get('/api/queues/active'),
-                axios.get('/api/tickets/pending'),
-                axios.get('/api/calls/today'),
-                axios.get('/api/users/active'),
-                axios.get('/api/queues/top'),
-                axios.get('/api/alerts')
+                axios.get('https://fila-facilita2-0-4uzw.onrender.com/api/queues/active'),
+                axios.get('https://fila-facilita2-0-4uzw.onrender.com/api/tickets/pending'),
+                axios.get('https://fila-facilita2-0-4uzw.onrender.com/api/calls/today'),
+                axios.get('https://fila-facilita2-0-4uzw.onrender.com/api/users/active'),
+                axios.get('https://fila-facilita2-0-4uzw.onrender.com/api/queues/top'),
+                axios.get('https://fila-facilita2-0-4uzw.onrender.com/api/alerts')
             ]);
 
             document.getElementById('active-queues').textContent = queuesRes.data.count;
@@ -939,45 +938,45 @@ function updateCurrentDateTime() {
 document.addEventListener('DOMContentLoaded', async () => {
     if (window.location.pathname.includes('index.html')) return;
 
-    if (await authManager.checkAuthStatus()) {
-        dashboardManager.loadDashboardData();
-        setupNavigation();
-        dashboardManager.initWebSocket();
-        updateCurrentDateTime();
-        setInterval(updateCurrentDateTime, 60000);
+    // Tenta carregar o dashboard mesmo se a autenticação falhar
+    await authManager.checkAuthStatus();
+    dashboardManager.loadDashboardData();
+    setupNavigation();
+    dashboardManager.initWebSocket();
+    updateCurrentDateTime();
+    setInterval(updateCurrentDateTime, 60000);
 
-        document.getElementById('generate-report-btn').addEventListener('click', () => reportManager.generateReport());
-        document.getElementById('save-settings-btn').addEventListener('click', () => settingsManager.saveSettings());
-        document.getElementById('add-member-btn').addEventListener('click', () => {
-            document.getElementById('member-modal').classList.remove('hidden');
-        });
-        document.getElementById('member-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            settingsManager.addMember();
-        });
-        document.getElementById('close-member-modal').addEventListener('click', () => {
-            document.getElementById('member-modal').classList.add('hidden');
-        });
-        document.getElementById('cancel-member-btn').addEventListener('click', () => {
-            document.getElementById('member-modal').classList.add('hidden');
-        });
+    document.getElementById('generate-report-btn').addEventListener('click', () => reportManager.generateReport());
+    document.getElementById('save-settings-btn').addEventListener('click', () => settingsManager.saveSettings());
+    document.getElementById('add-member-btn').addEventListener('click', () => {
+        document.getElementById('member-modal').classList.remove('hidden');
+    });
+    document.getElementById('member-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        settingsManager.addMember();
+    });
+    document.getElementById('close-member-modal').addEventListener('click', () => {
+        document.getElementById('member-modal').classList.add('hidden');
+    });
+    document.getElementById('cancel-member-btn').addEventListener('click', () => {
+        document.getElementById('member-modal').classList.add('hidden');
+    });
 
-        document.getElementById('refresh-data').addEventListener('click', () => dashboardManager.loadDashboardData());
-        document.getElementById('call-next-btn').addEventListener('click', async () => {
-            try {
-                const response = await axios.post('/api/calls/next');
-                dashboardManager.updateCurrentTicket(response.data);
-            } catch (error) {
-                Utils.showToast('Erro ao chamar próximo ticket', 'error');
-            }
-        });
-        document.getElementById('recall-btn').addEventListener('click', async () => {
-            try {
-                const response = await axios.post('/api/calls/recall');
-                dashboardManager.updateCurrentTicket(response.data);
-            } catch (error) {
-                Utils.showToast('Erro ao rechamar ticket', 'error');
-            }
-        });
-    }
+    document.getElementById('refresh-data').addEventListener('click', () => dashboardManager.loadDashboardData());
+    document.getElementById('call-next-btn').addEventListener('click', async () => {
+        try {
+            const response = await axios.post('https://fila-facilita2-0-4uzw.onrender.com/api/calls/next');
+            dashboardManager.updateCurrentTicket(response.data);
+        } catch (error) {
+            Utils.showToast('Erro ao chamar próximo ticket', 'error');
+        }
+    });
+    document.getElementById('recall-btn').addEventListener('click', async () => {
+        try {
+            const response = await axios.post('https://fila-facilita2-0-4uzw.onrender.com/api/calls/recall');
+            dashboardManager.updateCurrentTicket(response.data);
+        } catch (error) {
+            Utils.showToast('Erro ao rechamar ticket', 'error');
+        }
+    });
 });
