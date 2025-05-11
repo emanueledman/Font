@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const API_BASE_URL = '/api/admin';
+    const API_BASE_URL = 'https://fila-facilita2-0-4uzw.onrender.com';
     const socket = io('/admin', { auth: { token: localStorage.getItem('authToken') } });
     let currentUser = null;
     let institutionId = null;
