@@ -7,7 +7,7 @@ const sanitizeInput = (input) => {
     if (typeof input !== 'string') return '';
     const div = document.createElement('div');
     div.textContent = input;
-    return div.innerHTML.replace(/</g, '<').replace(/>/g, '>');
+    return div.innerHTML.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 };
 
 // Valida código QR
@@ -117,7 +117,6 @@ const setupAxios = () => {
         }
     );
 
-    // Adicionar retry
     axiosRetry(axios, {
         retries: 3,
         retryDelay: (retryCount) => retryCount * 1000,
@@ -157,14 +156,21 @@ const initializeWebSocket = () => {
             updateCurrentTicket(data);
             fetchTickets();
             fetchRecentCalls();
+            updateDashboardMetrics();
+            renderNextQueue();
+            renderQueues();
         });
         socket.on('ticket_issued', () => {
             fetchTickets();
             renderNextQueue();
+            renderQueues();
+            updateDashboardMetrics();
         });
         socket.on('queue_updated', () => {
             fetchQueues();
             renderNextQueue();
+            renderQueues();
+            updateDashboardMetrics();
         });
     } catch (err) {
         showToast('Falha ao iniciar conexão em tempo real.', 'warning');
@@ -222,6 +228,7 @@ const fetchQueues = async () => {
         localStorage.setItem('queues', JSON.stringify(queues));
         renderQueueSelect(queues);
         renderNextQueue();
+        renderQueues();
         return queues;
     } catch (error) {
         showToast(error.response?.data?.error || 'Falha ao carregar filas.', 'warning');
@@ -237,6 +244,7 @@ const fetchTickets = async () => {
         const tickets = response.data;
         renderTickets(tickets);
         renderTicketQueueFilter(tickets);
+        updateDashboardMetrics();
         return tickets;
     } catch (error) {
         showToast(error.response?.data?.error || 'Falha ao carregar tickets.', 'error');
@@ -265,6 +273,22 @@ const fetchRecentCalls = async () => {
     }
 };
 
+// Atualiza métricas do dashboard
+const updateDashboardMetrics = async () => {
+    try {
+        const response = await axios.get('/api/attendant/tickets');
+        const tickets = response.data;
+        const pending = tickets.filter(t => t.status === 'Pendente').length;
+        const called = tickets.filter(t => t.status === 'Chamado').length;
+        const completed = tickets.filter(t => t.status === 'Atendido').length;
+        document.getElementById('pending-tickets').textContent = pending;
+        document.getElementById('called-tickets').textContent = called;
+        document.getElementById('completed-tickets').textContent = completed;
+    } catch (error) {
+        showToast('Falha ao atualizar métricas.', 'warning');
+    }
+};
+
 // Chama um ticket específico
 const callTicket = async (queueId, ticketId) => {
     try {
@@ -273,6 +297,9 @@ const callTicket = async (queueId, ticketId) => {
         showToast('Ticket chamado com sucesso.', 'success');
         fetchTickets();
         fetchRecentCalls();
+        updateDashboardMetrics();
+        renderNextQueue();
+        renderQueues();
     } catch (error) {
         showToast(error.response?.data?.error || 'Falha ao chamar ticket.', 'error');
     } finally {
@@ -295,6 +322,9 @@ const callNextTicket = async () => {
         updateCurrentTicket(response.data);
         fetchTickets();
         fetchRecentCalls();
+        updateDashboardMetrics();
+        renderNextQueue();
+        renderQueues();
     } catch (error) {
         showToast(error.response?.data?.error || 'Falha ao chamar próximo ticket.', 'error');
     } finally {
@@ -313,6 +343,7 @@ const recallTicket = async () => {
         await axios.post('/api/attendant/recall', { ticket_id: currentTicket.id });
         showToast('Ticket rechamado com sucesso.', 'success');
         fetchRecentCalls();
+        updateDashboardMetrics();
     } catch (error) {
         showToast(error.response?.data?.error || 'Falha ao rechamar ticket.', 'error');
     } finally {
@@ -333,6 +364,9 @@ const completeTicket = async () => {
         updateCurrentTicket(null);
         fetchTickets();
         fetchRecentCalls();
+        updateDashboardMetrics();
+        renderNextQueue();
+        renderQueues();
     } catch (error) {
         showToast(error.response?.data?.error || 'Falha ao finalizar ticket.', 'error');
     } finally {
@@ -353,6 +387,9 @@ const validateQR = async (qrCode) => {
         updateCurrentTicket(response.data);
         fetchTickets();
         fetchRecentCalls();
+        updateDashboardMetrics();
+        renderNextQueue();
+        renderQueues();
         document.getElementById('qr-modal').classList.add('hidden');
     } catch (error) {
         showToast(error.response?.data?.error || 'Falha ao validar QR Code.', 'error');
@@ -364,19 +401,32 @@ const validateQR = async (qrCode) => {
 // Renderiza select de filas
 const renderQueueSelect = (queues) => {
     const select = document.getElementById('queue-select');
-    if (!select) return;
-    select.innerHTML = '<option value="">Selecione uma fila</option>';
-    if (!queues || queues.length === 0) {
-        select.disabled = true;
-        return;
+    const ticketQueueFilter = document.getElementById('ticket-queue-filter');
+    if (select) {
+        select.innerHTML = '<option value="">Selecione uma fila</option>';
+        if (!queues || queues.length === 0) {
+            select.disabled = true;
+        } else {
+            select.disabled = false;
+            queues.forEach(queue => {
+                const option = document.createElement('option');
+                option.value = queue.id;
+                option.textContent = `${sanitizeInput(queue.service)} (${sanitizeInput(queue.department_name)})`;
+                select.appendChild(option);
+            });
+        }
     }
-    select.disabled = false;
-    queues.forEach(queue => {
-        const option = document.createElement('option');
-        option.value = queue.id;
-        option.textContent = `${sanitizeInput(queue.service)} (${sanitizeInput(queue.department_name)})`;
-        select.appendChild(option);
-    });
+    if (ticketQueueFilter) {
+        ticketQueueFilter.innerHTML = '<option value="all">Todas as filas</option>';
+        if (queues && queues.length > 0) {
+            queues.forEach(queue => {
+                const option = document.createElement('option');
+                option.value = queue.id;
+                option.textContent = `${sanitizeInput(queue.service)} (${sanitizeInput(queue.department_name)})`;
+                ticketQueueFilter.appendChild(option);
+            });
+        }
+    }
 };
 
 // Renderiza próximos na fila
@@ -387,7 +437,7 @@ const renderNextQueue = async () => {
     const queueSelect = document.getElementById('queue-select');
     const selectedQueueId = queueSelect.value;
     const queues = JSON.parse(localStorage.getItem('queues')) || [];
-    
+
     if (!queues.length) {
         container.innerHTML = '<p class="text-gray-500 text-center col-span-full">Nenhuma fila disponível.</p>';
         return;
@@ -395,21 +445,23 @@ const renderNextQueue = async () => {
 
     try {
         const filteredQueues = selectedQueueId ? queues.filter(queue => queue.id === selectedQueueId) : queues;
-        
         for (const queue of filteredQueues) {
-            const response = await axios.get(`/api/attendant/tickets?queue_id=${queue.id}&status=pending`);
-            const tickets = response.data.slice(0, 3); // Mostrar até 3 tickets pendentes
+            const response = await axios.get(`/api/attendant/tickets?queue_id=${queue.id}&status=pending,called`);
+            const tickets = response.data.slice(0, 3); // Até 3 tickets não atendidos
             if (tickets.length) {
                 tickets.forEach(ticket => {
+                    const statusColor = ticket.status === 'Chamado' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800';
                     const div = document.createElement('div');
                     div.className = 'bg-gray-50 rounded-lg p-4 border border-gray-100 animate-zoom-in hover:shadow-lg transition-all';
                     div.innerHTML = `
                         <div class="flex justify-between items-center mb-2">
                             <h4 class="text-sm font-semibold text-gray-800">${sanitizeInput(ticket.number)}</h4>
-                            <span class="text-xs text-gray-500">${new Date(ticket.issued_at).toLocaleTimeString('pt-BR')}</span>
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full ${statusColor}">${sanitizeInput(ticket.status)}</span>
                         </div>
                         <p class="text-sm text-gray-600"><span class="font-medium">Serviço:</span> ${sanitizeInput(queue.service)}</p>
                         <p class="text-sm text-gray-600"><span class="font-medium">Departamento:</span> ${sanitizeInput(queue.department_name)}</p>
+                        <p class="text-sm text-gray-600"><span class="font-medium">Emitido:</span> ${new Date(ticket.issued_at).toLocaleTimeString('pt-BR')}</p>
+                        <p class="text-sm text-gray-600"><span class="font-medium">Espera:</span> ${ticket.avg_wait_time ? `${ticket.avg_wait_time.toFixed(1)} min` : 'N/A'}</p>
                     `;
                     container.appendChild(div);
                 });
@@ -418,7 +470,7 @@ const renderNextQueue = async () => {
                 div.className = 'bg-gray-50 rounded-lg p-4 border border-gray-100';
                 div.innerHTML = `
                     <h4 class="text-sm font-medium text-gray-700">${sanitizeInput(queue.service)} (${sanitizeInput(queue.department_name)})</h4>
-                    <p class="text-sm text-gray-500 mt-2">Nenhum ticket pendente</p>
+                    <p class="text-sm text-gray-500 mt-2">Nenhum ticket pendente ou chamado</p>
                 `;
                 container.appendChild(div);
             }
@@ -453,6 +505,7 @@ const renderTickets = (tickets) => {
                 <p class="text-sm text-gray-600"><span class="font-medium">Serviço:</span> ${sanitizeInput(ticket.service)} (${sanitizeInput(ticket.department_name)})</p>
                 <p class="text-sm text-gray-600"><span class="font-medium">Guichê:</span> ${ticket.counter || 'N/A'}</p>
                 <p class="text-sm text-gray-600"><span class="font-medium">Emitido em:</span> ${new Date(ticket.issued_at).toLocaleString('pt-BR')}</p>
+                <p class="text-sm text-gray-600"><span class="font-medium">Espera:</span> ${ticket.avg_wait_time ? `${ticket.avg_wait_time.toFixed(1)} min` : 'N/A'}</p>
             </div>
             ${ticket.status === 'Pendente' ? `
             <div class="mt-4">
@@ -466,6 +519,45 @@ const renderTickets = (tickets) => {
         `;
         container.appendChild(div);
     });
+};
+
+// Renderiza filas
+const renderQueues = async () => {
+    const container = document.getElementById('queues-container');
+    if (!container) return;
+    container.innerHTML = '';
+    const queues = JSON.parse(localStorage.getItem('queues')) || [];
+
+    if (!queues.length) {
+        container.innerHTML = '<p class="text-gray-500 text-center col-span-full">Nenhuma fila disponível.</p>';
+        return;
+    }
+
+    try {
+        for (const queue of queues) {
+            const response = await axios.get(`/api/attendant/tickets?queue_id=${queue.id}&status=pending,called`);
+            const tickets = response.data.slice(0, 5); // Até 5 tickets por fila
+            const div = document.createElement('div');
+            div.className = 'bg-white rounded-xl shadow-lg p-6 border border-gray-100 animate-zoom-in hover:shadow-xl transition-all';
+            div.innerHTML = `
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800">${sanitizeInput(queue.service)} (${sanitizeInput(queue.department_name)})</h3>
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">${tickets.length} tickets ativos</span>
+                </div>
+                <div class="space-y-2">
+                    ${tickets.length ? tickets.map(ticket => `
+                        <div class="flex justify-between items-center">
+                            <p class="text-sm text-gray-600">${sanitizeInput(ticket.number)}</p>
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full ${ticket.status === 'Chamado' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}">${sanitizeInput(ticket.status)}</span>
+                        </div>
+                    `).join('') : '<p class="text-sm text-gray-500">Nenhum ticket pendente ou chamado</p>'}
+                </div>
+            `;
+            container.appendChild(div);
+        }
+    } catch (error) {
+        container.innerHTML = '<p class="text-gray-500 text-center col-span-full">Erro ao carregar filas.</p>';
+    }
 };
 
 // Renderiza chamadas recentes
@@ -578,6 +670,38 @@ const setupEventListeners = () => {
         });
     }
 
+    // Filtro de filas na seção Filas
+    const queueFilter = document.getElementById('queue-filter');
+    if (queueFilter) {
+        queueFilter.addEventListener('input', () => {
+            const filter = sanitizeInput(queueFilter.value.toLowerCase());
+            document.querySelectorAll('#queues-container > div').forEach(card => {
+                const service = card.querySelector('h3').textContent.toLowerCase();
+                card.style.display = service.includes(filter) ? '' : 'none';
+            });
+        });
+    }
+
+    // Filtro de status na seção Filas
+    const queueStatusFilter = document.getElementById('queue-status-filter');
+    if (queueStatusFilter) {
+        queueStatusFilter.addEventListener('change', () => {
+            const status = queueStatusFilter.value;
+            document.querySelectorAll('#queues-container > div').forEach(card => {
+                const ticketCount = parseInt(card.querySelector('span').textContent) || 0;
+                if (status === 'all') {
+                    card.style.display = '';
+                } else if (status === 'active' && ticketCount > 0) {
+                    card.style.display = '';
+                } else if (status === 'empty' && ticketCount === 0) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    }
+
     // Navegação entre seções
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -641,6 +765,12 @@ const setupEventListeners = () => {
         refreshQueueBtn.addEventListener('click', renderNextQueue);
     }
 
+    // Atualizar filas
+    const refreshQueuesBtn = document.getElementById('refresh-queues-btn');
+    if (refreshQueuesBtn) {
+        refreshQueuesBtn.addEventListener('click', renderQueues);
+    }
+
     // Filtro de chamadas
     const callFilter = document.getElementById('call-filter');
     if (callFilter) {
@@ -690,7 +820,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             fetchUserInfo(),
             fetchQueues(),
             fetchTickets(),
-            fetchRecentCalls()
+            fetchRecentCalls(),
+            updateDashboardMetrics()
         ]);
         setupEventListeners();
     } catch (error) {
