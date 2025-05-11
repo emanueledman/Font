@@ -7,7 +7,7 @@ const sanitizeInput = (input) => {
     if (typeof input !== 'string') return '';
     const div = document.createElement('div');
     div.textContent = input;
-    return div.innerHTML.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return div.innerHTML.replace(/</g, '<').replace(/>/g, '>');
 };
 
 // Valida código QR
@@ -52,7 +52,7 @@ const toggleLoading = (show, message = 'Carregando...') => {
     }
 };
 
-// Exibe notificações
+// Exibe notificações no toast
 const showToast = (message, type = 'success') => {
     const toastContainer = document.getElementById('toast-container');
     if (!toastContainer) return;
@@ -77,6 +77,45 @@ const showToast = (message, type = 'success') => {
     }, 5000);
 };
 
+// Exibe modal de erro
+const showErrorModal = (title, message, type = 'error') => {
+    const modal = document.getElementById('error-modal');
+    const titleEl = document.getElementById('error-modal-title');
+    const messageEl = document.getElementById('error-message');
+    const iconEl = document.getElementById('error-icon');
+    if (modal && titleEl && messageEl && iconEl) {
+        titleEl.textContent = sanitizeInput(title);
+        messageEl.textContent = sanitizeInput(message);
+        iconEl.className = `p-3 rounded-full mr-4 flex-shrink-0 ${
+            type === 'error' ? 'bg-red-100' : 'bg-green-100'
+        }`;
+        iconEl.innerHTML = `
+            <svg class="w-6 h-6 ${type === 'error' ? 'text-red-600' : 'text-green-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${
+                    type === 'error' ? 'M6 18L18 6M6 6l12 12' : 'M5 13l4 4L19 7'
+                }" />
+            </svg>
+        `;
+        modal.classList.remove('hidden');
+    }
+};
+
+// Fecha modal de erro
+const setupErrorModalClose = () => {
+    const closeModalBtn = document.getElementById('close-error-btn');
+    const closeModalIcon = document.getElementById('close-error-modal');
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', () => {
+            document.getElementById('error-modal')?.classList.add('hidden');
+        });
+    }
+    if (closeModalIcon) {
+        closeModalIcon.addEventListener('click', () => {
+            document.getElementById('error-modal')?.classList.add('hidden');
+        });
+    }
+};
+
 // Debounce para evitar atualizações excessivas
 const debounce = (func, wait) => {
     let timeout;
@@ -86,7 +125,7 @@ const debounce = (func, wait) => {
     };
 };
 
-// Configura Axios com retry
+// Configura Axios
 const setupAxios = () => {
     const token = getToken();
     if (token) {
@@ -97,49 +136,47 @@ const setupAxios = () => {
 
     axios.interceptors.response.use(
         response => response,
-        error => {
+        async error => {
             if (error.response?.status === 401 || error.response?.status === 403) {
-                showToast('Sessão expirada. Faça login novamente.', 'error');
+                showErrorModal('Sessão Expirada', 'Sua sessão expirou. Você será redirecionado para a página de login em breve.', 'error');
                 setTimeout(() => {
                     clearSensitiveData();
                     if (socket) socket.disconnect();
                     window.location.href = '/index.html';
-                }, 2000);
+                }, 3000);
             } else if (error.response?.status === 404) {
                 showToast('Recurso não encontrado.', 'warning');
-            } else if (error.code === 'ECONNABORTED') {
-                showToast('Tempo de conexão excedido. Verifique sua conexão.', 'error');
-            } else if (error.message.includes('Network Error')) {
-                showToast('Falha na conexão com o servidor. Tentando novamente...', 'error');
+            } else if (error.code === 'ECONNABORTED' || error.message.includes('Network Error')) {
+                showToast('Problema na conexão com o servidor. Tentando novamente...', 'warning');
+                // Retry manual
+                if (!error.config.retryCount) {
+                    error.config.retryCount = 0;
+                }
+                if (error.config.retryCount < 3) {
+                    error.config.retryCount++;
+                    await new Promise(resolve => setTimeout(resolve, error.config.retryCount * 1000));
+                    return axios(error.config);
+                }
             }
             return Promise.reject(error);
         }
     );
-
-    // Configura retry apenas para erros de rede
-    axiosRetry(axios, {
-        retries: 3,
-        retryDelay: (retryCount) => retryCount * 1000,
-        retryCondition: (error) => {
-            return error.code === 'ECONNABORTED' || error.message.includes('Network Error');
-        }
-    });
 };
 
 // Inicializa WebSocket
 const initializeWebSocket = () => {
     const token = getToken();
     if (!token) {
-        showToast('Token não encontrado. Faça login novamente.', 'error');
+        showErrorModal('Erro de Autenticação', 'Token não encontrado. Você será redirecionado para a página de login.', 'error');
         setTimeout(() => {
             window.location.href = '/index.html';
-        }, 2000);
+        }, 3000);
         return;
     }
     try {
         socket = io(`${API_BASE}/dashboard`, {
             transports: ['websocket'],
-            reconnectionAttempts: 15, // Aumentado para mais tentativas
+            reconnectionAttempts: 20,
             reconnectionDelay: 2000,
             query: { 
                 token, 
@@ -607,7 +644,7 @@ const renderTicketQueueFilter = (tickets) => {
             const option = document.createElement('option');
             option.value = queueId;
             option.textContent = `${sanitizeInput(queue.service)} (${sanitizeInput(queue.department_name)})`;
-            select.appendChild(option);
+            ticketQueueFilter.appendChild(option);
         }
     });
     select.value = 'all';
@@ -807,6 +844,7 @@ const setupEventListeners = () => {
 document.addEventListener('DOMContentLoaded', async () => {
     setupAxios();
     updateCurrentDate();
+    setupErrorModalClose();
     initializeWebSocket();
     await fetchUserInfo();
     await fetchQueues();
