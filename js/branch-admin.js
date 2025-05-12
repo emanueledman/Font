@@ -1,817 +1,665 @@
-// js/branch-admin.js
-document.addEventListener('DOMContentLoaded', () => {
-    const userRole = localStorage.getItem('userRole');
 
-    // Verificar se o usuário tem o papel correto
-    if (userRole !== 'branch_admin') {
-        showToast('Acesso restrito a administradores de filial.', 'error');
-        setTimeout(() => window.location.href = '/index.html', 2000);
+const API_BASE = 'https://fila-facilita2-0-4uzw.onrender.com';
+
+// Utility Functions
+const Utils = {
+    formatDate(date) {
+        return new Date(date).toLocaleString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    },
+
+    formatTime(time) {
+        if (!time) return 'N/A';
+        return time;
+    },
+
+    showToast(message, type = 'success') {
+        const toast = document.importNode(document.getElementById('toast-template').content, true);
+        const toastElement = toast.querySelector('.toast');
+        toastElement.classList.add(`bg-${type === 'success' ? 'green' : type === 'info' ? 'blue' : 'red'}-100`, `text-${type === 'success' ? 'green' : type === 'info' ? 'blue' : 'red'}-800`);
+        toast.querySelector('.toast-title').textContent = type === 'success' ? 'Sucesso' : type === 'info' ? 'Info' : 'Erro';
+        toast.querySelector('.toast-message').textContent = message;
+        document.getElementById('toast-container').appendChild(toast);
+        setTimeout(() => {
+            toastElement.classList.add('opacity-0');
+            setTimeout(() => toastElement.remove(), 300);
+        }, 5000);
+        toast.querySelector('.toast-close').addEventListener('click', () => toastElement.remove());
+    },
+
+    showLoading(show = true, message = 'Carregando...') {
+        const overlay = document.getElementById('loading-overlay');
+        document.getElementById('loading-message').textContent = message;
+        overlay.classList.toggle('hidden', !show);
+    },
+
+    createSkeletonLoading(count = 3) {
+        const template = document.getElementById('skeleton-template').content;
+        const fragment = document.createDocumentFragment();
+        for (let i = 0; i < count; i++) {
+            fragment.appendChild(template.cloneNode(true));
+        }
+        return fragment;
+    },
+
+    downloadFile(blob, filename) {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    }
+};
+
+// Classes para gerenciar funcionalidades
+class QueueManager {
+    async loadQueues() {
+        try {
+            Utils.showLoading(true, 'Carregando filas...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/queues`, {
+                params: { refresh: true }
+            });
+            const queues = response.data;
+            const container = document.getElementById('queues-container');
+            container.innerHTML = '';
+            queues.forEach(queue => {
+                const queueCard = document.createElement('div');
+                queueCard.className = 'bg-white rounded-xl shadow-lg p-4 border border-gray-100';
+                queueCard.innerHTML = `
+                    <h3 class="text-lg font-semibold">${queue.service_name}</h3>
+                    <p class="text-sm text-gray-500">Prefixo: ${queue.prefix}</p>
+                    <p class="text-sm text-gray-500">Departamento: ${queue.department_name}</p>
+                    <p class="text-sm text-gray-500">Status: ${queue.status}</p>
+                    <p class="text-sm text-gray-500">Tempo de espera estimado: ${queue.estimated_wait_time ? queue.estimated_wait_time + ' min' : 'N/A'}</p>
+                    <button class="edit-queue-btn mt-2 text-blue-600 hover:text-blue-800" data-id="${queue.id}">Editar</button>
+                `;
+                container.appendChild(queueCard);
+            });
+            document.querySelectorAll('.edit-queue-btn').forEach(btn => {
+                btn.addEventListener('click', () => this.editQueue(btn.dataset.id));
+            });
+        } catch (error) {
+            console.error('Erro ao carregar filas:', error);
+            Utils.showToast('Erro ao carregar filas', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async createQueue(data) {
+        try {
+            Utils.showLoading(true, 'Criando fila...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/queues`, data);
+            Utils.showToast(response.data.message, 'success');
+            document.getElementById('queue-modal').classList.add('hidden');
+            this.loadQueues();
+        } catch (error) {
+            console.error('Erro ao criar fila:', error);
+            Utils.showToast(error.response?.data?.error || 'Erro ao criar fila', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async editQueue(queueId) {
+        try {
+            Utils.showLoading(true, 'Carregando dados da fila...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/queues`);
+            const queue = response.data.find(q => q.id === queueId);
+            if (!queue) throw new Error('Fila não encontrada');
+            document.getElementById('queue-modal-title').textContent = 'Editar Fila';
+            document.getElementById('department_id').value = queue.department_id;
+            document.getElementById('service_id').value = queue.service_id;
+            document.getElementById('prefix').value = queue.prefix;
+            document.getElementById('daily_limit').value = queue.daily_limit;
+            document.getElementById('num_counters').value = queue.num_counters;
+            document.getElementById('queue_id').value = queue.id;
+            document.getElementById('queue-modal').classList.remove('hidden');
+        } catch (error) {
+            console.error('Erro ao carregar fila:', error);
+            Utils.showToast('Erro ao carregar fila', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async generateTotemTicket(queueId) {
+        try {
+            Utils.showLoading(true, 'Gerando ticket via totem...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/queues/totem`, { queue_id: queueId }, {
+                responseType: 'blob'
+            });
+            Utils.showToast('Ticket gerado com sucesso', 'success');
+            Utils.downloadFile(response.data, `ticket_${queueId}_${Date.now()}.pdf`);
+            this.loadQueues();
+        } catch (error) {
+            console.error('Erro ao gerar ticket via totem:', error);
+            Utils.showToast(error.response?.data?.error || 'Erro ao gerar ticket via totem', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+}
+
+class TicketManager {
+    async loadTickets() {
+        try {
+            Utils.showLoading(true, 'Carregando tickets...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/tickets`, {
+                params: { refresh: true }
+            });
+            const tickets = response.data;
+            const container = document.getElementById('tickets-container');
+            container.innerHTML = '';
+            tickets.forEach(ticket => {
+                const ticketCard = document.createElement('div');
+                ticketCard.className = 'bg-white rounded-xl shadow-lg p-4 border border-gray-100';
+                ticketCard.innerHTML = `
+                    <h3 class="text-lg font-semibold">Ticket ${ticket.ticket_number}</h3>
+                    <p class="text-sm text-gray-500">Fila: ${ticket.queue_prefix}</p>
+                    <p class="text-sm text-gray-500">Status: ${ticket.status}</p>
+                    <p class="text-sm text-gray-500">Emitido em: ${Utils.formatDate(ticket.issued_at)}</p>
+                    <p class="text-sm text-gray-500">Atendido em: ${ticket.attended_at ? Utils.formatDate(ticket.attended_at) : 'N/A'}</p>
+                `;
+                container.appendChild(ticketCard);
+            });
+        } catch (error) {
+            console.error('Erro ao carregar tickets:', error);
+            Utils.showToast('Erro ao carregar tickets', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+}
+
+class ReportManager {
+    async generateReport() {
+        try {
+            Utils.showLoading(true, 'Gerando relatório...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const date = document.getElementById('report-date').value;
+            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/report`, {
+                params: { date }
+            });
+            const reportData = response.data;
+            const results = document.getElementById('report-results');
+            results.innerHTML = '';
+            reportData.forEach(report => {
+                const reportCard = document.createElement('div');
+                reportCard.className = 'bg-white rounded-xl shadow-lg p-6 border border-gray-100';
+                reportCard.innerHTML = `
+                    <h3 class="text-xl font-semibold mb-4">Relatório ${report.service_name}</h3>
+                    <p>Departamento: ${report.department_name}</p>
+                    <p>Tickets emitidos: ${report.issued}</p>
+                    <p>Tickets atendidos: ${report.attended}</p>
+                    <p>Tempo médio de atendimento: ${report.avg_time ? report.avg_time + ' min' : 'N/A'}</p>
+                `;
+                results.appendChild(reportCard);
+            });
+            Utils.showToast('Relatório gerado com sucesso', 'success');
+        } catch (error) {
+            console.error('Erro ao gerar relatório:', error);
+            Utils.showToast(error.response?.data?.error || 'Erro ao gerar relatório', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+}
+
+class SettingsManager {
+    async loadDepartments() {
+        try {
+            Utils.showLoading(true, 'Carregando departamentos...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/departments`, {
+                params: { refresh: true }
+            });
+            const departments = response.data;
+            const container = document.getElementById('departments-container');
+            container.innerHTML = '';
+            departments.forEach(dept => {
+                const deptCard = document.createElement('div');
+                deptCard.className = 'bg-white rounded-xl shadow-lg p-4 border border-gray-100';
+                deptCard.innerHTML = `
+                    <h3 class="text-lg font-semibold">${dept.name}</h3>
+                    <p class="text-sm text-gray-500">Setor: ${dept.sector}</p>
+                `;
+                container.appendChild(deptCard);
+            });
+        } catch (error) {
+            console.error('Erro ao carregar departamentos:', error);
+            Utils.showToast('Erro ao carregar departamentos', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async createDepartment(data) {
+        try {
+            Utils.showLoading(true, 'Criando departamento...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/departments`, data);
+            Utils.showToast(response.data.message, 'success');
+            document.getElementById('department-modal').classList.add('hidden');
+            this.loadDepartments();
+        } catch (error) {
+            console.error('Erro ao criar departamento:', error);
+            Utils.showToast(error.response?.data?.error || 'Erro ao criar departamento', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async loadAttendants() {
+        try {
+            Utils.showLoading(true, 'Carregando atendentes...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/attendants`, {
+                params: { refresh: true }
+            });
+            const attendants = response.data;
+            const container = document.getElementById('team-members');
+            container.innerHTML = '';
+            attendants.forEach(attendant => {
+                const attendantCard = document.createElement('div');
+                attendantCard.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100';
+                attendantCard.innerHTML = `
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold mr-3">${attendant.name.charAt(0)}</div>
+                        <div>
+                            <p class="font-medium">${attendant.name}</p>
+                            <p class="text-xs text-gray-500">${attendant.email}</p>
+                        </div>
+                    </div>
+                    <button class="assign-queue-btn text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-50" data-id="${attendant.id}">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                    </button>
+                `;
+                container.appendChild(attendantCard);
+            });
+            document.querySelectorAll('.assign-queue-btn').forEach(btn => {
+                btn.addEventListener('click', () => this.showAssignQueueModal(btn.dataset.id));
+            });
+        } catch (error) {
+            console.error('Erro ao carregar atendentes:', error);
+            Utils.showToast('Erro ao carregar atendentes', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async createAttendant(data) {
+        try {
+            Utils.showLoading(true, 'Criando atendente...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/attendants`, data);
+            Utils.showToast(response.data.message, 'success');
+            document.getElementById('member-modal').classList.add('hidden');
+            this.loadAttendants();
+        } catch (error) {
+            console.error('Erro ao criar atendente:', error);
+            Utils.showToast(error.response?.data?.error || 'Erro ao criar atendente', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async assignAttendantToQueue(attendantId, queueId) {
+        try {
+            Utils.showLoading(true, 'Atribuindo atendente à fila...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/attendants/${attendantId}/queues`, { queue_id: queueId });
+            Utils.showToast(response.data.message, 'success');
+            document.getElementById('assign-queue-modal').classList.add('hidden');
+            this.loadAttendants();
+        } catch (error) {
+            console.error('Erro ao atribuir atendente:', error);
+            Utils.showToast(error.response?.data?.error || 'Erro ao atribuir atendente', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    showAssignQueueModal(attendantId) {
+        document.getElementById('assign-queue-modal').classList.remove('hidden');
+        document.getElementById('assign-queue-form').dataset.attendantId = attendantId;
+        // Carregar filas disponíveis
+        this.loadAvailableQueuesForAssignment();
+    }
+
+    async loadAvailableQueuesForAssignment() {
+        try {
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/queues`);
+            const queues = response.data;
+            const select = document.getElementById('assign-queue-id');
+            select.innerHTML = '<option value="">Selecione uma fila</option>';
+            queues.forEach(queue => {
+                const option = document.createElement('option');
+                option.value = queue.id;
+                option.textContent = `${queue.service_name} (${queue.prefix})`;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Erro ao carregar filas disponíveis:', error);
+            Utils.showToast('Erro ao carregar filas disponíveis', 'error');
+        }
+    }
+
+    async loadSchedules() {
+        try {
+            Utils.showLoading(true, 'Carregando horários...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/schedules`, {
+                params: { refresh: true }
+            });
+            const schedules = response.data;
+            const container = document.getElementById('schedules-container');
+            container.innerHTML = '';
+            schedules.forEach(schedule => {
+                const scheduleCard = document.createElement('div');
+                scheduleCard.className = 'bg-white rounded-xl shadow-lg p-4 border border-gray-100';
+                scheduleCard.innerHTML = `
+                    <h3 class="text-lg font-semibold">${schedule.weekday}</h3>
+                    <p class="text-sm text-gray-500">Horário: ${schedule.is_closed ? 'Fechado' : `${schedule.open_time} - ${schedule.end_time}`}</p>
+                `;
+                container.appendChild(scheduleCard);
+            });
+        } catch (error) {
+            console.error('Erro ao carregar horários:', error);
+            Utils.showToast('Erro ao carregar horários', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async createSchedule(data) {
+        try {
+            Utils.showLoading(true, 'Criando horário...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/schedules`, data);
+            Utils.showToast(response.data.message, 'success');
+            document.getElementById('schedule-modal').classList.add('hidden');
+            this.loadSchedules();
+        } catch (error) {
+            console.error('Erro ao criar horário:', error);
+            Utils.showToast(error.response?.data?.error || 'Erro ao criar horário', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+}
+
+class DashboardManager {
+    async loadDashboardData() {
+        try {
+            Utils.showLoading(true, 'Carregando dados do dashboard...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/dashboard`, {
+                params: { refresh: true }
+            });
+            const data = response.data;
+
+            document.getElementById('active-queues').textContent = data.queues.filter(q => q.status === 'Aberto').length;
+            document.getElementById('pending-tickets').textContent = data.metrics.pending_tickets;
+            document.getElementById('today-calls').textContent = data.metrics.attended_tickets;
+            document.getElementById('active-users').textContent = data.metrics.active_attendants;
+
+            this.updateRecentTickets(data.recent_tickets);
+            this.updateActivityChart(data.queues);
+        } catch (error) {
+            console.error('Erro ao carregar dados do dashboard:', error);
+            Utils.showToast('Erro ao carregar dados do dashboard', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    updateRecentTickets(tickets) {
+        const container = document.getElementById('recent-tickets');
+        container.innerHTML = '';
+        tickets.forEach(ticket => {
+            const ticketCard = document.createElement('div');
+            ticketCard.className = 'bg-white rounded-lg p-3 border border-gray-100';
+            ticketCard.innerHTML = `
+                <p class="font-medium">${ticket.ticket_number}</p>
+                <p class="text-sm text-gray-500">${ticket.service_name}</p>
+                <p class="text-sm text-gray-500">${ticket.status}</p>
+                <p class="text-sm text-gray-500">${ticket.counter}</p>
+            `;
+            container.appendChild(ticketCard);
+        });
+    }
+
+    updateActivityChart(queues) {
+        const ctx = document.getElementById('activity-chart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: queues.map(q => q.prefix),
+                datasets: [{
+                    label: 'Tickets Ativos',
+                    data: queues.map(q => q.active_tickets),
+                    borderColor: 'rgba(59, 130, 246, 1)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    initWebSocket() {
+        const socket = io(API_BASE, { path: '/socket.io' });
+        socket.on('connect', () => {
+            console.log('Conectado ao WebSocket');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            socket.emit('join', { room: branchId });
+        });
+        socket.on('dashboard_update', (data) => {
+            this.loadDashboardData();
+            Utils.showToast(`Atualização: ${data.event_type}`, 'info');
+        });
+        socket.on('queue_created', () => {
+            queueManager.loadQueues();
+            Utils.showToast('Nova fila criada', 'info');
+        });
+        socket.on('department_created', () => {
+            settingsManager.loadDepartments();
+            Utils.showToast('Novo departamento criado', 'info');
+        });
+        socket.on('attendant_created', () => {
+            settingsManager.loadAttendants();
+            Utils.showToast('Novo atendente criado', 'info');
+        });
+        socket.on('attendant_queue_assigned', () => {
+            settingsManager.loadAttendants();
+            Utils.showToast('Atendente atribuído à fila', 'info');
+        });
+        socket.on('schedule_created', () => {
+            settingsManager.loadSchedules();
+            Utils.showToast('Novo horário criado', 'info');
+        });
+    }
+}
+
+// Instâncias das classes
+const queueManager = new QueueManager();
+const ticketManager = new TicketManager();
+const reportManager = new ReportManager();
+const settingsManager = new SettingsManager();
+const dashboardManager = new DashboardManager();
+
+function setupNavigation() {
+    const navButtons = ['dashboard', 'call', 'queues', 'tickets', 'reports', 'settings'];
+    navButtons.forEach(button => {
+        document.getElementById(`nav-${button}`).addEventListener('click', () => {
+            document.querySelectorAll('main > div').forEach(section => section.classList.add('hidden'));
+            document.getElementById(`${button}-section`).classList.remove('hidden');
+            document.querySelectorAll('#sidebar nav button').forEach(btn => {
+                btn.classList.remove('active', 'bg-blue-700/90');
+                btn.classList.add('bg-blue-700/50');
+            });
+            const activeBtn = document.getElementById(`nav-${button}`);
+            activeBtn.classList.add('active', 'bg-blue-700/90');
+            activeBtn.classList.remove('bg-blue-700/50');
+            switch (button) {
+                case 'dashboard': dashboardManager.loadDashboardData(); break;
+                case 'queues': queueManager.loadQueues(); break;
+                case 'tickets': ticketManager.loadTickets(); break;
+                case 'reports': reportManager.generateReport(); break;
+                case 'settings': 
+                    settingsManager.loadDepartments();
+                    settingsManager.loadAttendants();
+                    settingsManager.loadSchedules();
+                    break;
+            }
+        });
+    });
+
+    document.getElementById('logout').addEventListener('click', () => authService.logout());
+    document.getElementById('sidebar-toggle').addEventListener('click', () => {
+        const sidebar = document.getElementById('sidebar');
+        sidebar.classList.toggle('w-20');
+        sidebar.classList.toggle('w-64');
+        document.querySelectorAll('#sidebar .hidden.md\\:block').forEach(el => el.classList.toggle('hidden'));
+    });
+}
+
+function updateCurrentDateTime() {
+    const now = new Date();
+    const options = {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    };
+    document.getElementById('current-date').textContent = now.toLocaleDateString('pt-BR', options);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.location.pathname.includes('index.html')) return;
+
+    if (!authService.isAuthenticated()) {
+        console.warn('Usuário não autenticado, redirecionando para login');
+        window.location.href = '/index.html';
         return;
     }
 
-    const API_BASE_URL = 'https://fila-facilita2-0-4uzw.onrender.com/api/admin';
-    const socket = io('https://fila-facilita2-0-4uzw.onrender.com/admin', {
-        auth: { token: localStorage.getItem('adminToken') }
+    const role = (localStorage.getItem('userRole') || sessionStorage.getItem('userRole') || '').toLowerCase();
+    if (role !== 'branch_admin') {
+        console.warn(`Acesso não autorizado para papel ${role}, redirecionando...`);
+        authService.redirectBasedOnRole();
+        return;
+    }
+
+    authService.setUserInfoUI();
+    dashboardManager.loadDashboardData();
+    setupNavigation();
+    dashboardManager.initWebSocket();
+    updateCurrentDateTime();
+    setInterval(updateCurrentDateTime, 60000);
+
+    // Eventos de modais e formulários
+    document.getElementById('generate-report-btn').addEventListener('click', () => reportManager.generateReport());
+    document.getElementById('create-queue-btn').addEventListener('click', () => {
+        document.getElementById('queue-modal-title').textContent = 'Nova Fila';
+        document.getElementById('queue-form').reset();
+        document.getElementById('queue_id').value = '';
+        document.getElementById('queue-modal').classList.remove('hidden');
     });
-
-    // DOM Elements
-    const sidebar = document.getElementById('sidebar');
-    const sidebarToggle = document.getElementById('sidebar-toggle');
-    const navButtons = document.querySelectorAll('.nav-btn');
-    const sections = {
-        dashboard: document.getElementById('dashboard-section'),
-        queues: document.getElementById('queues-section'),
-        departments: document.getElementById('departments-section'),
-        attendants: document.getElementById('attendants-section'),
-        schedules: document.getElementById('schedules-section')
-    };
-    const userInfo = document.getElementById('user-info');
-    const userName = document.getElementById('user-name');
-    const userEmailElement = document.getElementById('user-email');
-    const logoutBtn = document.getElementById('logout');
-    const currentDate = document.getElementById('current-date');
-    const connectionStatus = document.getElementById('connection-status');
-    const connectionText = document.getElementById('connection-text');
-    const loadingOverlay = document.getElementById('loading-overlay');
-    const loadingMessage = document.getElementById('loading-message');
-    const activeQueues = document.getElementById('active-queues');
-    const activeAttendants = document.getElementById('active-attendants');
-    const totalDepartments = document.getElementById('total-departments');
-    const configuredSchedules = document.getElementById('configured-schedules');
-    const queuesOverview = document.getElementById('queues-overview');
-    const refreshQueues = document.getElementById('refresh-queues');
-    const addQueueBtn = document.getElementById('add-queue-btn');
-    const queueFilter = document.getElementById('queue-filter');
-    const queueStatusFilter = document.getElementById('queue-status-filter');
-    const queueDepartmentFilter = document.getElementById('queue-department-filter');
-    const queuesContainer = document.getElementById('queues-container');
-    const addDepartmentBtn = document.getElementById('add-department-btn');
-    const departmentFilter = document.getElementById('department-filter');
-    const departmentsContainer = document.getElementById('departments-container');
-    const addAttendantBtn = document.getElementById('add-attendant-btn');
-    const attendantFilter = document.getElementById('attendant-filter');
-    const attendantRoleFilter = document.getElementById('attendant-role-filter');
-    const attendantsContainer = document.getElementById('attendants-container');
-    const scheduleFilter = document.getElementById('schedule-filter');
-    const schedulesContainer = document.getElementById('schedules-container');
-    const toastContainer = document.getElementById('toast-container');
-
-    // Utility Functions
-    const showLoading = (message) => {
-        if (loadingMessage && loadingOverlay) {
-            loadingMessage.textContent = message;
-            loadingOverlay.classList.remove('hidden');
-        }
-    };
-
-    const hideLoading = () => {
-        if (loadingOverlay) {
-            loadingOverlay.classList.add('hidden');
-        }
-    };
-
-    const showToast = (message, type = 'success') => {
-        if (!toastContainer) return;
-        const toast = document.createElement('div');
-        toast.className = `flex items-center px-4 py-3 rounded-lg shadow-lg text-white animate-slide-in toast-${type}`;
-        toast.innerHTML = `
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                ${type === 'success' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />' :
-                  type === 'error' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />' :
-                  '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />'}
-            </svg>
-            <span>${message}</span>
-        `;
-        toastContainer.appendChild(toast);
-        setTimeout(() => {
-            toast.classList.add('animate-slide-out');
-            setTimeout(() => toast.remove(), 500);
-        }, 3000);
-    };
-
-    const handleApiError = (error) => {
-        let message = 'Erro na operação. Tente novamente.';
-        if (error.response) {
-            message = error.response.data?.error || message;
-            if (error.response.status === 401) {
-                showToast('Sessão expirada. Faça login novamente.', 'error');
-                localStorage.clear();
-                setTimeout(() => window.location.href = '/index.html', 2000);
-                return true;
-            } else if (error.response.status === 403) {
-                message = 'Acesso não autorizado.';
-            } else if (error.response.status === 500) {
-                message = 'Erro interno no servidor.';
-            }
-        } else if (error.code === 'ECONNABORTED') {
-            message = 'Tempo de conexão esgotado.';
-        } else if (error.message.includes('Network Error')) {
-            message = 'Erro de rede.';
-        }
-        showToast(message, 'error');
-        console.error('API error:', error);
-        return false;
-    };
-
-    const switchSection = (sectionId) => {
-        Object.values(sections).forEach(section => section?.classList.add('hidden'));
-        if (sections[sectionId]) {
-            sections[sectionId].classList.remove('hidden');
-        }
-        navButtons.forEach(btn => btn.classList.remove('active', 'bg-indigo-600'));
-        const navButton = document.getElementById(`nav-${sectionId}`);
-        if (navButton) {
-            navButton.classList.add('active', 'bg-indigo-600');
-        }
-    };
-
-    const formatDate = (date) => {
-        return new Intl.DateTimeFormat('pt-BR', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric'
-        }).format(date);
-    };
-
-    const validateEmail = (email) => {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    };
-
-    const validateName = (name) => {
-        return /^[A-Za-zÀ-ÿ\s0-9.,-]{1,100}$/.test(name);
-    };
-
-    const validatePassword = (password) => {
-        return password.length >= 8 &&
-               /[A-Z]/.test(password) &&
-               /[a-z]/.test(password) &&
-               /[0-9]/.test(password);
-    };
-
-    // Initialize User Info
-    const initUserInfo = () => {
-        const token = localStorage.getItem('adminToken');
-        const userRole = localStorage.getItem('userRole');
-        const storedEmail = localStorage.getItem('email') || 'admin@queue.com';
-
-        if (!token || !userRole) {
-            showToast('Acesso não autorizado. Faça login novamente.', 'error');
-            setTimeout(() => window.location.href = '/index.html', 2000);
-            return null;
-        }
-
-        if (userRole !== 'branch_admin') {
-            showToast('Acesso restrito a administradores de filial.', 'error');
-            setTimeout(() => window.location.href = '/index.html', 2000);
-            return null;
-        }
-
-        if (userName && userEmailElement && userInfo) {
-            userName.textContent = storedEmail;
-            userEmailElement.textContent = storedEmail;
-            const initialsElement = userInfo.querySelector('.w-8');
-            if (initialsElement) {
-                initialsElement.textContent = storedEmail.split('@')[0].slice(0, 2).toUpperCase();
-            }
-        }
-        return { email: storedEmail };
-    };
-
-    // API Calls
-    const loadDashboard = async () => {
-        try {
-            showLoading('Carregando dados do painel...');
-            const token = localStorage.getItem('adminToken');
-            const storedQueues = localStorage.getItem('queues');
-            let queuesData = storedQueues ? JSON.parse(storedQueues) : [];
-
-            const queuesRes = await axios.get(`${API_BASE_URL}/queues`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            queuesData = queuesRes.data.queues || [];
-
-            const activeQueuesCount = queuesData.filter(q => q.status === 'Aberto').length;
-            if (activeQueues) activeQueues.textContent = activeQueuesCount;
-
-            if (activeAttendants) activeAttendants.textContent = 'N/A';
-            if (totalDepartments) totalDepartments.textContent = 'N/A';
-            if (configuredSchedules) configuredSchedules.textContent = 'N/A';
-
-            if (queuesOverview) {
-                queuesOverview.innerHTML = queuesData.slice(0, 5).map(queue => `
-                    <div class="queue-card bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200">
-                        <div class="flex items-center justify-between">
-                            <h4 class="font-medium text-gray-800">${queue.service || 'N/A'}</h4>
-                            <span class="text-xs px-2 py-1 rounded-full ${queue.status === 'Aberto' ? 'bg-green-100 text-green-800' : queue.status === 'Fechado' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">${queue.status}</span>
-                        </div>
-                        <p class="text-sm text-gray-600 mt-1">Departamento: ${queue.department || 'N/A'}</p>
-                        <p class="text-sm text-gray-600">Senhas ativas: ${queue.active_tickets || 0}</p>
-                        <p class="text-sm text-gray-600">Tempo médio: ${queue.avg_wait_time || 'N/A'}</p>
-                        <button class="call-next-btn mt-2 w-full px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" data-queue-id="${queue.id}" ${queue.status !== 'Aberto' ? 'disabled' : ''}>Chamar Próximo</button>
-                    </div>
-                `).join('');
-            }
-        } catch (error) {
-            handleApiError(error);
-        } finally {
-            hideLoading();
-        }
-    };
-
-    const loadQueues = async () => {
-        try {
-            showLoading('Carregando filas...');
-            const token = localStorage.getItem('adminToken');
-            const response = await axios.get(`${API_BASE_URL}/queues`, {
-                headers: { Authorization: `Bearer ${token}` },
-                params: { page: 1, per_page: 20 }
-            });
-            const queues = response.data.queues || [];
-            if (queuesContainer) {
-                queuesContainer.innerHTML = queues.map(queue => `
-                    <div class="queue-card bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-                        <div class="flex items-center justify-between mb-2">
-                            <h3 class="font-semibold text-gray-800">${queue.service || 'N/A'}</h3>
-                            <span class="text-xs px-2 py-1 rounded-full ${queue.status === 'Aberto' ? 'bg-green-100 text-green-800' : queue.status === 'Fechado' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">${queue.status}</span>
-                        </div>
-                        <p class="text-sm text-gray-600">Prefixo: ${queue.prefix || 'N/A'}</p>
-                        <p class="text-sm text-gray-600">Departamento: ${queue.department || 'N/A'}</p>
-                        <p class="text-sm text-gray-600">Senhas ativas: ${queue.active_tickets || 0}/${queue.daily_limit || 'N/A'}</p>
-                        <p class="text-sm text-gray-600">Tempo médio: ${queue.avg_wait_time || 'N/A'}</p>
-                        <div class="flex space-x-2 mt-4">
-                            <button class="call-next-btn flex-1 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" data-queue-id="${queue.id}" ${queue.status !== 'Aberto' ? 'disabled' : ''}>Chamar Próximo</button>
-                            <button class="edit-queue-btn flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300" data-queue-id="${queue.id}">Editar</button>
-                        </div>
-                    </div>
-                `).join('');
-            }
-        } catch (error) {
-            handleApiError(error);
-        } finally {
-            hideLoading();
-        }
-    };
-
-    const loadDepartments = async () => {
-        try {
-            showLoading('Carregando departamentos...');
-            const token = localStorage.getItem('adminToken');
-            const response = await axios.get(`${API_BASE_URL}/institutions/1/departments`, {
-                headers: { Authorization: `Bearer ${token}` },
-                params: { page: 1, per_page: 20 }
-            });
-            const departments = response.data.departments || [];
-            if (departmentsContainer) {
-                departmentsContainer.innerHTML = departments.map(dept => `
-                    <div class="department-card bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-                        <h3 class="font-semibold text-gray-800">${dept.name || 'N/A'}</h3>
-                        <p class="text-sm text-gray-600 mt-1">Setor: ${dept.sector || 'N/A'}</p>
-                        <p class="text-sm text-gray-600">Filial: ${dept.branch_name || 'N/A'}</p>
-                        <div class="flex space-x-2 mt-4">
-                            <button class="edit-department-btn flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300" data-department-id="${dept.id}">Editar</button>
-                            <button class="delete-department-btn flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700" data-department-id="${dept.id}">Excluir</button>
-                        </div>
-                    </div>
-                `).join('');
-            }
-        } catch (error) {
-            handleApiError(error);
-        } finally {
-            hideLoading();
-        }
-    };
-
-    const loadAttendants = async () => {
-        try {
-            showLoading('Carregando atendentes...');
-            const token = localStorage.getItem('adminToken');
-            const response = await axios.get(`${API_BASE_URL}/institutions/1/department_admins`, {
-                headers: { Authorization: `Bearer ${token}` },
-                params: { page: 1, per_page: 20 }
-            });
-            const attendants = response.data.attendants || [];
-            if (attendantsContainer) {
-                attendantsContainer.innerHTML = attendants.map(attendant => `
-                    <div class="attendant-card bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-                        <div class="flex items-center mb-2">
-                            <div class="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold mr-3">
-                                ${attendant.name ? attendant.name.split(' ').map(n => n[0]).join('').toUpperCase() : (attendant.email || '').slice(0, 2).toUpperCase()}
-                            </div>
-                            <div>
-                                <h3 class="font-semibold text-gray-800">${attendant.name || attendant.email || 'N/A'}</h3>
-                                <p class="text-sm text-gray-600">${attendant.email || 'N/A'}</p>
-                            </div>
-                        </div>
-                        <p class="text-sm text-gray-600">Departamento: ${attendant.department_name || 'N/A'}</p>
-                        <p class="text-sm text-gray-600">Filial: ${attendant.branch_name || 'N/A'}</p>
-                        <div class="flex space-x-2 mt-4">
-                            <button class="edit-attendant-btn flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300" data-user-id="${attendant.id}">Editar</button>
-                            <button class="delete-attendant-btn flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700" data-user-id="${attendant.id}">Excluir</button>
-                        </div>
-                    </div>
-                `).join('');
-            }
-        } catch (error) {
-            handleApiError(error);
-        } finally {
-            hideLoading();
-        }
-    };
-
-    const loadSchedules = async () => {
-        try {
-            showLoading('Carregando horários...');
-            const token = localStorage.getItem('adminToken');
-            const response = await axios.get(`${API_BASE_URL}/institutions/1/branches`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const branch = response.data.branches && response.data.branches[0] ? response.data.branches[0] : { schedules: [] };
-            if (schedulesContainer) {
-                schedulesContainer.innerHTML = (branch.schedules || []).map(schedule => `
-                    <div class="schedule-card bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-                        <h3 class="font-semibold text-gray-800">${schedule.weekday || 'N/A'}</h3>
-                        <p class="text-sm text-gray-600 mt-1">${schedule.is_closed ? 'Fechado' : `${schedule.open_time || 'N/A'} - ${schedule.end_time || 'N/A'}`}</p>
-                        <div class="flex space-x-2 mt-4">
-                            <button class="edit-schedule-btn flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300" data-schedule-id="${schedule.id || ''}">Editar</button>
-                        </div>
-                    </div>
-                `).join('');
-            }
-        } catch (error) {
-            handleApiError(error);
-        } finally {
-            hideLoading();
-        }
-    };
-
-    const loadDepartmentsFilter = async () => {
-        try {
-            const token = localStorage.getItem('adminToken');
-            const response = await axios.get(`${API_BASE_URL}/institutions/1/departments`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const departments = response.data.departments || [];
-            if (queueDepartmentFilter) {
-                queueDepartmentFilter.innerHTML = '<option value="all">Todos os departamentos</option>' +
-                    departments.map(dept => `<option value="${dept.id}">${dept.name || 'N/A'}</option>`).join('');
-            }
-        } catch (error) {
-            handleApiError(error);
-        }
-    };
-
-    // Modal Creation
-    const createModal = (title, content, buttons) => {
-        const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-        modal.innerHTML = `
-            <div class="bg-white rounded-xl p-6 max-w-lg w-full mx-4 animate-zoom-in">
-                <h3 class="text-xl font-semibold text-gray-800 mb-4">${title}</h3>
-                <div class="modal-content">${content}</div>
-                <div class="flex justify-end space-x-2 mt-6">
-                    ${buttons.map(btn => `<button class="${btn.class}" ${btn.onclick ? `onclick="${btn.onclick}"` : ''}>${btn.label}</button>`).join('')}
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-        return modal;
-    };
-
-    // Event Handlers
-    if (sidebarToggle && sidebar) {
-        sidebarToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('sidebar-collapsed');
-            sidebar.classList.toggle('w-64');
-            sidebar.classList.toggle('w-20');
-        });
-    }
-
-    navButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const section = button.id.replace('nav-', '');
-            switchSection(section);
-            if (section === 'queues') loadQueues();
-            else if (section === 'departments') loadDepartments();
-            else if (section === 'attendants') loadAttendants();
-            else if (section === 'schedules') loadSchedules();
-        });
-    });
-
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            localStorage.clear();
-            window.location.href = '/index.html';
-        });
-    }
-
-    if (refreshQueues) {
-        refreshQueues.addEventListener('click', loadDashboard);
-    }
-
-    if (queueFilter) {
-        queueFilter.addEventListener('input', () => {
-            const filter = queueFilter.value.toLowerCase();
-            const cards = queuesContainer?.querySelectorAll('.queue-card') || [];
-            cards.forEach(card => {
-                const service = card.querySelector('h3')?.textContent.toLowerCase() || '';
-                const department = card.querySelector('p:nth-child(3)')?.textContent.toLowerCase() || '';
-                card.style.display = (service.includes(filter) || department.includes(filter)) ? '' : 'none';
-            });
-        });
-    }
-
-    if (queueStatusFilter) {
-        queueStatusFilter.addEventListener('change', () => {
-            const status = queueStatusFilter.value;
-            const cards = queuesContainer?.querySelectorAll('.queue-card') || [];
-            cards.forEach(card => {
-                const cardStatus = card.querySelector('span')?.textContent || '';
-                card.style.display = (status === 'all' || (status === 'open' && cardStatus === 'Aberto') || (status === 'closed' && cardStatus === 'Fechado')) ? '' : 'none';
-            });
-        });
-    }
-
-    if (queueDepartmentFilter) {
-        queueDepartmentFilter.addEventListener('change', () => {
-            const deptId = queueDepartmentFilter.value;
-            const cards = queuesContainer?.querySelectorAll('.queue-card') || [];
-            cards.forEach(card => {
-                const cardDept = card.querySelector('p:nth-child(3)')?.textContent || '';
-                card.style.display = (deptId === 'all' || cardDept.includes(queueDepartmentFilter.selectedOptions[0]?.text)) ? '' : 'none';
-            });
-        });
-    }
-
-    if (departmentFilter) {
-        departmentFilter.addEventListener('input', () => {
-            const filter = departmentFilter.value.toLowerCase();
-            const cards = departmentsContainer?.querySelectorAll('.department-card') || [];
-            cards.forEach(card => {
-                const name = card.querySelector('h3')?.textContent.toLowerCase() || '';
-                const sector = card.querySelector('p:nth-child(2)')?.textContent.toLowerCase() || '';
-                card.style.display = (name.includes(filter) || sector.includes(filter)) ? '' : 'none';
-            });
-        });
-    }
-
-    if (attendantFilter) {
-        attendantFilter.addEventListener('input', () => {
-            const filter = attendantFilter.value.toLowerCase();
-            const cards = attendantsContainer?.querySelectorAll('.attendant-card') || [];
-            cards.forEach(card => {
-                const name = card.querySelector('h3')?.textContent.toLowerCase() || '';
-                const email = card.querySelector('p')?.textContent.toLowerCase() || '';
-                card.style.display = (name.includes(filter) || email.includes(filter)) ? '' : 'none';
-            });
-        });
-    }
-
-    if (attendantRoleFilter) {
-        attendantRoleFilter.addEventListener('change', () => {
-            const role = attendantRoleFilter.value;
-            const cards = attendantsContainer?.querySelectorAll('.attendant-card') || [];
-            cards.forEach(card => {
-                const cardRole = card.querySelector('p:nth-child(3)')?.textContent.toLowerCase() || '';
-                card.style.display = (role === 'all' || cardRole.includes(role.toLowerCase())) ? '' : 'none';
-            });
-        });
-    }
-
-    if (scheduleFilter) {
-        scheduleFilter.addEventListener('input', () => {
-            const filter = scheduleFilter.value.toLowerCase();
-            const cards = schedulesContainer?.querySelectorAll('.schedule-card') || [];
-            cards.forEach(card => {
-                const weekday = card.querySelector('h3')?.textContent.toLowerCase() || '';
-                card.style.display = weekday.includes(filter) ? '' : 'none';
-            });
-        });
-    }
-
-    if (addQueueBtn) {
-        addQueueBtn.addEventListener('click', () => {
-            createModal(
-                'Adicionar Nova Fila',
-                `
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Serviço</label>
-                            <input type="text" id="queue-service" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Nome do serviço">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Prefixo</label>
-                            <input type="text" id="queue-prefix" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Ex: A, B">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Limite Diário</label>
-                            <input type="number" id="queue-limit" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Ex: 100">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Departamento</label>
-                            <select id="queue-department" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500">
-                                <option value="">Selecione um departamento</option>
-                                ${queueDepartmentFilter?.innerHTML || ''}
-                            </select>
-                        </div>
-                    </div>
-                `,
-                [
-                    { label: 'Cancelar', class: 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-4 py-2 rounded-lg' },
-                    { label: 'Adicionar', class: 'bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-lg', onclick: 'addQueue()' }
-                ]
-            );
-        });
-    }
-
-    window.addQueue = async () => {
-        const service = document.getElementById('queue-service')?.value;
-        const prefix = document.getElementById('queue-prefix')?.value;
-        const limit = document.getElementById('queue-limit')?.value;
-        const departmentId = document.getElementById('queue-department')?.value;
-
-        if (!service || !prefix || !limit || !departmentId) {
-            showToast('Preencha todos os campos', 'error');
-            return;
-        }
-
-        try {
-            showLoading('Adicionando fila...');
-            const token = localStorage.getItem('adminToken');
-            await axios.post(`${API_BASE_URL}/queues`, {
-                service_id: service, // Ajustar conforme a API
-                prefix,
-                daily_limit: parseInt(limit),
-                department_id: parseInt(departmentId)
-            }, { headers: { Authorization: `Bearer ${token}` } });
-            document.querySelector('.modal-content')?.closest('.fixed')?.remove();
-            showToast('Fila adicionada com sucesso');
-            loadQueues();
-        } catch (error) {
-            handleApiError(error);
-        } finally {
-            hideLoading();
-        }
-    };
-
-    if (addDepartmentBtn) {
-        addDepartmentBtn.addEventListener('click', () => {
-            createModal(
-                'Adicionar Novo Departamento',
-                `
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Nome</label>
-                            <input type="text" id="department-name" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Nome do departamento">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Setor</label>
-                            <input type="text" id="department-sector" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Ex: Atendimento ao Cliente">
-                        </div>
-                    </div>
-                `,
-                [
-                    { label: 'Cancelar', class: 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-4 py-2 rounded-lg' },
-                    { label: 'Adicionar', class: 'bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-lg', onclick: 'addDepartment()' }
-                ]
-            );
-        });
-    }
-
-    window.addDepartment = async () => {
-        const name = document.getElementById('department-name')?.value;
-        const sector = document.getElementById('department-sector')?.value;
-
-        if (!name || !sector) {
-            showToast('Preencha todos os campos', 'error');
-            return;
-        }
-
-        if (!validateName(name) || !/^[A-Za-zÀ-ÿ\s]{1,50}$/.test(sector)) {
-            showToast('Nome ou setor inválido', 'error');
-            return;
-        }
-
-        try {
-            showLoading('Adicionando departamento...');
-            const token = localStorage.getItem('adminToken');
-            await axios.post(`${API_BASE_URL}/institutions/1/departments`, {
-                name,
-                sector,
-                branch_id: localStorage.getItem('branch_id') || 1
-            }, { headers: { Authorization: `Bearer ${token}` } });
-            document.querySelector('.modal-content')?.closest('.fixed')?.remove();
-            showToast('Departamento adicionado com sucesso');
-            loadDepartments();
-            loadDepartmentsFilter();
-        } catch (error) {
-            handleApiError(error);
-        } finally {
-            hideLoading();
-        }
-    };
-
-    if (addAttendantBtn) {
-        addAttendantBtn.addEventListener('click', () => {
-            createModal(
-                'Adicionar Novo Atendente',
-                `
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Nome</label>
-                            <input type="text" id="attendant-name" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Nome completo">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Email</label>
-                            <input type="email" id="attendant-email" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="email@exemplo.com">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Senha</label>
-                            <input type="password" id="attendant-password" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Mínimo 8 caracteres">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Departamento</label>
-                            <select id="attendant-department" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500">
-                                <option value="">Selecione um departamento</option>
-                                ${queueDepartmentFilter?.innerHTML || ''}
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Papel</label>
-                            <select id="attendant-role" class="modal-input w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500">
-                                <option value="ATTENDANT">Atendente</option>
-                                <option value="BRANCH_ADMIN">Administrador de Filial</option>
-                            </select>
-                        </div>
-                    </div>
-                `,
-                [
-                    { label: 'Cancelar', class: 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-4 py-2 rounded-lg' },
-                    { label: 'Adicionar', class: 'bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-lg', onclick: 'addAttendant()' }
-                ]
-            );
-        });
-    }
-
-    window.addAttendant = async () => {
-        const name = document.getElementById('attendant-name')?.value;
-        const email = document.getElementById('attendant-email')?.value;
-        const password = document.getElementById('attendant-password')?.value;
-        const departmentId = document.getElementById('attendant-department')?.value;
-        const role = document.getElementById('attendant-role')?.value;
-
-        if (!name || !email || !password || !departmentId || !role) {
-            showToast('Preencha todos os campos', 'error');
-            return;
-        }
-
-        if (!validateName(name) || !validateEmail(email) || !validatePassword(password)) {
-            showToast('Dados inválidos. Verifique nome, email ou senha', 'error');
-            return;
-        }
-
-        try {
-            showLoading('Adicionando atendente...');
-            const token = localStorage.getItem('adminToken');
-            await axios.post(`${API_BASE_URL}/departments/${departmentId}/users`, {
-                name,
-                email,
-                password,
-                role
-            }, { headers: { Authorization: `Bearer ${token}` } });
-            document.querySelector('.modal-content')?.closest('.fixed')?.remove();
-            showToast('Atendente adicionado com sucesso');
-            loadAttendants();
-        } catch (error) {
-            handleApiError(error);
-        } finally {
-            hideLoading();
-        }
-    };
-
-    if (queuesContainer) {
-        queuesContainer.addEventListener('click', async (e) => {
-            if (e.target.classList.contains('call-next-btn')) {
-                const queueId = e.target.dataset.queueId;
-                try {
-                    showLoading('Chamando próximo ticket...');
-                    const token = localStorage.getItem('adminToken');
-                    const response = await axios.post(`${API_BASE_URL}/queue/${queueId}/call`, {}, {
-                        headers: { Authorization: `Bearer ${token}` }
-                    });
-                    showToast(response.data.message || 'Próximo ticket chamado');
-                    loadDashboard();
-                    loadQueues();
-                } catch (error) {
-                    handleApiError(error);
-                } finally {
-                    hideLoading();
-                }
-            } else if (e.target.classList.contains('edit-queue-btn')) {
-                showToast('Funcionalidade de edição de fila não implementada', 'warning');
-            }
-        });
-    }
-
-    if (departmentsContainer) {
-        departmentsContainer.addEventListener('click', async (e) => {
-            if (e.target.classList.contains('delete-department-btn')) {
-                const departmentId = e.target.dataset.departmentId;
-                if (confirm('Tem certeza que deseja excluir este departamento?')) {
-                    try {
-                        showLoading('Excluindo departamento...');
-                        const token = localStorage.getItem('adminToken');
-                        await axios.delete(`${API_BASE_URL}/institutions/1/departments/${departmentId}`, {
-                            headers: { Authorization: `Bearer ${token}` }
-                        });
-                        showToast('Departamento excluído com sucesso');
-                        loadDepartments();
-                        loadDepartmentsFilter();
-                    } catch (error) {
-                        handleApiError(error);
-                    } finally {
-                        hideLoading();
-                    }
-                }
-            } else if (e.target.classList.contains('edit-department-btn')) {
-                showToast('Funcionalidade de edição de departamento não implementada', 'warning');
-            }
-        });
-    }
-
-    if (attendantsContainer) {
-        attendantsContainer.addEventListener('click', async (e) => {
-            if (e.target.classList.contains('delete-attendant-btn')) {
-                const userId = e.target.dataset.userId;
-                if (confirm('Tem certeza que deseja excluir este atendente?')) {
-                    try {
-                        showLoading('Excluindo atendente...');
-                        const token = localStorage.getItem('adminToken');
-                        await axios.delete(`${API_BASE_URL}/institutions/1/users/${userId}`, {
-                            headers: { Authorization: `Bearer ${token}` }
-                        });
-                        showToast('Atendente excluído com sucesso');
-                        loadAttendants();
-                    } catch (error) {
-                        handleApiError(error);
-                    } finally {
-                        hideLoading();
-                    }
-                }
-            } else if (e.target.classList.contains('edit-attendant-btn')) {
-                showToast('Funcionalidade de edição de atendente não implementada', 'warning');
-            }
-        });
-    }
-
-    if (schedulesContainer) {
-        schedulesContainer.addEventListener('click', async (e) => {
-            if (e.target.classList.contains('edit-schedule-btn')) {
-                showToast('Funcionalidade de edição de horário não implementada', 'warning');
-            }
-        });
-    }
-
-    // WebSocket Events
-    socket.on('connect', () => {
-        if (connectionStatus && connectionText) {
-            connectionStatus.classList.add('bg-green-500');
-            connectionText.textContent = 'AO VIVO';
+    document.getElementById('queue-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const data = {
+            department_id: document.getElementById('department_id').value,
+            service_id: document.getElementById('service_id').value,
+            prefix: document.getElementById('prefix').value,
+            daily_limit: parseInt(document.getElementById('daily_limit').value),
+            num_counters: parseInt(document.getElementById('num_counters').value)
+        };
+        const queueId = document.getElementById('queue_id').value;
+        if (queueId) {
+            Utils.showToast('Edição de fila não implementada', 'info');
+        } else {
+            queueManager.createQueue(data);
         }
     });
-
-    socket.on('disconnect', () => {
-        if (connectionStatus && connectionText) {
-            connectionStatus.classList.remove('bg-green-500');
-            connectionStatus.classList.add('bg-red-500');
-            connectionText.textContent = 'DESCONECTADO';
-        }
+    document.getElementById('close-queue-modal').addEventListener('click', () => document.getElementById('queue-modal').classList.add('hidden'));
+    document.getElementById('cancel-queue-btn').addEventListener('click', () => document.getElementById('queue-modal').classList.add('hidden'));
+    document.getElementById('generate-ticket-btn').addEventListener('click', () => document.getElementById('totem-ticket-modal').classList.remove('hidden'));
+    document.getElementById('totem-ticket-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const queueId = document.getElementById('totem-queue-id').value;
+        queueManager.generateTotemTicket(queueId);
     });
-
-    socket.on('department_created', () => {
-        loadDepartments();
-        loadDepartmentsFilter();
-        showToast('Novo departamento criado');
+    document.getElementById('close-ticket-modal').addEventListener('click', () => document.getElementById('totem-ticket-modal').classList.add('hidden'));
+    document.getElementById('cancel-ticket-btn').addEventListener('click', () => document.getElementById('totem-ticket-modal').classList.add('hidden'));
+    document.getElementById('create-department-btn').addEventListener('click', () => document.getElementById('department-modal').classList.remove('hidden'));
+    document.getElementById('department-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const data = {
+            name: document.getElementById('dept-name').value,
+            sector: document.getElementById('dept-sector').value
+        };
+        settingsManager.createDepartment(data);
     });
-
-    socket.on('user_created', () => {
-        loadAttendants();
-        showToast('Novo atendente adicionado');
+    document.getElementById('close-department-modal').addEventListener('click', () => document.getElementById('department-modal').classList.add('hidden'));
+    document.getElementById('cancel-department-btn').addEventListener('click', () => document.getElementById('department-modal').classList.add('hidden'));
+    document.getElementById('add-member-btn').addEventListener('click', () => document.getElementById('member-modal').classList.remove('hidden'));
+    document.getElementById('member-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const data = {
+            email: document.getElementById('member-email').value,
+            name: document.getElementById('member-name').value,
+            password: document.getElementById('member-password').value
+        };
+        settingsManager.createAttendant(data);
     });
-
-    socket.on('queue_updated', () => {
-        loadDashboard();
-        loadQueues();
-        showToast('Fila atualizada');
+    document.getElementById('close-member-modal').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
+    document.getElementById('cancel-member-btn').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
+    document.getElementById('create-schedule-btn').addEventListener('click', () => document.getElementById('schedule-modal').classList.remove('hidden'));
+    document.getElementById('schedule-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const data = {
+            weekday: document.getElementById('schedule-weekday').value,
+            open_time: document.getElementById('schedule-open-time').value,
+            end_time: document.getElementById('schedule-end-time').value,
+            is_closed: document.getElementById('schedule-is-closed').checked
+        };
+        settingsManager.createSchedule(data);
     });
-
-    // Initialize
-    if (currentDate) {
-        currentDate.textContent = formatDate(new Date());
-    }
-    const userData = initUserInfo();
-    if (userData) {
-        loadDashboard();
-        loadDepartmentsFilter();
-    }
+    document.getElementById('close-schedule-modal').addEventListener('click', () => document.getElementById('schedule-modal').classList.add('hidden'));
+    document.getElementById('cancel-schedule-btn').addEventListener('click', () => document.getElementById('schedule-modal').classList.add('hidden'));
+    document.getElementById('assign-queue-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const attendantId = e.target.dataset.attendantId;
+        const queueId = document.getElementById('assign-queue-id').value;
+        settingsManager.assignAttendantToQueue(attendantId, queueId);
+    });
+    document.getElementById('close-assign-queue-modal').addEventListener('click', () => document.getElementById('assign-queue-modal').classList.add('hidden'));
+    document.getElementById('cancel-assign-queue-btn').addEventListener('click', () => document.getElementById('assign-queue-modal').classList.add('hidden'));
+    document.getElementById('refresh-data').addEventListener('click', () => dashboardManager.loadDashboardData());
 });
