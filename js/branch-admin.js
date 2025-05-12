@@ -1,4 +1,3 @@
-const API_BASE = 'https://fila-facilita2-0-4uzw.onrender.com';
 
 // Utility Functions
 const Utils = {
@@ -495,6 +494,7 @@ function updateCurrentDateTime() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+
     if (window.location.pathname.includes('index.html')) return;
 
     if (!authService.isAuthenticated()) {
