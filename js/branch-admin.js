@@ -1,5 +1,4 @@
 
-// Utility Functions
 const Utils = {
     formatDate(date) {
         return new Date(date).toLocaleString('pt-BR', {
@@ -117,11 +116,12 @@ class QueueManager {
             const queue = response.data.find(q => q.id === queueId);
             if (!queue) throw new Error('Fila não encontrada');
             document.getElementById('queue-modal-title').textContent = 'Editar Fila';
-            document.getElementById('department_id').value = queue.department_id;
-            document.getElementById('service_id').value = queue.service_id;
-            document.getElementById('prefix').value = queue.prefix;
-            document.getElementById('daily_limit').value = queue.daily_limit;
-            document.getElementById('num_counters').value = queue.num_counters;
+            document.getElementById('queue-name').value = queue.service_name;
+            document.getElementById('queue-prefix').value = queue.prefix;
+            document.getElementById('queue-description').value = queue.description || '';
+            document.getElementById('queue-priority').value = queue.priority || 'normal';
+            document.getElementById('num-counters').value = queue.num_counters;
+            document.getElementById('queue-status').value = queue.status;
             document.getElementById('queue_id').value = queue.id;
             document.getElementById('queue-modal').classList.remove('hidden');
         } catch (error) {
@@ -152,31 +152,72 @@ class QueueManager {
 }
 
 class TicketManager {
-    async loadTickets() {
+    async loadTickets(sourceFilter = 'all') {
         try {
             Utils.showLoading(true, 'Carregando tickets...');
             const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/tickets`, {
-                params: { refresh: true }
-            });
+            const params = { refresh: true };
+            if (sourceFilter !== 'all') params.source = sourceFilter;
+            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/tickets`, { params });
             const tickets = response.data;
             const container = document.getElementById('tickets-container');
             container.innerHTML = '';
             tickets.forEach(ticket => {
                 const ticketCard = document.createElement('div');
-                ticketCard.className = 'bg-white rounded-xl shadow-lg p-4 border border-gray-100';
+                ticketCard.className = 'bg-white rounded-xl shadow-lg p-4 border border-gray-100 cursor-pointer hover:bg-gray-50';
                 ticketCard.innerHTML = `
                     <h3 class="text-lg font-semibold">Ticket ${ticket.ticket_number}</h3>
                     <p class="text-sm text-gray-500">Fila: ${ticket.queue_prefix}</p>
                     <p class="text-sm text-gray-500">Status: ${ticket.status}</p>
+                    <p class="text-sm text-gray-500">Origem: ${ticket.source}</p>
                     <p class="text-sm text-gray-500">Emitido em: ${Utils.formatDate(ticket.issued_at)}</p>
                     <p class="text-sm text-gray-500">Atendido em: ${ticket.attended_at ? Utils.formatDate(ticket.attended_at) : 'N/A'}</p>
                 `;
+                ticketCard.dataset.id = ticket.id;
+                ticketCard.addEventListener('click', () => this.showTicketDetails(ticket.id));
                 container.appendChild(ticketCard);
             });
         } catch (error) {
             console.error('Erro ao carregar tickets:', error);
             Utils.showToast('Erro ao carregar tickets', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async showTicketDetails(ticketId) {
+        try {
+            Utils.showLoading(true, 'Carregando detalhes do ticket...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/tickets/${ticketId}`);
+            const ticket = response.data;
+            document.getElementById('ticket-details-number').textContent = ticket.ticket_number;
+            document.getElementById('ticket-details-queue').textContent = ticket.queue_prefix;
+            document.getElementById('ticket-details-service').textContent = ticket.service_name || 'N/A';
+            document.getElementById('ticket-details-counter').textContent = ticket.counter || 'N/A';
+            document.getElementById('ticket-details-status').textContent = ticket.status;
+            document.getElementById('ticket-details-issued').textContent = Utils.formatDate(ticket.issued_at);
+            document.getElementById('ticket-details-notes').textContent = ticket.notes || 'Nenhuma';
+            document.getElementById('ticket-details-modal').classList.remove('hidden');
+        } catch (error) {
+            console.error('Erro ao carregar detalhes do ticket:', error);
+            Utils.showToast('Erro ao carregar detalhes do ticket', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async generateTicket(data) {
+        try {
+            Utils.showLoading(true, 'Gerando ticket...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/tickets`, data);
+            Utils.showToast(response.data.message, 'success');
+            document.getElementById('ticket-modal').classList.add('hidden');
+            this.loadTickets();
+        } catch (error) {
+            console.error('Erro ao gerar ticket:', error);
+            Utils.showToast(error.response?.data?.error || 'Erro ao gerar ticket', 'error');
         } finally {
             Utils.showLoading(false);
         }
@@ -211,6 +252,26 @@ class ReportManager {
         } catch (error) {
             console.error('Erro ao gerar relatório:', error);
             Utils.showToast(error.response?.data?.error || 'Erro ao gerar relatório', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async exportReport(data) {
+        try {
+            Utils.showLoading(true, 'Exportando relatório...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/report/export`, data, {
+                responseType: 'blob'
+            });
+            const format = data.format || 'pdf';
+            const filename = `report_${Date.now()}.${format}`;
+            Utils.downloadFile(response.data, filename);
+            Utils.showToast('Relatório exportado com sucesso', 'success');
+            document.getElementById('export-report-modal').classList.add('hidden');
+        } catch (error) {
+            console.error('Erro ao exportar relatório:', error);
+            Utils.showToast(error.response?.data?.error || 'Erro ao exportar relatório', 'error');
         } finally {
             Utils.showLoading(false);
         }
@@ -269,7 +330,7 @@ class SettingsManager {
                 params: { refresh: true }
             });
             const attendants = response.data;
-            const container = document.getElementById('team-members');
+            const container = document.getElementById('members-container');
             container.innerHTML = '';
             attendants.forEach(attendant => {
                 const attendantCard = document.createElement('div');
@@ -333,10 +394,152 @@ class SettingsManager {
         }
     }
 
+    async loadCounters() {
+        try {
+            Utils.showLoading(true, 'Carregando guichês...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/counters`, {
+                params: { refresh: true }
+            });
+            const counters = response.data;
+            const container = document.getElementById('counters-container');
+            container.innerHTML = '';
+            counters.forEach(counter => {
+                const counterCard = document.createElement('div');
+                counterCard.className = 'bg-white rounded-xl shadow-lg p-4 border border-gray-100';
+                counterCard.innerHTML = `
+                    <h3 class="text-lg font-semibold">Guichê ${counter.number}</h3>
+                    <p class="text-sm text-gray-500">Atendente: ${counter.attendant_name || 'Nenhum'}</p>
+                    <p class="text-sm text-gray-500">Status: ${counter.status}</p>
+                    <p class="text-sm text-gray-500">Localização: ${counter.location || 'N/A'}</p>
+                    <button class="edit-counter-btn mt-2 text-blue-600 hover:text-blue-800" data-id="${counter.id}">Editar</button>
+                `;
+                container.appendChild(counterCard);
+            });
+            document.querySelectorAll('.edit-counter-btn').forEach(btn => {
+                btn.addEventListener('click', () => this.editCounter(btn.dataset.id));
+            });
+        } catch (error) {
+            console.error('Erro ao carregar guichês:', error);
+            Utils.showToast('Erro ao carregar guichês', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async createCounter(data) {
+        try {
+            Utils.showLoading(true, 'Criando guichê...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/counters`, data);
+            Utils.showToast(response.data.message, 'success');
+            document.getElementById('counter-modal').classList.add('hidden');
+            this.loadCounters();
+        } catch (error) {
+            console.error('Erro ao criar guichê:', error);
+            Utils.showToast(error.response?.data?.error || 'Erro ao criar guichê', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async editCounter(counterId) {
+        try {
+            Utils.showLoading(true, 'Carregando dados do guichê...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/counters/${counterId}`);
+            const counter = response.data;
+            document.getElementById('counter-modal-title').textContent = 'Editar Guichê';
+            document.getElementById('counter-number').value = counter.number;
+            document.getElementById('counter-attendant').value = counter.attendant_id || '';
+            document.getElementById('counter-status').value = counter.status;
+            document.getElementById('counter-location').value = counter.location || '';
+            document.getElementById('counter_id').value = counter.id;
+            await this.loadAttendantsForCounter();
+            document.getElementById('counter-modal').classList.remove('hidden');
+        } catch (error) {
+            console.error('Erro ao carregar guichê:', error);
+            Utils.showToast('Erro ao carregar guichê', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async loadAttendantsForCounter() {
+        try {
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/attendants`);
+            const attendants = response.data;
+            const select = document.getElementById('counter-attendant');
+            select.innerHTML = '<option value="">Nenhum</option>';
+            attendants.forEach(attendant => {
+                const option = document.createElement('option');
+                option.value = attendant.id;
+                option.textContent = attendant.name;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Erro ao carregar atendentes para guichê:', error);
+            Utils.showToast('Erro ao carregar atendentes', 'error');
+        }
+    }
+
+    async loadCallSettings() {
+        try {
+            Utils.showLoading(true, 'Carregando configurações de chamada...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/call_settings`);
+            const settings = response.data;
+            document.getElementById('call-priority').value = settings.priority || 'fifo';
+            document.getElementById('call-counter').value = settings.counter_id || 'auto';
+            document.getElementById('call-sound').value = settings.sound || 'default';
+            document.getElementById('call-interval').value = settings.interval || 30;
+            await this.loadCountersForCallSettings();
+        } catch (error) {
+            console.error('Erro ao carregar configurações de chamada:', error);
+            Utils.showToast('Erro ao carregar configurações de chamada', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async saveCallSettings(data) {
+        try {
+            Utils.showLoading(true, 'Salvando configurações de chamada...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/call_settings`, data);
+            Utils.showToast(response.data.message, 'success');
+            document.getElementById('call-settings-modal').classList.add('hidden');
+        } catch (error) {
+            console.error('Erro ao salvar configurações de chamada:', error);
+            Utils.showToast(error.response?.data?.error || 'Erro ao salvar configurações de chamada', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async loadCountersForCallSettings() {
+        try {
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/counters`);
+            const counters = response.data;
+            const select = document.getElementById('call-counter');
+            select.innerHTML = '<option value="auto">Automático</option>';
+            counters.forEach(counter => {
+                const option = document.createElement('option');
+                option.value = counter.id;
+                option.textContent = `Guichê ${counter.number}`;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Erro ao carregar guichês para configurações de chamada:', error);
+            Utils.showToast('Erro ao carregar guichês', 'error');
+        }
+    }
+
     showAssignQueueModal(attendantId) {
         document.getElementById('assign-queue-modal').classList.remove('hidden');
         document.getElementById('assign-queue-form').dataset.attendantId = attendantId;
-        // Carregar filas disponíveis
         this.loadAvailableQueuesForAssignment();
     }
 
@@ -499,6 +702,18 @@ class DashboardManager {
             settingsManager.loadSchedules();
             Utils.showToast('Novo horário criado', 'info');
         });
+        socket.on('counter_created', () => {
+            settingsManager.loadCounters();
+            Utils.showToast('Novo guichê criado', 'info');
+        });
+        socket.on('call_settings_updated', () => {
+            settingsManager.loadCallSettings();
+            Utils.showToast('Configurações de chamada atualizadas', 'info');
+        });
+        socket.on('ticket_created', () => {
+            ticketManager.loadTickets();
+            Utils.showToast('Novo ticket criado', 'info');
+        });
     }
 }
 
@@ -531,6 +746,7 @@ function setupNavigation() {
                     settingsManager.loadDepartments();
                     settingsManager.loadAttendants();
                     settingsManager.loadSchedules();
+                    settingsManager.loadCounters();
                     break;
             }
         });
@@ -592,11 +808,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('queue-form').addEventListener('submit', (e) => {
         e.preventDefault();
         const data = {
-            department_id: document.getElementById('department_id').value,
-            service_id: document.getElementById('service_id').value,
-            prefix: document.getElementById('prefix').value,
-            daily_limit: parseInt(document.getElementById('daily_limit').value),
-            num_counters: parseInt(document.getElementById('num_counters').value)
+            service_name: document.getElementById('queue-name').value,
+            prefix: document.getElementById('queue-prefix').value,
+            description: document.getElementById('queue-description').value,
+            priority: document.getElementById('queue-priority').value,
+            num_counters: parseInt(document.getElementById('num-counters').value),
+            status: document.getElementById('queue-status').value
         };
         const queueId = document.getElementById('queue_id').value;
         if (queueId) {
@@ -606,15 +823,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     document.getElementById('close-queue-modal').addEventListener('click', () => document.getElementById('queue-modal').classList.add('hidden'));
-    document.getElementById('cancel-queue-btn').addEventListener('click', () => document.getElementById('queue-modal').classList.add('hidden'));
-    document.getElementById('generate-ticket-btn').addEventListener('click', () => document.getElementById('totem-ticket-modal').classList.remove('hidden'));
-    document.getElementById('totem-ticket-form').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const queueId = document.getElementById('totem-queue-id').value;
-        queueManager.generateTotemTicket(queueId);
+    document.getElementById('cancel-queue').addEventListener('click', () => document.getElementById('queue-modal').classList.add('hidden'));
+    document.getElementById('generate-ticket-btn').addEventListener('click', () => {
+        document.getElementById('ticket-modal').classList.remove('hidden');
+        settingsManager.loadAvailableQueuesForAssignment();
     });
-    document.getElementById('close-ticket-modal').addEventListener('click', () => document.getElementById('totem-ticket-modal').classList.add('hidden'));
-    document.getElementById('cancel-ticket-btn').addEventListener('click', () => document.getElementById('totem-ticket-modal').classList.add('hidden'));
+    document.getElementById('ticket-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const data = {
+            queue_id: document.getElementById('ticket-queue').value,
+            service_name: document.getElementById('ticket-service').value,
+            priority: document.getElementById('ticket-priority').value,
+            notes: document.getElementById('ticket-notes').value,
+            source: 'manual'
+        };
+        ticketManager.generateTicket(data);
+    });
+    document.getElementById('close-ticket-modal').addEventListener('click', () => document.getElementById('ticket-modal').classList.add('hidden'));
+    document.getElementById('cancel-ticket').addEventListener('click', () => document.getElementById('ticket-modal').classList.add('hidden'));
     document.getElementById('create-department-btn').addEventListener('click', () => document.getElementById('department-modal').classList.remove('hidden'));
     document.getElementById('department-form').addEventListener('submit', (e) => {
         e.preventDefault();
@@ -626,18 +852,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.getElementById('close-department-modal').addEventListener('click', () => document.getElementById('department-modal').classList.add('hidden'));
     document.getElementById('cancel-department-btn').addEventListener('click', () => document.getElementById('department-modal').classList.add('hidden'));
-    document.getElementById('add-member-btn').addEventListener('click', () => document.getElementById('member-modal').classList.remove('hidden'));
+    document.getElementById('add-member-btn').addEventListener('click', () => {
+        document.getElementById('member-modal').classList.remove('hidden');
+        settingsManager.loadAttendantsForCounter();
+    });
     document.getElementById('member-form').addEventListener('submit', (e) => {
         e.preventDefault();
         const data = {
             email: document.getElementById('member-email').value,
             name: document.getElementById('member-name').value,
-            password: document.getElementById('member-password').value
+            role: document.getElementById('member-role').value,
+            counter_id: document.getElementById('member-counter').value || null
         };
         settingsManager.createAttendant(data);
     });
     document.getElementById('close-member-modal').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
-    document.getElementById('cancel-member-btn').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
+    document.getElementById('cancel-member').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
     document.getElementById('create-schedule-btn').addEventListener('click', () => document.getElementById('schedule-modal').classList.remove('hidden'));
     document.getElementById('schedule-form').addEventListener('submit', (e) => {
         e.preventDefault();
@@ -660,4 +890,68 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('close-assign-queue-modal').addEventListener('click', () => document.getElementById('assign-queue-modal').classList.add('hidden'));
     document.getElementById('cancel-assign-queue-btn').addEventListener('click', () => document.getElementById('assign-queue-modal').classList.add('hidden'));
     document.getElementById('refresh-data').addEventListener('click', () => dashboardManager.loadDashboardData());
+    document.getElementById('create-counter-btn').addEventListener('click', () => {
+        document.getElementById('counter-modal-title').textContent = 'Novo Guichê';
+        document.getElementById('counter-form').reset();
+        document.getElementById('counter_id').value = '';
+        settingsManager.loadAttendantsForCounter();
+        document.getElementById('counter-modal').classList.remove('hidden');
+    });
+    document.getElementById('counter-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const data = {
+            number: document.getElementById('counter-number').value,
+            attendant_id: document.getElementById('counter-attendant').value || null,
+            status: document.getElementById('counter-status').value,
+            location: document.getElementById('counter-location').value
+        };
+        const counterId = document.getElementById('counter_id').value;
+        if (counterId) {
+            Utils.showToast('Edição de guichê não implementada', 'info');
+        } else {
+            settingsManager.createCounter(data);
+        }
+    });
+    document.getElementById('close-counter-modal').addEventListener('click', () => document.getElementById('counter-modal').classList.add('hidden'));
+    document.getElementById('cancel-counter').addEventListener('click', () => document.getElementById('counter-modal').classList.add('hidden'));
+    document.getElementById('call-settings-btn').addEventListener('click', () => {
+        settingsManager.loadCallSettings();
+        document.getElementById('call-settings-modal').classList.remove('hidden');
+    });
+    document.getElementById('call-settings-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const data = {
+            priority: document.getElementById('call-priority').value,
+            counter_id: document.getElementById('call-counter').value,
+            sound: document.getElementById('call-sound').value,
+            interval: parseInt(document.getElementById('call-interval').value)
+        };
+        settingsManager.saveCallSettings(data);
+    });
+    document.getElementById('close-call-settings-modal').addEventListener('click', () => document.getElementById('call-settings-modal').classList.add('hidden'));
+    document.getElementById('cancel-call-settings').addEventListener('click', () => document.getElementById('call-settings-modal').classList.add('hidden'));
+    document.getElementById('export-report-btn').addEventListener('click', () => {
+        document.getElementById('export-report-modal').classList.remove('hidden');
+        settingsManager.loadAvailableQueuesForAssignment();
+    });
+    document.getElementById('export-report-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const data = {
+            format: document.getElementById('export-format').value,
+            queue_id: document.getElementById('export-queue').value,
+            start_date: document.getElementById('export-start-date').value,
+            end_date: document.getElementById('export-end-date').value
+        };
+        reportManager.exportReport(data);
+    });
+    document.getElementById('close-export-report-modal').addEventListener('click', () => document.getElementById('export-report-modal').classList.add('hidden'));
+    document.getElementById('cancel-export-report').addEventListener('click', () => document.getElementById('export-report-modal').classList.add('hidden'));
+    document.getElementById('ticket-details-modal').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('ticket-details-modal') || e.target.id === 'close-ticket-details') {
+            document.getElementById('ticket-details-modal').classList.add('hidden');
+        }
+    });
+    document.getElementById('ticket-source-filter').addEventListener('change', (e) => {
+        ticketManager.loadTickets(e.target.value);
+    });
 });

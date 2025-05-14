@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Totem de Autoatendimento</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #f97316;
+            --background: #f8fafc;
+            --white: #ffffff;
+            --dark: #1e293b;
+            --gray-light: #e2e8f0;
+            --gray: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        
+        body {
+            background-color: var(--background);
+            color: var(--dark);
+            min-height: 100vh;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+        }
+        
+        .header {
+            background-color: var(--primary);
+            color: var(--white);
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+        }
+        
+        .header img {
+            height: 60px;
+        }
+        
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .welcome-message {
+            text-align: center;
+            margin: 1rem 0;
+        }
+        
+        .welcome-message h2 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary-dark);
+        }
+        
+        .welcome-message p {
+            font-size: 1.25rem;
+            color: var(--gray);
+        }
+        
+        .content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+            overflow: hidden;
+        }
+        
+        .screen {
+            flex: 1;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .screen.active {
+            display: flex;
+        }
+        
+        .service-category-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            overflow-y: auto;
+            padding: 1rem;
+            margin-top: 1rem;
+            max-height: calc(100vh - 300px);
+        }
+        
+        .service-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            overflow-y: auto;
+            padding: 1rem;
+            margin-top: 1rem;
+            max-height: calc(100vh - 300px);
+        }
+        
+        .category-card, .service-card {
+            background-color: var(--white);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 170px;
+        }
+        
+        .category-card:hover, .service-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .category-card i, .service-card i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+        
+        .category-card h3, .service-card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+            color: var(--dark);
+        }
+        
+        .category-card p, .service-card p {
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+        
+        .confirmation-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            text-align: center;
+            flex: 1;
+        }
+        
+        .confirmation-container h2 {
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            color: var(--primary-dark);
+        }
+        
+        .service-details {
+            background-color: var(--white);
+            border-radius: 0.75rem;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            max-width: 500px;
+            width: 100%;
+            margin-bottom: 2rem;
+        }
+        
+        .service-details h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--dark);
+        }
+        
+        .service-info {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+        
+        .service-info p {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+        
+        .service-info p span:last-child {
+            font-weight: bold;
+        }
+        
+        .wait-time {
+            background-color: var(--gray-light);
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            font-size: 1.1rem;
+        }
+        
+        .wait-time strong {
+            color: var(--primary);
+        }
+        
+        .buttons-container {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .btn {
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn:active {
+            transform: scale(0.98);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            color: var(--white);
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+        
+        .btn-secondary {
+            background-color: var(--white);
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+        
+        .btn-secondary:hover {
+            background-color: var(--gray-light);
+        }
+        
+        .btn-large {
+            font-size: 1.25rem;
+            padding: 1.25rem 2rem;
+        }
+        
+        .ticket-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .ticket-card {
+            background-color: var(--white);
+            border-radius: 0.75rem;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            max-width: 400px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .ticket-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 30px;
+            height: 100%;
+            background: repeating-linear-gradient(
+                -45deg,
+                var(--primary),
+                var(--primary) 5px,
+                var(--primary-dark) 5px,
+                var(--primary-dark) 10px
+            );
+        }
+        
+        .ticket-number {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin: 1rem 0;
+        }
+        
+        .ticket-info {
+            margin-bottom: 1.5rem;
+        }
+        
+        .ticket-info h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+            color: var(--dark);
+        }
+        
+        .ticket-info p {
+            font-size: 1rem;
+            color: var(--gray);
+            margin-bottom: 0.25rem;
+        }
+        
+        .ticket-qr {
+            margin: 1rem 0;
+        }
+        
+        .ticket-qr img {
+            width: 150px;
+            height: 150px;
+        }
+        
+        .ticket-instructions {
+            font-size: 0.9rem;
+            color: var(--gray);
+            margin-top: 1rem;
+        }
+        
+        .footer {
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--white);
+            box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .footer-info {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .footer-info p {
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+        
+        .footer-controls {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .branch-info {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        
+        .branch-info i {
+            color: var(--primary);
+        }
+        
+        .branch-info span {
+            font-weight: 600;
+        }
+        
+        .branch-details {
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+        
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .loading-screen.active {
+            display: flex;
+        }
+        
+        .spinner {
+            width: 80px;
+            height: 80px;
+            border: 8px solid var(--gray-light);
+            border-top: 8px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-message {
+            margin-top: 1rem;
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+        
+        /* Acessibilidade */
+        .accessibility-controls {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            gap: 0.5rem;
+            z-index: 100;
+        }
+        
+        .accessibility-btn {
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--white);
+            border-radius: 50%;
+            color: var(--primary);
+            cursor: pointer;
+            font-size: 1.2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s;
+        }
+        
+        .accessibility-btn:hover {
+            background-color: var(--gray-light);
+        }
+        
+        /* Responsivo */
+        @media (max-width: 768px) {
+            .service-category-container,
+            .service-list {
+                grid-template-columns: 1fr;
+            }
+            
+            .confirmation-container {
+                padding: 1rem;
+            }
+            
+            .service-details {
+                padding: 1rem;
+            }
+            
+            .btn {
+                padding: 0.75rem 1rem;
+                font-size: 1rem;
+            }
+            
+            .btn-large {
+                font-size: 1.1rem;
+                padding: 1rem 1.5rem;
+            }
+            
+            .ticket-number {
+                font-size: 2.5rem;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="/api/placeholder/200/60" alt="Logo da Instituição">
+            <div class="branch-info">
+                <i class="fas fa-map-marker-alt"></i>
+                <div>
+                    <span>Agência Centro</span>
+                    <div class="branch-details">Av. Paulista, 1000 - São Paulo</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="accessibility-controls">
+            <button class="accessibility-btn" onclick="toggleHighContrast()" title="Alto Contraste">
+                <i class="fas fa-adjust"></i>
+            </button>
+            <button class="accessibility-btn" onclick="increaseFontSize()" title="Aumentar Fonte">
+                <i class="fas fa-text-height"></i>
+            </button>
+            <button class="accessibility-btn" onclick="toggleVirtualKeyboard()" title="Teclado Virtual">
+                <i class="fas fa-keyboard"></i>
+            </button>
+        </div>
+        
+        <div class="main-content">
+            <div class="welcome-message">
+                <h2>Bem-vindo!</h2>
+                <p>Toque na categoria de serviço desejada para iniciar</p>
+            </div>
+            
+            <div class="content-area">
+                <!-- Tela de Categorias -->
+                <div class="screen active" id="categories-screen">
+                    <div class="service-category-container">
+                        <div class="category-card" onclick="showServices('banking')">
+                            <i class="fas fa-money-check-alt"></i>
+                            <h3>Serviços Bancários</h3>
+                            <p>Contas, empréstimos e investimentos</p>
+                        </div>
+                        <div class="category-card" onclick="showServices('payments')">
+                            <i class="fas fa-receipt"></i>
+                            <h3>Pagamentos</h3>
+                            <p>Boletos, contas e tributos</p>
+                        </div>
+                        <div class="category-card" onclick="showServices('cards')">
+                            <i class="fas fa-credit-card"></i>
+                            <h3>Cartões</h3>
+                            <p>Desbloqueio, senha e segunda via</p>
+                        </div>
+                        <div class="category-card" onclick="showServices('benefits')">
+                            <i class="fas fa-hand-holding-usd"></i>
+                            <h3>Benefícios</h3>
+                            <p>INSS, seguro-desemprego e auxílios</p>
+                        </div>
+                        <div class="category-card" onclick="showServices('business')">
+                            <i class="fas fa-briefcase"></i>
+                            <h3>Pessoa Jurídica</h3>
+                            <p>Serviços para empresas</p>
+                        </div>
+                        <div class="category-card" onclick="showServices('other')">
+                            <i class="fas fa-ellipsis-h"></i>
+                            <h3>Outros Serviços</h3>
+                            <p>Demais atendimentos</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tela de Serviços -->
+                <div class="screen" id="services-screen">
+                    <div class="service-list" id="service-list-container">
+                        <!-- Preenchido dinamicamente via JavaScript -->
+                    </div>
+                    
+                    <div class="buttons-container">
+                        <button class="btn btn-secondary" onclick="showCategories()">
+                            <i class="fas fa-arrow-left"></i> Voltar
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Tela de Confirmação -->
+                <div class="screen" id="confirmation-screen">
+                    <div class="confirmation-container">
+                        <h2>Confirmar Serviço</h2>
+                        
+                        <div class="service-details">
+                            <h3 id="confirm-service-name">Atendimento Bancário</h3>
+                            
+                            <div class="service-info">
+                                <p>
+                                    <span>Departamento:</span>
+                                    <span id="confirm-department">Área de Atendimento</span>
+                                </p>
+                                <p>
+                                    <span>Senhas emitidas hoje:</span>
+                                    <span id="confirm-tickets">25</span>
+                                </p>
+                                <p>
+                                    <span>Senhas em espera:</span>
+                                    <span id="confirm-waiting">7</span>
+                                </p>
+                            </div>
+                            
+                            <div class="wait-time">
+                                Tempo estimado de espera: <strong id="confirm-wait-time">15 minutos</strong>
+                            </div>
+                        </div>
+                        
+                        <div class="buttons-container">
+                            <button class="btn btn-secondary" onclick="showServices(currentCategory)">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </button>
+                            <button class="btn btn-primary btn-large" onclick="generateTicket()">
+                                <i class="fas fa-ticket-alt"></i> Gerar Senha
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tela de Ticket -->
+                <div class="screen" id="ticket-screen">
+                    <div class="ticket-container">
+                        <div class="ticket-card">
+                            <div class="ticket-info">
+                                <h3>Senha de Atendimento</h3>
+                                <p id="ticket-date">14/05/2025 - 14:30</p>
+                                <p id="ticket-service">Atendimento Bancário</p>
+                            </div>
+                            
+                            <div class="ticket-number" id="ticket-number">A123</div>
+                            
+                            <div class="ticket-qr">
+                                <img src="/api/placeholder/150/150" alt="QR Code">
+                            </div>
+                            
+                            <div class="ticket-instructions">
+                                <p>Acompanhe sua senha pelo aplicativo.</p>
+                                <p>Seu ticket está sendo impresso.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="buttons-container" style="margin-top: 2rem;">
+                            <button class="btn btn-primary" onclick="restart()">
+                                <i class="fas fa-home"></i> Iniciar Novo Atendimento
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="footer-info">
+                <p>Totem de Autoatendimento v1.0</p>
+                <p>© 2025 Sua Instituição - Todos os direitos reservados</p>
+            </div>
+            <div class="footer-controls">
+                <button class="btn btn-secondary" onclick="toggleHelp()">
+                    <i class="fas fa-question-circle"></i> Ajuda
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="loading-screen" id="loading-screen">
+        <div class="spinner"></div>
+        <div class="loading-message">Gerando sua senha...</div>
+    </div>
+    
+    <script>
+        let currentCategory = '';
+        let currentService = '';
+        
+        // Mapear categorias para serviços
+        const servicesByCategory = {
+            'banking': [
+                { id: 'account', name: 'Conta Corrente', icon: 'fa-landmark', description: 'Abertura, movimentações e extratos' },
+                { id: 'savings', name: 'Poupança', icon: 'fa-piggy-bank', description: 'Depósitos e saques' },
+                { id: 'loan', name: 'Empréstimos', icon: 'fa-hand-holding-usd', description: 'Contratação e renegociação' },
+                { id: 'investment', name: 'Investimentos', icon: 'fa-chart-line', description: 'Aplicações e resgates' }
+            ],
+            'payments': [
+                { id: 'bills', name: 'Pagamento de Contas', icon: 'fa-file-invoice-dollar', description: 'Água, luz, telefone e outros' },
+                { id: 'taxes', name: 'Tributos', icon: 'fa-file-invoice', description: 'IPTU, IPVA e outros impostos' },
+                { id: 'transfers', name: 'Transferências', icon: 'fa-exchange-alt', description: 'DOC, TED e Pix' }
+            ],
+            'cards': [
+                { id: 'debit', name: 'Cartão de Débito', icon: 'fa-id-card', description: 'Problemas e segunda via' },
+                { id: 'credit', name: 'Cartão de Crédito', icon: 'fa-credit-card', description: 'Desbloqueio e fatura' },
+                { id: 'password', name: 'Senha de Cartão', icon: 'fa-key', description: 'Recuperação e alteração' }
+            ],
+            'benefits': [
+                { id: 'inss', name: 'INSS', icon: 'fa-user-shield', description: 'Aposentadoria e benefícios' },
+                { id: 'fgts', name: 'FGTS', icon: 'fa-building', description: 'Consulta e saque' },
+                { id: 'unemployment', name: 'Seguro-Desemprego', icon: 'fa-file-contract', description: 'Habilitação e parcelas' }
+            ],
+            'business': [
+                { id: 'business_account', name: 'Conta PJ', icon: 'fa-building', description: 'Abertura e movimentações' },
+                { id: 'business_loan', name: 'Crédito Empresarial', icon: 'fa-money-bill-wave', description: 'Financiamentos e capital de giro' },
+                { id: 'card_machine', name: 'Máquina de Cartão', icon: 'fa-calculator', description: 'Contratação e suporte' }
+            ],
+            'other': [
+                { id: 'certificates', name: 'Certificados', icon: 'fa-certificate', description: 'Certificado digital' },
+                { id: 'exchange', name: 'Câmbio', icon: 'fa-dollar-sign', description: 'Moeda estrangeira' },
+                { id: 'insurance', name: 'Seguros', icon: 'fa-shield-alt', description: 'Vida, auto e residencial' }
+            ]
+        };
+        
+        // Mostrar serviços da categoria selecionada
+        function showServices(category) {
+            currentCategory = category;
+            
+            const serviceList = document.getElementById('service-list-container');
+            serviceList.innerHTML = '';
+            
+            // Título da categoria
+            const categoryTitle = document.createElement('h2');
+            categoryTitle.style.width = '100%';
+            categoryTitle.style.marginBottom = '1rem';
+            categoryTitle.textContent = getCategoryTitle(category);
+            serviceList.appendChild(categoryTitle);
+            
+            // Adicionar serviços
+            const services = servicesByCategory[category];
+            services.forEach(service => {
+                const serviceCard = document.createElement('div');
+                serviceCard.className = 'service-card';
+                serviceCard.onclick = () => showConfirmation(service.id, service.name);
+                
+                serviceCard.innerHTML = `
+                    <i class="fas ${service.icon}"></i>
+                    <h3>${service.name}</h3>
+                    <p>${service.description}</p>
+                `;
+                
+                serviceList.appendChild(serviceCard);
+            });
+            
+            // Alternar para a tela de serviços
+            showScreen('services-screen');
+        }
+        
+        // Obter título da categoria
+        function getCategoryTitle(category) {
+            const titles = {
+                'banking': 'Serviços Bancários',
+                'payments': 'Pagamentos',
+                'cards': 'Cartões',
+                'benefits': 'Benefícios',
+                'business': 'Pessoa Jurídica',
+                'other': 'Outros Serviços'
+            };
+            
+            return titles[category] || 'Serviços';
+        }
+        
+        // Mostrar tela de confirmação
+        function showConfirmation(serviceId, serviceName) {
+            currentService = serviceId;
+            
+            // Atualizar detalhes do serviço
+            document.getElementById('confirm-service-name').textContent = serviceName;
+            
+            // Gerar dados de exemplo para os outros campos
+            const departmentMap = {
+                'account': 'Contas',
+                'savings': 'Contas',
+                'loan': 'Crédito',
+                'investment': 'Investimentos',
+                'bills': 'Caixa',
+                'taxes': 'Caixa',
+                'transfers': 'Caixa',
+                'debit': 'Cartões',
+                'credit': 'Cartões',
+                'password': 'Cartões',
+                'inss': 'Benefícios',
+                'fgts': 'Benefícios',
+                'unemployment': 'Benefícios',
+                'business_account': 'Pessoa Jurídica',
+                'business_loan': 'Pessoa Jurídica',
+                'card_machine': 'Pessoa Jurídica',
+                'certificates': 'Atendimento Geral',
+                'exchange': 'Atendimento Geral',
+                'insurance': 'Seguros'
+            };
+            
+            document.getElementById('confirm-department').textContent = departmentMap[serviceId] || 'Atendimento Geral';
+            
+            // Gerar números aleatórios para fins de demonstração
+            const ticketsIssued = Math.floor(Math.random() * 50) + 10;
+            const ticketsWaiting = Math.floor(Math.random() * 10) + 1;
+            const waitTime = ticketsWaiting * 3 + Math.floor(Math.random() * 5);
+            
+            document.getElementById('confirm-tickets').textContent = ticketsIssued;
+            document.getElementById('confirm-waiting').textContent = ticketsWaiting;
+            document.getElementById('confirm-wait-time').textContent = `${waitTime} minutos`;
+            
+            // Alternar para a tela de confirmação
+            showScreen('confirmation-screen');
+        }
+        
+        // Gerar senha
+        function generateTicket() {
+            // Mostrar tela de carregamento
+            document.getElementById('loading-screen').classList.add('active');
+            
+            // Simular chamada à API
+            setTimeout(() => {
+                // Esconder tela de carregamento
+                document.getElementById('loading-screen').classList.remove('active');
+                
+                // Gerar dados do ticket
+                const now = new Date();
+                const ticketDate = `${now.toLocaleDateString()} - ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+                
+                // Mapear serviço para nome completo
+                let serviceName = '';
+                for (const category in servicesByCategory) {
+                    const service = servicesByCategory[category].find(s => s.id === currentService);
+                    if (service) {
+                        serviceName = service.name;
+                        break;
+                    }
+                }
+                
+                // Gerar letra da senha baseada no departamento
+                const prefixMap = {
+                    'Contas': 'A',
+                    'Crédito': 'C',
+                    'Investimentos': 'I',
+                    'Caixa': 'P',
+                    'Cartões': 'T',
+                    'Benefícios': 'B',
+                    'Pessoa Jurídica': 'J',
+                    'Atendimento Geral': 'G',
+                    'Seguros': 'S'
+                };
+                
+                const department = document.getElementById('confirm-department').textContent;
+                const prefix = prefixMap[department] || 'X';
+                const ticketNumber = `
