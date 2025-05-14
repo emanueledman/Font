@@ -490,4 +490,389 @@
                 <div class="text-sm text-gray-500 dark:text-gray-400">
                     Mostrando <span id="queues-start">1</span> a <span id="queues-end">0</span> de <span id="queues-total">0</span> filas
                 </div>
-                <div class="flex space-x
+                <div class="flex space-x-2">
+                    <button id="queues-prev" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors neumorphic" disabled aria-label="Página anterior de filas">
+                        <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    <button id="queues-next" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors neumorphic" aria-label="Próxima página de filas">
+                        <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tickets Section -->
+        <div id="tickets-section" class="hidden">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-200">Gerenciar Tickets</h2>
+                    <p class="text-gray-500 dark:text-gray-400">Visualize e gerencie tickets emitidos</p>
+                </div>
+                <div class="mt-4 md:mt-0 flex space-x-3">
+                    <button id="export-tickets" class="p-2 bg-white dark:bg-gray-700 rounded-lg shadow hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors neumorphic" title="Exportar tickets" aria-label="Exportar tickets">
+                        <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                    </button>
+                    <button id="validate-qr-btn" class="flex items-center px-4 py-2 bg-gradient-to-r from-secondary to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-colors neumorphic" aria-label="Validar QR code">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                        Validar QR
+                    </button>
+                    <button id="generate-ticket-btn" class="flex items-center px-4 py-2 bg-gradient-to-r from-accent to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-md transition-colors neumorphic" aria-label="Gerar novo ticket">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Novo Ticket
+                    </button>
+                </div>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 mb-6 border border-gray-100 dark:border-gray-700 neumorphic">
+                <div class="flex flex-col md:flex-row md:items-center gap-4">
+                    <div class="relative flex-grow">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="w-5 h-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                        <input type="text" id="ticket-filter" placeholder="Buscar por número, serviço ou status..." class="pl-10 p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary focus:border-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Buscar tickets">
+                    </div>
+                    <div class="flex gap-2">
+                        <select id="ticket-status-filter" class="p-3 border rounded-lg focus:ring-2 focus:ring-secondary text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Filtrar tickets por status">
+                            <option value="all">Todos os status</option>
+                            <option value="pending">Pendentes</option>
+                            <option value="called">Chamados</option>
+                            <option value="completed">Finalizados</option>
+                            <option value="canceled">Cancelados</option>
+                        </select>
+                        <select id="ticket-queue-filter" class="p-3 border rounded-lg focus:ring-2 focus:ring-secondary text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Filtrar tickets por fila">
+                            <option value="all">Todas as filas</option>
+                        </select>
+                        <select id="ticket-source-filter" class="p-3 border rounded-lg focus:ring-2 focus:ring-secondary text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Filtrar tickets por origem">
+                            <option value="all">Todas as origens</option>
+                            <option value="totem">Totem</option>
+                            <option value="manual">Manual</option>
+                        </select>
+                        <button id="ticket-advanced-filter" class="p-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors neumorphic" aria-label="Filtros avançados para tickets">
+                            <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div id="tickets-loading" class="hidden" aria-hidden="true">
+                <div class="flex justify-center items-center py-12">
+                    <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-secondary"></div>
+                </div>
+            </div>
+            <div id="tickets-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            <div class="flex items-center justify-between bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 border border-gray-100 dark:border-gray-700 neumorphic">
+                <div class="text-sm text-gray-500 dark:text-gray-400">
+                    Mostrando <span id="tickets-start">1</span> a <span id="tickets-end">0</span> de <span id="tickets-total">0</span> tickets
+                </div>
+                <div class="flex space-x-2">
+                    <button id="tickets-prev" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors neumorphic" disabled aria-label="Página anterior de tickets">
+                        <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    <button id="tickets-next" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors neumorphic" aria-label="Próxima página de tickets">
+                        <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reports Section -->
+        <div id="reports-section" class="hidden">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-200">Relatórios</h2>
+                    <p class="text-gray-500 dark:text-gray-400">Analise o desempenho do departamento</p>
+                </div>
+                <div class="mt-4 md:mt-0 flex space-x-3">
+                    <button id="print-report" class="p-2 bg-white dark:bg-gray-700 rounded-lg shadow hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors neumorphic" title="Imprimir relatório" aria-label="Imprimir relatório">
+                        <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                    </button>
+                    <button id="export-report-btn" class="flex items-center px-4 py-2 bg-gradient-to-r from-secondary to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-colors neumorphic" aria-label="Exportar relatório">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Exportar
+                    </button>
+                </div>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-100 dark:border-gray-700 neumorphic">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div>
+                        <label for="report-period" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Período</label>
+                        <select id="report-period" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Selecionar período do relatório">
+                            <option value="today">Hoje</option>
+                            <option value="week">Esta semana</option>
+                            <option value="month">Este mês</option>
+                            <option value="quarter">Este trimestre</option>
+                            <option value="year">Este ano</option>
+                            <option value="custom">Personalizado</option>
+                        </select>
+                    </div>
+                    <div id="custom-start-date" class="hidden">
+                        <label for="start-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data inicial</label>
+                        <input type="date" id="start-date" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Selecionar data inicial">
+                    </div>
+                    <div id="custom-end-date" class="hidden">
+                        <label for="end-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data final</label>
+                        <input type="date" id="end-date" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Selecionar data final">
+                    </div>
+                    <div>
+                        <label for="report-type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de relatório</label>
+                        <select id="report-type" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Selecionar tipo de relatório">
+                            <option value="summary">Resumo</option>
+                            <option value="detailed">Detalhado</option>
+                            <option value="comparative">Comparativo</option>
+                            <option value="performance">Desempenho</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div>
+                        <label for="report-queue" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fila</label>
+                        <select id="report-queue" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Selecionar fila para relatório">
+                            <option value="all">Todas as filas</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="report-attendant" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Atendente</label>
+                        <select id="report-attendant" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Selecionar atendente para relatório">
+                            <option value="all">Todos</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="report-group" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Agrupamento</label>
+                        <select id="report-group" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Selecionar agrupamento do relatório">
+                            <option value="none">Nenhum</option>
+                            <option value="day">Por dia</option>
+                            <option value="week">Por semana</option>
+                            <option value="month">Por mês</option>
+                            <option value="queue">Por fila</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end">
+                    <button id="generate-report-btn" class="flex items-center px-6 py-3 bg-gradient-to-r from-accent to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-md transition-colors neumorphic" aria-label="Gerar relatório">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Gerar Relatório
+                    </button>
+                </div>
+            </div>
+            <div id="report-results"></div>
+        </div>
+
+        <!-- Settings Section -->
+    <div id="settings-section" class="hidden">
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+            <div>
+                <h2 class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-200">Configurações</h2>
+                <p class="text-gray-500 dark:text-gray-400">Personalize as configurações do departamento</p>
+            </div>
+            <button id="save-settings-btn" class="mt-4 md:mt-0 flex items-center px-4 py-2 bg-gradient-to-r from-secondary to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-colors neumorphic" aria-label="Salvar alterações de configurações">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                </svg>
+                Salvar Alterações
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- General Settings -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-100 dark:border-gray-700 neumorphic">
+                <h3 class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-200">Configurações Gerais</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label for="department-name-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome do Departamento</label>
+                        <input type="text" id="department-name-input" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" value="Departamento" aria-label="Nome do departamento">
+                    </div>
+                    <div>
+                        <label for="language" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Idioma</label>
+                        <select id="language" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Selecionar idioma">
+                            <option value="pt-BR">Português (Brasil)</option>
+                            <option value="en-US">English (US)</option>
+                            <option value="es-ES">Español (España)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="timezone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fuso Horário</label>
+                        <select id="timezone" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Selecionar fuso horário">
+                            <option value="America/Sao_Paulo">São Paulo (GMT-3)</option>
+                            <option value="America/New_York">New York (GMT-5)</option>
+                            <option value="Europe/London">London (GMT+0)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notification Settings -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-100 dark:border-gray-700 neumorphic">
+                <h3 class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-200">Notificações</h3>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <label for="email-notifications" class="text-sm font-medium text-gray-700 dark:text-gray-300">Notificações por E-mail</label>
+                        <input type="checkbox" id="email-notifications" class="h-4 w-4 text-secondary focus:ring-secondary border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600" aria-label="Ativar notificações por e-mail">
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <label for="push-notifications" class="text-sm font-medium text-gray-700 dark:text-gray-300">Notificações Push</label>
+                        <input type="checkbox" id="push-notifications" class="h-4 w-4 text-secondary focus:ring-secondary border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600" aria-label="Ativar notificações push">
+                    </div>
+                    <div>
+                        <label for="notification-frequency" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Frequência de Notificações</label>
+                        <select id="notification-frequency" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Selecionar frequência de notificações">
+                            <option value="realtime">Em tempo real</option>
+                            <option value="hourly">A cada hora</option>
+                            <option value="daily">Diariamente</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Queue Settings -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-100 dark:border-gray-700 neumorphic">
+                <h3 class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-200">Configurações de Filas</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label for="ticket-format" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Formato de Senha</label>
+                        <input type="text" id="ticket-format" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" value="A-001" aria-label="Formato de senha">
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <label for="auto-call" class="text-sm font-medium text-gray-700 dark:text-gray-300">Chamada Automática</label>
+                        <input type="checkbox" id="auto-call" class="h-4 w-4 text-secondary focus:ring-secondary border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600" aria-label="Ativar chamada automática">
+                    </div>
+                    <div>
+                        <label for="max-queue-size" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tamanho Máximo da Fila</label>
+                        <input type="number" id="max-queue-size" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" value="50" min="1" aria-label="Tamanho máximo da fila">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Management -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mt-6 border border-gray-100 dark:border-gray-700 neumorphic">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">Gerenciamento de Usuários</h3>
+                <button id="add-user-btn" class="mt-4 md:mt-0 flex items-center px-4 py-2 bg-gradient-to-r from-accent to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-md transition-colors neumorphic" aria-label="Adicionar novo usuário">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Adicionar Usuário
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nome</th>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">E-mail</th>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Função</th>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        <!-- Sample user row (to be populated by JavaScript) -->
+                        <tr>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-800 dark:text-gray-200">João da Silva</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-800 dark:text-gray-200">joao.silva@empresa.com</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-800 dark:text-gray-200">Gestor</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm">
+                                <button class="text-secondary hover:text-blue-800 dark:hover:text-blue-400 mr-2" title="Editar usuário" aria-label="Editar usuário">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15.828l-5.657 1.414 1.414-5.657L15.414 3.586z" />
+                                    </svg>
+                                </button>
+                                <button class="text-red-600 hover:text-red-800 dark:hover:text-red-400" title="Remover usuário" aria-label="Remover usuário">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-4h4a2 2 0 012 2v1H8V5a2 2 0 012-2z" />
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Advanced Settings -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mt-6 border border-gray-100 dark:border-gray-700 neumorphic">
+            <h3 class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-200">Configurações Avançadas</h3>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <label for="api-access" class="text-sm font-medium text-gray-700 dark:text-gray-300">Acesso à API</label>
+                    <input type="checkbox" id="api-access" class="h-4 w-4 text-secondary focus:ring-secondary border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600" aria-label="Ativar acesso à API">
+                </div>
+                <div>
+                    <label for="api-key" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Chave da API</label>
+                    <div class="flex">
+                        <input type="text" id="api-key" class="p-3 border rounded-l-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" readonly value="****************************" aria-label="Chave da API">
+                        <button id="regenerate-api-key" class="p-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-r-lg transition-colors neumorphic" title="Regenerar chave da API" aria-label="Regenerar chave da API">
+                            <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between">
+                    <label for="audit-logs" class="text-sm font-medium text-gray-700 dark:text-gray-300">Habilitar Logs de Auditoria</label>
+                    <input type="checkbox" id="audit-logs" class="h-4 w-4 text-secondary focus:ring-secondary border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600" aria-label="Ativar logs de auditoria">
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+    // Sidebar toggle functionality
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    sidebarToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('w-64');
+        sidebar.classList.toggle('w-20');
+        const spans = sidebar.querySelectorAll('span');
+        spans.forEach(span => span.classList.toggle('hidden'));
+    });
+
+    // Theme toggle functionality
+    const themeToggle = document.getElementById('theme-toggle');
+    const themeIcon = document.getElementById('theme-icon');
+    themeToggle.addEventListener('click', () => {
+        document.documentElement.classList.toggle('dark');
+        if (document.documentElement.classList.contains('dark')) {
+            themeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />';
+        } else {
+            themeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />';
+        }
+    });
+
+    // Navigation button handling
+    const navButtons = document.querySelectorAll('.nav-btn');
+    const sections = document.querySelectorAll('main > div');
+    navButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            navButtons.forEach(btn => btn.classList.remove('active', 'bg-secondary/90'));
+            button.classList.add('active', 'bg-secondary/90');
+            sections.forEach(section => section.classList.add('hidden'));
+            const sectionId = button.id.replace('nav-', '') + '-section';
+            document.getElementById(sectionId).classList.remove('hidden');
+        });
+    });
+</script>
+</body>
+</html>
