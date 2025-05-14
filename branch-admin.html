@@ -5,151 +5,316 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel do Gestor - Fila Fácil</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <script src="https://unocss.dev/cdn/uno.global.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="/js/authService.js"></script>
-    <script src="/js/login.js"></script>
-    <script src="/js/branch-admin.js" defer></script>
     <style>
-        :root {
-            --primary: #1e3a8a; /* Azul institucional */
-            --secondary: #4b5563; /* Cinza escuro */
-            --bg-light: #f9fafb; /* Fundo claro */
-            --border: #d1d5db; /* Borda sutil */
-            --success: #15803d;
-            --warning: #b45309;
-            --error: #b91c1c;
-        }
         body {
-            font-family: 'Roboto', sans-serif;
-            background: var(--bg-light);
-            color: var(--secondary);
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            color: #333;
             margin: 0;
+            display: flex;
+            min-height: 100vh;
         }
         .sidebar {
-            background: #ffffff;
-            border-right: 1px solid var(--border);
-            transition: width 0.3s;
+            width: 64px;
+            background: #fff;
+            border-right: 1px solid #ccc;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
         }
-        .btn-primary {
-            background: var(--primary);
-            color: #ffffff;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
+        .sidebar.w-64 {
+            width: 256px;
+        }
+        .sidebar h1 {
+            font-size: 20px;
+            color: #1a3c8a;
+            margin: 0;
+        }
+        .sidebar nav ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex-grow: 1;
+        }
+        .sidebar nav li {
+            margin-bottom: 8px;
+        }
+        .sidebar button {
+            width: 100%;
+            padding: 12px;
+            background: #e0e7ff;
             border: none;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .btn-primary:hover {
-            background: #1e40af;
-        }
-        .btn-success {
-            background: var(--success);
-            color: #ffffff;
-            padding: 0.5rem 1rem;
             border-radius: 4px;
-            border: none;
+            color: #1a3c8a;
+            text-align: left;
             cursor: pointer;
-            transition: background 0.2s;
+            display: flex;
+            align-items: center;
         }
-        .btn-success:hover {
-            background: #166534;
+        .sidebar button.active, .sidebar button:hover {
+            background: #1a3c8a;
+            color: #fff;
         }
-        .card {
-            background: #ffffff;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1rem;
+        .sidebar button svg {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
         }
-        .modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.5);
+        .sidebar .notification-badge {
+            background: #b91c1c;
+            color: #fff;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 50;
+            font-size: 12px;
+            margin-left: auto;
         }
-        .modal-content {
-            background: #ffffff;
-            border-radius: 8px;
-            padding: 1.5rem;
-            max-width: 500px;
-            width: 100%;
-            margin: 1rem;
+        .sidebar #sidebar-toggle {
+            background: none;
+            padding: 4px;
         }
         .hidden {
             display: none;
         }
-        .toast {
-            background: #ffffff;
-            border: 1px solid var(--border);
+        main {
+            flex: 1;
+            padding: 24px;
+        }
+        h2 {
+            font-size: 24px;
+            color: #1a3c8a;
+            margin-bottom: 16px;
+        }
+        h3 {
+            font-size: 18px;
+            margin-bottom: 16px;
+        }
+        .card {
+            background: #fff;
+            border: 1px solid #ccc;
             border-radius: 4px;
-            padding: 0.75rem;
-            margin-bottom: 0.5rem;
-            transition: opacity 0.3s;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .btn-primary {
+            background: #1a3c8a;
+            color: #fff;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-primary:hover {
+            background: #2b4cb9;
+        }
+        .btn-success {
+            background: #15803d;
+            color: #fff;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-success:hover {
+            background: #1a9c4b;
+        }
+        .btn-cancel {
+            background: #6b7280;
+            color: #fff;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-cancel:hover {
+            background: #4b5563;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: #fff;
+            border-radius: 4px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+            position: relative;
+        }
+        .modal-content button.absolute {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        #toast-container {
+            position: fixed;
+            bottom: 16px;
+            right: 16px;
+            z-index: 1000;
+        }
+        .toast {
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .toast.bg-green-100 {
-            background: #d1fae5;
-            border-color: var(--success);
+            background: #d4edda;
+            border-color: #15803d;
+            color: #15803d;
         }
         .toast.bg-blue-100 {
             background: #dbeafe;
-            border-color: var(--primary);
+            border-color: #1a3c8a;
+            color: #1a3c8a;
         }
         .toast.bg-red-100 {
-            background: #fee2e2;
-            border-color: var(--error);
+            background: #f8d7da;
+            border-color: #b91c1c;
+            color: #b91c1c;
         }
-        .toast.text-green-800 {
-            color: var(--success);
-        }
-        .toast.text-blue-800 {
-            color: var(--primary);
-        }
-        .toast.text-red-800 {
-            color: var(--error);
+        .toast .toast-close {
+            background: none;
+            border: none;
+            cursor: pointer;
         }
         .skeleton {
-            background: #e5e7eb;
+            background: #e0e0e0;
             border-radius: 4px;
-            height: 1rem;
-            margin: 0.5rem 0;
+            height: 16px;
+            margin: 8px 0;
         }
         input, select, textarea {
-            border: 1px solid var(--border);
+            border: 1px solid #ccc;
             border-radius: 4px;
-            padding: 0.5rem;
+            padding: 8px;
             width: 100%;
             box-sizing: border-box;
+            margin-top: 4px;
+        }
+        label {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 4px;
         }
         button:focus, input:focus, select:focus {
-            outline: 2px solid var(--primary);
-            outline-offset: 2px;
+            outline: 2px solid #1a3c8a;
+        }
+        .grid {
+            display: grid;
+            gap: 16px;
+        }
+        .grid-cols-1 {
+            grid-template-columns: 1fr;
+        }
+        .grid-cols-2 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .grid-cols-3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+        .grid-cols-4 {
+            grid-template-columns: repeat(4, 1fr);
+        }
+        .flex {
+            display: flex;
+        }
+        .items-center {
+            align-items: center;
+        }
+        .justify-between {
+            justify-content: space-between;
+        }
+        .space-x-2 > * + * {
+            margin-left: 8px;
+        }
+        .space-x-4 > * + * {
+            margin-left: 16px;
+        }
+        .space-y-2 > * + * {
+            margin-top: 8px;
+        }
+        .space-y-4 > * + * {
+            margin-top: 16px;
+        }
+        .space-y-6 > * + * {
+            margin-top: 24px;
+        }
+        @media (min-width: 768px) {
+            .md\\:grid-cols-2 {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .md\\:grid-cols-3 {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .md\\:grid-cols-4 {
+                grid-template-columns: repeat(4, 1fr);
+            }
+            .md\\:block {
+                display: block;
+            }
+        }
+        @media (min-width: 1024px) {
+            .lg\\:grid-cols-2 {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .lg\\:grid-cols-3 {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .lg\\:grid-cols-4 {
+                grid-template-columns: repeat(4, 1fr);
+            }
         }
     </style>
 </head>
-<body class="min-h-screen flex">
+<body>
     <!-- Loading Overlay -->
-    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="text-white text-lg" id="loading-message">Carregando...</div>
+    <div id="loading-overlay" class="hidden">
+        <div id="loading-message">Carregando...</div>
     </div>
 
     <!-- Toast Container -->
-    <div id="toast-container" class="fixed bottom-4 right-4 z-50"></div>
+    <div id="toast-container"></div>
 
     <!-- Toast Template -->
     <template id="toast-template">
-        <div class="toast flex items-center justify-between p-4 shadow-lg">
+        <div class="toast">
             <div>
-                <span class="toast-title font-semibold"></span>
-                <p class="toast-message text-sm"></p>
+                <span class="toast-title"></span>
+                <p class="toast-message"></p>
             </div>
-            <button class="toast-close text-gray-500 hover:text-gray-700" aria-label="Fechar notificação">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button class="toast-close" aria-label="Fechar notificação">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -162,62 +327,62 @@
     </template>
 
     <!-- Sidebar -->
-    <aside id="sidebar" class="sidebar w-20 md:w-64 min-h-screen p-4 flex flex-col">
-        <div class="flex items-center mb-8 py-2 border-b border-gray-200">
-            <img src="assets/logo-icon.png" alt="Logo Fila Fácil" class="w-10 h-10 mr-2">
-            <h1 class="hidden md:block text-xl font-bold text-primary">Fila Fácil</h1>
-            <button id="sidebar-toggle" class="ml-auto text-primary md:hidden p-1 rounded-lg" aria-label="Alternar menu lateral">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <aside id="sidebar" class="sidebar">
+        <div class="flex items-center space-x-2 border-b border-gray-300 pb-2 mb-8">
+            <img src="assets/logo-icon.png" alt="Logo Fila Fácil" width="40" height="40">
+            <h1 class="hidden md:block">Fila Fácil</h1>
+            <button id="sidebar-toggle" aria-label="Alternar menu lateral">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
             </button>
         </div>
-        <nav class="flex-grow">
-            <ul class="space-y-2">
+        <nav>
+            <ul>
                 <li>
-                    <button id="nav-dashboard" class="nav-btn active w-full flex items-center px-3 py-3 bg-primary/10 rounded-lg hover:bg-primary/20 transition-all" title="Dashboard" aria-label="Navegar para Dashboard">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button id="nav-dashboard" class="nav-btn active" title="Dashboard" aria-label="Navegar para Dashboard">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                         </svg>
                         <span class="hidden md:block">Dashboard</span>
-                        <span class="notification-badge bg-error w-5 h-5 rounded-full flex items-center justify-center text-white text-xs ml-auto">3</span>
+                        <span class="notification-badge">3</span>
                     </button>
                 </li>
                 <li>
-                    <button id="nav-call" class="nav-btn w-full flex items-center px-3 py-3 rounded-lg hover:bg-primary/20 transition-all" title="Chamada" aria-label="Navegar para Chamada">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button id="nav-call" class="nav-btn" title="Chamada" aria-label="Navegar para Chamada">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                         </svg>
                         <span class="hidden md:block">Chamada</span>
                     </button>
                 </li>
                 <li>
-                    <button id="nav-queues" class="nav-btn w-full flex items-center px-3 py-3 rounded-lg hover:bg-primary/20 transition-all" title="Filas" aria-label="Navegar para Filas">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button id="nav-queues" class="nav-btn" title="Filas" aria-label="Navegar para Filas">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 179">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                         </svg>
                         <span class="hidden md:block">Filas</span>
                     </button>
                 </li>
                 <li>
-                    <button id="nav-tickets" class="nav-btn w-full flex items-center px-3 py-3 rounded-lg hover:bg-primary/20 transition-all" title="Tickets" aria-label="Navegar para Tickets">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button id="nav-tickets" class="nav-btn" title="Tickets" aria-label="Navegar para Tickets">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
                         </svg>
                         <span class="hidden md:block">Tickets</span>
                     </button>
                 </li>
                 <li>
-                    <button id="nav-reports" class="nav-btn w-full flex items-center px-3 py-3 rounded-lg hover:bg-primary/20 transition-all" title="Relatórios" aria-label="Navegar para Relatórios">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button id="nav-reports" class="nav-btn" title="Relatórios" aria-label="Navegar para Relatórios">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                         <span class="hidden md:block">Relatórios</span>
                     </button>
                 </li>
                 <li>
-                    <button id="nav-settings" class="nav-btn w-full flex items-center px-3 py-3 rounded-lg hover:bg-primary/20 transition-all" title="Configurações" aria-label="Navegar para Configurações">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button id="nav-settings" class="nav-btn" title="Configurações" aria-label="Navegar para Configurações">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
@@ -226,8 +391,8 @@
                 </li>
             </ul>
         </nav>
-        <button id="logout" class="flex items-center px-3 py-3 text-error hover:bg-error/10 rounded-lg transition-all" title="Sair" aria-label="Sair do sistema">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button id="logout" title="Sair" aria-label="Sair do sistema">
+            <svg width="20" height="20" fill="none" stroke="#b91c1c" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
             <span class="hidden md:block">Sair</span>
@@ -235,46 +400,46 @@
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 p-6">
+    <main>
         <!-- Dashboard Section -->
         <div id="dashboard-section" class="space-y-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <h2 class="text-2xl font-bold text-primary">Bem-vindo, <span id="user-name">Usuário</span></h2>
-                    <p id="current-date" class="text-sm text-secondary"></p>
+                    <h2>Bem-vindo, <span id="user-name">Usuário</span></h2>
+                    <p id="current-date"></p>
                 </div>
                 <button id="refresh-data" class="btn-primary" aria-label="Atualizar dados">
-                    <svg class="w-5 h-5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
                     Atualizar
                 </button>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
                 <div class="card">
-                    <p class="text-sm text-secondary">Filas Ativas</p>
-                    <p id="active-queues" class="text-2xl font-bold text-primary">0</p>
+                    <p>Filas Ativas</p>
+                    <p id="active-queues">0</p>
                 </div>
                 <div class="card">
-                    <p class="text-sm text-secondary">Tickets Pendentes</p>
-                    <p id="pending-tickets" class="text-2xl font-bold text-primary">0</p>
+                    <p>Tickets Pendentes</p>
+                    <p id="pending-tickets">0</p>
                 </div>
                 <div class="card">
-                    <p class="text-sm text-secondary">Chamadas Hoje</p>
-                    <p id="today-calls" class="text-2xl font-bold text-primary">0</p>
+                    <p>Chamadas Hoje</p>
+                    <p id="today-calls">0</p>
                 </div>
                 <div class="card">
-                    <p class="text-sm text-secondary">Atendentes Ativos</p>
-                    <p id="active-users" class="text-2xl font-bold text-primary">0</p>
+                    <p>Atendentes Ativos</p>
+                    <p id="active-users">0</p>
                 </div>
             </div>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 lg:grid-cols-2">
                 <div class="card">
-                    <h3 class="text-lg font-semibold mb-4">Atividade Recente</h3>
-                    <canvas id="activity-chart" class="h-64"></canvas>
+                    <h3>Atividade Recente</h3>
+                    <canvas id="activity-chart" height="256"></canvas>
                 </div>
                 <div class="card">
-                    <h3 class="text-lg font-semibold mb-4">Últimos Tickets</h3>
+                    <h3>Últimos Tickets</h3>
                     <div id="recent-tickets" class="space-y-2"></div>
                 </div>
             </div>
@@ -282,15 +447,15 @@
 
         <!-- Call Section -->
         <div id="call-section" class="space-y-6 hidden">
-            <h2 class="text-2xl font-bold text-primary">Chamada</h2>
+            <h2>Chamada</h2>
             <div class="card">
-                <h3 class="text-lg font-semibold mb-4">Chamada Atual</h3>
-                <div id="current-call" class="text-center">
-                    <p class="text-3xl font-bold text-primary" id="current-ticket">Nenhum</p>
-                    <p class="text-sm text-secondary" id="current-queue">Nenhuma fila</p>
-                    <p class="text-sm text-secondary" id="current-counter">Nenhum guichê</p>
+                <h3>Chamada Atual</h3>
+                <div id="current-call" style="text-align: center;">
+                    <p id="current-ticket">Nenhum</p>
+                    <p id="current-queue">Nenhuma fila</p>
+                    <p id="current-counter">Nenhum guichê</p>
                 </div>
-                <div class="flex justify-center space-x-4 mt-4">
+                <div class="flex justify-center space-x-4">
                     <button id="call-next" class="btn-success">Chamar Próximo</button>
                     <button id="recall" class="btn-primary">Rechamar</button>
                 </div>
@@ -300,21 +465,21 @@
         <!-- Queues Section -->
         <div id="queues-section" class="space-y-6 hidden">
             <div class="flex items-center justify-between">
-                <h2 class="text-2xl font-bold text-primary">Filas</h2>
+                <h2>Filas</h2>
                 <button id="create-queue-btn" class="btn-primary">Nova Fila</button>
             </div>
             <div class="card">
-                <h3 class="text-lg font-semibold mb-4">Lista de Filas</h3>
-                <div id="queues-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                <h3>Lista de Filas</h3>
+                <div id="queues-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3"></div>
             </div>
         </div>
 
         <!-- Tickets Section -->
         <div id="tickets-section" class="space-y-6 hidden">
             <div class="flex items-center justify-between">
-                <h2 class="text-2xl font-bold text-primary">Tickets</h2>
+                <h2>Tickets</h2>
                 <div class="flex space-x-4">
-                    <select id="ticket-source-filter" class="border border-gray-300 rounded-lg p-2" aria-label="Filtrar por origem do ticket">
+                    <select id="ticket-source-filter" aria-label="Filtrar por origem do ticket">
                         <option value="all">Todos</option>
                         <option value="manual">Manual</option>
                         <option value="totem">Totem</option>
@@ -323,53 +488,53 @@
                 </div>
             </div>
             <div class="card">
-                <h3 class="text-lg font-semibold mb-4">Lista de Tickets</h3>
-                <div id="tickets-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                <h3>Lista de Tickets</h3>
+                <div id="tickets-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3"></div>
             </div>
         </div>
 
         <!-- Reports Section -->
         <div id="reports-section" class="space-y-6 hidden">
             <div class="flex items-center justify-between">
-                <h2 class="text-2xl font-bold text-primary">Relatórios</h2>
+                <h2>Relatórios</h2>
                 <div class="flex space-x-4">
-                    <input type="date" id="report-date" class="border border-gray-300 rounded-lg p-2" aria-label="Selecionar data do relatório">
+                    <input type="date" id="report-date" aria-label="Selecionar data do relatório">
                     <button id="generate-report-btn" class="btn-primary">Gerar Relatório</button>
                     <button id="export-report-btn" class="btn-primary">Exportar</button>
                 </div>
             </div>
             <div class="card">
-                <h3 class="text-lg font-semibold mb-4">Resultados</h3>
+                <h3>Resultados</h3>
                 <div id="report-results" class="space-y-4"></div>
             </div>
         </div>
 
         <!-- Settings Section -->
         <div id="settings-section" class="space-y-6 hidden">
-            <h2 class="text-2xl font-bold text-primary">Configurações</h2>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <h2>Configurações</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2">
                 <div class="card">
-                    <h3 class="text-lg font-semibold mb-4">Departamento</h3>
-                    <button id="create-department-btn" class="btn-primary mb-4">Novo Departamento</button>
+                    <h3>Departamento</h3>
+                    <button id="create-department-btn" class="btn-primary">Novo Departamento</button>
                     <div id="departments-container" class="space-y-2"></div>
                 </div>
                 <div class="card">
-                    <h3 class="text-lg font-semibold mb-4">Membros</h3>
-                    <button id="add-member-btn" class="btn-primary mb-4">Adicionar Membro</button>
+                    <h3>Membros</h3>
+                    <button id="add-member-btn" class="btn-primary">Adicionar Membro</button>
                     <div id="members-container" class="space-y-2"></div>
                 </div>
                 <div class="card">
-                    <h3 class="text-lg font-semibold mb-4">Horários</h3>
-                    <button id="create-schedule-btn" class="btn-primary mb-4">Novo Horário</button>
+                    <h3>Horários</h3>
+                    <button id="create-schedule-btn" class="btn-primary">Novo Horário</button>
                     <div id="schedules-container" class="space-y-2"></div>
                 </div>
                 <div class="card">
-                    <h3 class="text-lg font-semibold mb-4">Guichês</h3>
-                    <button id="create-counter-btn" class="btn-primary mb-4">Novo Guichê</button>
+                    <h3>Guichês</h3>
+                    <button id="create-counter-btn" class="btn-primary">Novo Guichê</button>
                     <div id="counters-container" class="space-y-2"></div>
                 </div>
                 <div class="card">
-                    <h3 class="text-lg font-semibold mb-4">Chamadas</h3>
+                    <h3>Chamadas</h3>
                     <button id="call-settings-btn" class="btn-primary">Configurar Chamadas</button>
                 </div>
             </div>
@@ -379,47 +544,47 @@
     <!-- Queue Modal -->
     <div id="queue-modal" class="modal hidden">
         <div class="modal-content">
-            <h3 id="queue-modal-title" class="text-lg font-semibold mb-4">Nova Fila</h3>
+            <h3 id="queue-modal-title">Nova Fila</h3>
             <form id="queue-form">
                 <input type="hidden" id="queue_id">
-                <div class="mb-4">
-                    <label for="queue-name" class="block text-sm font-medium">Nome da Fila</label>
-                    <input type="text" id="queue-name" required class="mt-1">
+                <div>
+                    <label for="queue-name">Nome da Fila</label>
+                    <input type="text" id="queue-name" required>
                 </div>
-                <div class="mb-4">
-                    <label for="queue-prefix" class="block text-sm font-medium">Prefixo</label>
-                    <input type="text" id="queue-prefix" required class="mt-1">
+                <div>
+                    <label for="queue-prefix">Prefixo</label>
+                    <input type="text" id="queue-prefix" required>
                 </div>
-                <div class="mb-4">
-                    <label for="queue-description" class="block text-sm font-medium">Descrição</label>
-                    <textarea id="queue-description" class="mt-1"></textarea>
+                <div>
+                    <label for="queue-description">Descrição</label>
+                    <textarea id="queue-description"></textarea>
                 </div>
-                <div class="mb-4">
-                    <label for="queue-priority" class="block text-sm font-medium">Prioridade</label>
-                    <select id="queue-priority" class="mt-1">
+                <div>
+                    <label for="queue-priority">Prioridade</label>
+                    <select id="queue-priority">
                         <option value="normal">Normal</option>
                         <option value="high">Alta</option>
                         <option value="low">Baixa</option>
                     </select>
                 </div>
-                <div class="mb-4">
-                    <label for="num-counters" class="block text-sm font-medium">Número de Guichês</label>
-                    <input type="number" id="num-counters" required class="mt-1">
+                <div>
+                    <label for="num-counters">Número de Guichês</label>
+                    <input type="number" id="num-counters" required>
                 </div>
-                <div class="mb-4">
-                    <label for="queue-status" class="block text-sm font-medium">Status</label>
-                    <select id="queue-status" class="mt-1">
+                <div>
+                    <label for="queue-status">Status</label>
+                    <select id="queue-status">
                         <option value="Aberto">Aberto</option>
                         <option value="Fechado">Fechado</option>
                     </select>
                 </div>
                 <div class="flex justify-end space-x-2">
-                    <button type="button" id="cancel-queue" class="btn-primary bg-gray-500 hover:bg-gray-600">Cancelar</button>
+                    <button type="button" id="cancel-queue" class="btn-cancel">Cancelar</button>
                     <button type="submit" class="btn-primary">Salvar</button>
                 </div>
             </form>
-            <button id="close-queue-modal" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700" aria-label="Fechar modal">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button id="close-queue-modal" class="absolute" aria-label="Fechar modal">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -429,35 +594,35 @@
     <!-- Ticket Modal -->
     <div id="ticket-modal" class="modal hidden">
         <div class="modal-content">
-            <h3 class="text-lg font-semibold mb-4">Gerar Ticket</h3>
+            <h3>Gerar Ticket</h3>
             <form id="ticket-form">
-                <div class="mb-4">
-                    <label for="ticket-queue" class="block text-sm font-medium">Fila</label>
-                    <select id="ticket-queue" required class="mt-1"></select>
+                <div>
+                    <label for="ticket-queue">Fila</label>
+                    <select id="ticket-queue" required></select>
                 </div>
-                <div class="mb-4">
-                    <label for="ticket-service" class="block text-sm font-medium">Serviço</label>
-                    <input type="text" id="ticket-service" required class="mt-1">
+                <div>
+                    <label for="ticket-service">Serviço</label>
+                    <input type="text" id="ticket-service" required>
                 </div>
-                <div class="mb-4">
-                    <label for="ticket-priority" class="block text-sm font-medium">Prioridade</label>
-                    <select id="ticket-priority" class="mt-1">
+                <div>
+                    <label for="ticket-priority">Prioridade</label>
+                    <select id="ticket-priority">
                         <option value="normal">Normal</option>
                         <option value="high">Alta</option>
                         <option value="low">Baixa</option>
                     </select>
                 </div>
-                <div class="mb-4">
-                    <label for="ticket-notes" class="block text-sm font-medium">Observações</label>
-                    <textarea id="ticket-notes" class="mt-1"></textarea>
+                <div>
+                    <label for="ticket-notes">Observações</label>
+                    <textarea id="ticket-notes"></textarea>
                 </div>
                 <div class="flex justify-end space-x-2">
-                    <button type="button" id="cancel-ticket" class="btn-primary bg-gray-500 hover:bg-gray-600">Cancelar</button>
+                    <button type="button" id="cancel-ticket" class="btn-cancel">Cancelar</button>
                     <button type="submit" class="btn-primary">Gerar</button>
                 </div>
             </form>
-            <button id="close-ticket-modal" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700" aria-label="Fechar modal">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button id="close-ticket-modal" class="absolute" aria-label="Fechar modal">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -467,23 +632,23 @@
     <!-- Department Modal -->
     <div id="department-modal" class="modal hidden">
         <div class="modal-content">
-            <h3 class="text-lg font-semibold mb-4">Novo Departamento</h3>
+            <h3>Novo Departamento</h3>
             <form id="department-form">
-                <div class="mb-4">
-                    <label for="dept-name" class="block text-sm font-medium">Nome</label>
-                    <input type="text" id="dept-name" required class="mt-1">
+                <div>
+                    <label for="dept-name">Nome</label>
+                    <input type="text" id="dept-name" required>
                 </div>
-                <div class="mb-4">
-                    <label for="dept-sector" class="block text-sm font-medium">Setor</label>
-                    <input type="text" id="dept-sector" required class="mt-1">
+                <div>
+                    <label for="dept-sector">Setor</label>
+                    <input type="text" id="dept-sector" required>
                 </div>
                 <div class="flex justify-end space-x-2">
-                    <button type="button" id="cancel-department-btn" class="btn-primary bg-gray-500 hover:bg-gray-600">Cancelar</button>
+                    <button type="button" id="cancel-department-btn" class="btn-cancel">Cancelar</button>
                     <button type="submit" class="btn-primary">Salvar</button>
                 </div>
             </form>
-            <button id="close-department-modal" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700" aria-label="Fechar modal">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button id="close-department-modal" class="absolute" aria-label="Fechar modal">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -493,36 +658,36 @@
     <!-- Member Modal -->
     <div id="member-modal" class="modal hidden">
         <div class="modal-content">
-            <h3 class="text-lg font-semibold mb-4">Adicionar Membro</h3>
+            <h3>Adicionar Membro</h3>
             <form id="member-form">
-                <div class="mb-4">
-                    <label for="member-email" class="block text-sm font-medium">Email</label>
-                    <input type="email" id="member-email" required class="mt-1">
+                <div>
+                    <label for="member-email">Email</label>
+                    <input type="email" id="member-email" required>
                 </div>
-                <div class="mb-4">
-                    <label for="member-name" class="block text-sm font-medium">Nome</label>
-                    <input type="text" id="member-name" required class="mt-1">
+                <div>
+                    <label for="member-name">Nome</label>
+                    <input type="text" id="member-name" required>
                 </div>
-                <div class="mb-4">
-                    <label for="member-role" class="block text-sm font-medium">Papel</label>
-                    <select id="member-role" class="mt-1">
+                <div>
+                    <label for="member-role">Papel</label>
+                    <select id="member-role">
                         <option value="attendant">Atendente</option>
                         <option value="branch_admin">Administrador</option>
                     </select>
                 </div>
-                <div class="mb-4">
-                    <label for="member-counter" class="block text-sm font-medium">Guichê</label>
-                    <select id="member-counter" class="mt-1">
+                <div>
+                    <label for="member-counter">Guichê</label>
+                    <select id="member-counter">
                         <option value="">Nenhum</option>
                     </select>
                 </div>
                 <div class="flex justify-end space-x-2">
-                    <button type="button" id="cancel-member" class="btn-primary bg-gray-500 hover:bg-gray-600">Cancelar</button>
+                    <button type="button" id="cancel-member" class="btn-cancel">Cancelar</button>
                     <button type="submit" class="btn-primary">Adicionar</button>
                 </div>
             </form>
-            <button id="close-member-modal" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700" aria-label="Fechar modal">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button id="close-member-modal" class="absolute" aria-label="Fechar modal">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -532,11 +697,11 @@
     <!-- Schedule Modal -->
     <div id="schedule-modal" class="modal hidden">
         <div class="modal-content">
-            <h3 class="text-lg font-semibold mb-4">Novo Horário</h3>
+            <h3>Novo Horário</h3>
             <form id="schedule-form">
-                <div class="mb-4">
-                    <label for="schedule-weekday" class="block text-sm font-medium">Dia da Semana</label>
-                    <select id="schedule-weekday" required class="mt-1">
+                <div>
+                    <label for="schedule-weekday">Dia da Semana</label>
+                    <select id="schedule-weekday" required>
                         <option value="Segunda-feira">Segunda-feira</option>
                         <option value="Terça-feira">Terça-feira</option>
                         <option value="Quarta-feira">Quarta-feira</option>
@@ -546,27 +711,24 @@
                         <option value="Domingo">Domingo</option>
                     </select>
                 </div>
-                <div class="mb-4">
-                    <label for="schedule-open-time" class="block text-sm font-medium">Horário de Abertura</label>
-                    <input type="time" id="schedule-open-time" required class="mt-1">
+                <div>
+                    <label for="schedule-open-time">Horário de Abertura</label>
+                    <input type="time" id="schedule-open-time" required>
                 </div>
-                <div class="mb-4">
-                    <label for="schedule-end-time" class="block text-sm font-medium">Horário de Fechamento</label>
-                    <input type="time" id="schedule-end-time" required class="mt-1">
+                <div>
+                    <label for="schedule-end-time">Horário de Fechamento</label>
+                    <input type="time" id="schedule-end-time" required>
                 </div>
-                <div class="mb-4">
-                    <label class="flex items-center">
-                        <input type="checkbox" id="schedule-is-closed" class="mr-2">
-                        Fechado
-                    </label>
+                <div>
+                    <label><input type="checkbox" id="schedule-is-closed"> Fechado</label>
                 </div>
                 <div class="flex justify-end space-x-2">
-                    <button type="button" id="cancel-schedule-btn" class="btn-primary bg-gray-500 hover:bg-gray-600">Cancelar</button>
+                    <button type="button" id="cancel-schedule-btn" class="btn-cancel">Cancelar</button>
                     <button type="submit" class="btn-primary">Salvar</button>
                 </div>
             </form>
-            <button id="close-schedule-modal" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700" aria-label="Fechar modal">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button id="close-schedule-modal" class="absolute" aria-label="Fechar modal">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -576,19 +738,19 @@
     <!-- Assign Queue Modal -->
     <div id="assign-queue-modal" class="modal hidden">
         <div class="modal-content">
-            <h3 class="text-lg font-semibold mb-4">Atribuir Fila</h3>
+            <h3>Atribuir Fila</h3>
             <form id="assign-queue-form">
-                <div class="mb-4">
-                    <label for="assign-queue-id" class="block text-sm font-medium">Fila</label>
-                    <select id="assign-queue-id" required class="mt-1"></select>
+                <div>
+                    <label for="assign-queue-id">Fila</label>
+                    <select id="assign-queue-id" required></select>
                 </div>
                 <div class="flex justify-end space-x-2">
-                    <button type="button" id="cancel-assign-queue-btn" class="btn-primary bg-gray-500 hover:bg-gray-600">Cancelar</button>
+                    <button type="button" id="cancel-assign-queue-btn" class="btn-cancel">Cancelar</button>
                     <button type="submit" class="btn-primary">Atribuir</button>
                 </div>
             </form>
-            <button id="close-assign-queue-modal" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700" aria-label="Fechar modal">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button id="close-assign-queue-modal" class="absolute" aria-label="Fechar modal">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -598,35 +760,35 @@
     <!-- Counter Modal -->
     <div id="counter-modal" class="modal hidden">
         <div class="modal-content">
-            <h3 id="counter-modal-title" class="text-lg font-semibold mb-4">Novo Guichê</h3>
+            <h3 id="counter-modal-title">Novo Guichê</h3>
             <form id="counter-form">
                 <input type="hidden" id="counter_id">
-                <div class="mb-4">
-                    <label for="counter-number" class="block text-sm font-medium">Número</label>
-                    <input type="text" id="counter-number" required class="mt-1">
+                <div>
+                    <label for="counter-number">Número</label>
+                    <input type="text" id="counter-number" required>
                 </div>
-                <div class="mb-4">
-                    <label for="counter-attendant" class="block text-sm font-medium">Atendente</label>
-                    <select id="counter-attendant" class="mt-1"></select>
+                <div>
+                    <label for="counter-attendant">Atendente</label>
+                    <select id="counter-attendant"></select>
                 </div>
-                <div class="mb-4">
-                    <label for="counter-status" class="block text-sm font-medium">Status</label>
-                    <select id="counter-status" class="mt-1">
+                <div>
+                    <label for="counter-status">Status</label>
+                    <select id="counter-status">
                         <option value="Ativo">Ativo</option>
                         <option value="Inativo">Inativo</option>
                     </select>
                 </div>
-                <div class="mb-4">
-                    <label for="counter-location" class="block text-sm font-medium">Localização</label>
-                    <input type="text" id="counter-location" class="mt-1">
+                <div>
+                    <label for="counter-location">Localização</label>
+                    <input type="text" id="counter-location">
                 </div>
                 <div class="flex justify-end space-x-2">
-                    <button type="button" id="cancel-counter" class="btn-primary bg-gray-500 hover:bg-gray-600">Cancelar</button>
+                    <button type="button" id="cancel-counter" class="btn-cancel">Cancelar</button>
                     <button type="submit" class="btn-primary">Salvar</button>
                 </div>
             </form>
-            <button id="close-counter-modal" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700" aria-label="Fechar modal">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button id="close-counter-modal" class="absolute" aria-label="Fechar modal">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -636,37 +798,37 @@
     <!-- Call Settings Modal -->
     <div id="call-settings-modal" class="modal hidden">
         <div class="modal-content">
-            <h3 class="text-lg font-semibold mb-4">Configurações de Chamada</h3>
+            <h3>Configurações de Chamada</h3>
             <form id="call-settings-form">
-                <div class="mb-4">
-                    <label for="call-priority" class="block text-sm font-medium">Prioridade</label>
-                    <select id="call-priority" class="mt-1">
+                <div>
+                    <label for="call-priority">Prioridade</label>
+                    <select id="call-priority">
                         <option value="fifo">FIFO</option>
                         <option value="priority">Prioridade</option>
                     </select>
                 </div>
-                <div class="mb-4">
-                    <label for="call-counter" class="block text-sm font-medium">Guichê</label>
-                    <select id="call-counter" class="mt-1"></select>
+                <div>
+                    <label for="call-counter">Guichê</label>
+                    <select id="call-counter"></select>
                 </div>
-                <div class="mb-4">
-                    <label for="call-sound" class="block text-sm font-medium">Som</label>
-                    <select id="call-sound" class="mt-1">
+                <div>
+                    <label for="call-sound">Som</label>
+                    <select id="call-sound">
                         <option value="default">Padrão</option>
                         <option value="beep">Beep</option>
                     </select>
                 </div>
-                <div class="mb-4">
-                    <label for="call-interval" class="block text-sm font-medium">Intervalo (segundos)</label>
-                    <input type="number" id="call-interval" required class="mt-1">
+                <div>
+                    <label for="call-interval">Intervalo (segundos)</label>
+                    <input type="number" id="call-interval" required>
                 </div>
                 <div class="flex justify-end space-x-2">
-                    <button type="button" id="cancel-call-settings" class="btn-primary bg-gray-500 hover:bg-gray-600">Cancelar</button>
+                    <button type="button" id="cancel-call-settings" class="btn-cancel">Cancelar</button>
                     <button type="submit" class="btn-primary">Salvar</button>
                 </div>
             </form>
-            <button id="close-call-settings-modal" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700" aria-label="Fechar modal">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button id="close-call-settings-modal" class="absolute" aria-label="Fechar modal">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -676,34 +838,34 @@
     <!-- Export Report Modal -->
     <div id="export-report-modal" class="modal hidden">
         <div class="modal-content">
-            <h3 class="text-lg font-semibold mb-4">Exportar Relatório</h3>
+            <h3>Exportar Relatório</h3>
             <form id="export-report-form">
-                <div class="mb-4">
-                    <label for="export-format" class="block text-sm font-medium">Formato</label>
-                    <select id="export-format" class="mt-1">
+                <div>
+                    <label for="export-format">Formato</label>
+                    <select id="export-format">
                         <option value="pdf">PDF</option>
                         <option value="csv">CSV</option>
                     </select>
                 </div>
-                <div class="mb-4">
-                    <label for="export-queue" class="block text-sm font-medium">Fila</label>
-                    <select id="export-queue" class="mt-1"></select>
+                <div>
+                    <label for="export-queue">Fila</label>
+                    <select id="export-queue"></select>
                 </div>
-                <div class="mb-4">
-                    <label for="export-start-date" class="block text-sm font-medium">Data Inicial</label>
-                    <input type="date" id="export-start-date" required class="mt-1">
+                <div>
+                    <label for="export-start-date">Data Inicial</label>
+                    <input type="date" id="export-start-date" required>
                 </div>
-                <div class="mb-4">
-                    <label for="export-end-date" class="block text-sm font-medium">Data Final</label>
-                    <input type="date" id="export-end-date" required class="mt-1">
+                <div>
+                    <label for="export-end-date">Data Final</label>
+                    <input type="date" id="export-end-date" required>
                 </div>
                 <div class="flex justify-end space-x-2">
-                    <button type="button" id="cancel-export-report" class="btn-primary bg-gray-500 hover:bg-gray-600">Cancelar</button>
+                    <button type="button" id="cancel-export-report" class="btn-cancel">Cancelar</button>
                     <button type="submit" class="btn-primary">Exportar</button>
                 </div>
             </form>
-            <button id="close-export-report-modal" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700" aria-label="Fechar modal">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button id="close-export-report-modal" class="absolute" aria-label="Fechar modal">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -713,7 +875,7 @@
     <!-- Ticket Details Modal -->
     <div id="ticket-details-modal" class="modal hidden">
         <div class="modal-content">
-            <h3 class="text-lg font-semibold mb-4">Detalhes do Ticket</h3>
+            <h3>Detalhes do Ticket</h3>
             <div class="space-y-2">
                 <p><strong>Número:</strong> <span id="ticket-details-number"></span></p>
                 <p><strong>Fila:</strong> <span id="ticket-details-queue"></span></p>
@@ -723,15 +885,22 @@
                 <p><strong>Emitido:</strong> <span id="ticket-details-issued"></span></p>
                 <p><strong>Observações:</strong> <span id="ticket-details-notes"></span></p>
             </div>
-            <div class="flex justify-end mt-4">
+            <div class="flex justify-end">
                 <button id="close-ticket-details" class="btn-primary">Fechar</button>
             </div>
-            <button id="close-ticket-details-modal" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700" aria-label="Fechar modal">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button id="close-ticket-details-modal" class="absolute" aria-label="Fechar modal">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/js/authService.js"></script>
+    <script src="/js/login.js"></script>
+    <script src="/js/branch-admin.js"></script>
 </body>
 </html>
