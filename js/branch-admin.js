@@ -1,4 +1,3 @@
-const API_BASE = '/api'; // Adjust as per your environment
 
 const Utils = {
     formatDate(date) {
