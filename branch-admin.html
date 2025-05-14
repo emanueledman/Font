@@ -165,14 +165,71 @@
             </div>
 
             <!-- Queues Section -->
-            <div id="queues-section" class="hidden space-y-6">
-                <div class="flex justify-between items-center">
-                    <h2 class="text-2xl font-semibold">Filas</h2>
-                    <button id="create-queue-btn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Nova Fila</button>
-                </div>
-                <div id="queues-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-            </div>
+<div id="queues-section" class="hidden space-y-6">
+    <div class="flex justify-between items-center">
+        <h2 class="text-2xl font-semibold">Filas</h2>
+        <button id="create-queue-btn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Nova Fila</button>
+    </div>
+    <div id="queues-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+</div>
 
+<!-- Modal para Criar/Editar Fila -->
+<div id="queue-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" role="dialog" aria-labelledby="queue-modal-title" aria-modal="true">
+    <div class="bg-white rounded-xl p-6 max-w-lg w-full mx-4 animate-zoom-in">
+        <div class="flex items-center justify-between mb-4">
+            <h3 id="queue-modal-title" class="text-xl font-semibold text-gray-800">Criar Nova Fila</h3>
+            <button id="close-queue-modal" class="text-gray-500 hover:text-gray-700" aria-label="Fechar modal de fila">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <form id="queue-form">
+            <input type="hidden" id="queue_id" name="queue_id">
+            <div class="mb-4">
+                <label for="queue-name" class="block text-sm font-medium text-gray-700 mb-1">Nome da Fila*</label>
+                <input type="text" id="queue-name" name="queue-name" required class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Nome da fila">
+            </div>
+            <div class="mb-4">
+                <label for="queue-prefix" class="block text-sm font-medium text-gray-700 mb-1">Prefixo*</label>
+                <input type="text" id="queue-prefix" name="queue-prefix" required class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Prefixo da fila">
+            </div>
+            <div class="mb-4">
+                <label for="queue-department" class="block text-sm font-medium text-gray-700 mb-1">Departamento*</label>
+                <select id="queue-department" name="queue-department" required class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Departamento da fila">
+                    <option value="">Selecione um departamento</option>
+                    <!-- Populated dynamically by JavaScript -->
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="queue-description" class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                <textarea id="queue-description" name="queue-description" rows="3" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Descrição da fila"></textarea>
+            </div>
+            <div class="mb-4">
+                <label for="queue-priority" class="block text-sm font-medium text-gray-700 mb-1">Prioridade</label>
+                <select id="queue-priority" name="queue-priority" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Prioridade da fila">
+                    <option value="normal">Normal</option>
+                    <option value="high">Alta</option>
+                    <option value="low">Baixa</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="num-counters" class="block text-sm font-medium text-gray-700 mb-1">Número de Guichês</label>
+                <input type="number" id="num-counters" name="num-counters" min="1" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Número de guichês">
+            </div>
+            <div class="mb-4">
+                <label for="queue-status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select id="queue-status" name="queue-status" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Status da fila">
+                    <option value="active">Ativa</option>
+                    <option value="inactive">Inativa</option>
+                </select>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button type="button" id="cancel-queue" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors" aria-label="Cancelar criação de fila">Cancelar</button>
+                <button type="submit" id="save-queue" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-colors" aria-label="Salvar fila">Salvar</button>
+            </div>
+        </form>
+        
             <!-- Tickets Section -->
             <div id="tickets-section" class="hidden space-y-6">
                 <div class="flex justify-between items-center">
