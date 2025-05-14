@@ -1,12 +1,19 @@
 <!DOCTYPE html>
-<html lang="pt-BR" class="scroll-smooth">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel do Gestor - Fila Fácil</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="css/department-admin.css">
+    <script src="/js/authService.js"></script>
+    <script src="/js/login.js"></script>
+    <script src="js/branch-admin.js" defer></script>
+        <script>
         tailwind.config = {
             theme: {
                 extend: {
@@ -36,34 +43,16 @@
             darkMode: 'class',
         }
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js" integrity="sha256-4e6b4s2s7i7eR2X9T1kF9i6uW9vZ7zC2e1X3vD9kYQ=" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha256-J2xMzlDua1ZpuF3dxW2Bvb1r3vB3K3xT8V4q15jxm1E=" crossorigin="anonymous"></script>
-    <style>
-        .neumorphic {
-            box-shadow: 6px 6px 12px rgba(0, 0, 0, 0.1), -6px -6px 12px rgba(255, 255, 255, 0.5);
-            transition: all 0.3s ease;
-        }
-        .neumorphic:hover {
-            box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.1), inset -4px -4px 8px rgba(255, 255, 255, 0.5);
-        }
-        .dark .neumorphic {
-            box-shadow: 6px 6px 12px rgba(0, 0, 0, 0.3), -6px -6px 12px rgba(255, 255, 255, 0.1);
-        }
-        .dark .neumorphic:hover {
-            box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.3), inset -4px -4px 8px rgba(255, 255, 255, 0.1);
-        }
-    </style>
 </head>
-<body class="bg-neutral min-h-screen flex font-inter text-gray-800 dark:bg-dark dark:text-gray-200 transition-colors duration-300">
+<body class="bg-gray-50 min-h-screen flex font-sans">
     <!-- Sidebar -->
-    <aside id="sidebar" class="bg-primary text-white w-20 md:w-64 min-h-screen p-4 flex flex-col transition-all duration-300 ease-in-out fixed md:sticky top-0 h-screen z-50 shadow-2xl">
-        <div class="flex items-center mb-6 py-2 border-b border-white/20">
-            <div class="logo-container w-10 h-10 rounded-full bg-white/10 flex items-center justify-center shadow-lg">
-                <img src="assets/logo-icon.png" alt="Logo Fila Fácil" class="w-8 h-8">
+    <aside id="sidebar" class="bg-gradient-to-b from-blue-900 to-blue-800 text-white w-20 md:w-64 min-h-screen p-4 flex flex-col transition-all duration-300 ease-in-out">
+        <div class="flex items-center mb-8 py-2 border-b border-blue-700">
+            <div class="logo-container w-10 h-10 md:mr-2 rounded-full bg-white/10 flex items-center justify-center shadow-lg">
+                <img src="assets/logo-icon.png" alt="Logo" class="w-8 h-8">
             </div>
-            <h1 class="hidden md:block text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-secondary ml-2">Fila Fácil</h1>
-            <button id="sidebar-toggle" class="ml-auto text-white md:hidden hover:bg-secondary p-1 rounded-lg" aria-label="Alternar menu lateral">
+            <h1 class="hidden md:block text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-200 tracking-tight">Fila Fácil</h1>
+            <button id="sidebar-toggle" class="ml-auto text-white md:hidden hover:bg-blue-700 p-1 rounded-lg" aria-label="Alternar menu lateral">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
@@ -72,40 +61,41 @@
         <nav class="flex-grow">
             <ul class="space-y-2">
                 <li>
-                    <button id="nav-dashboard" class="nav-btn active w-full flex items-center px-3 py-3 bg-secondary/90 rounded-lg hover:bg-secondary transition-all group" title="Dashboard" aria-label="Navegar para Dashboard">
-                        <div class="nav-icon bg-white/10 group-hover:bg-white/20 p-2 rounded-lg">
+                    <button id="nav-dashboard" class="nav-btn active w-full flex items-center px-3 py-3 bg-blue-700/90 rounded-lg hover:bg-blue-600 transition-all group" title="Dashboard" aria-label="Navegar para Dashboard">
+                        <div class="nav-icon bg-blue-600 group-hover:bg-blue-500 p-2 rounded-lg">
                             <svg class="w-5 h-5 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                             </svg>
                         </div>
                         <span class="hidden md:block ml-2">Dashboard</span>
-                        <span class="notification-badge hidden md:block bg-red-500 text-white text-xs rounded-full px-2 py-1 ml-auto animate-pulse">3</span>
+                        <span class="notification-badge bg-red-500 animate-pulse">3</span>
                     </button>
                 </li>
                 <li>
-                    <button id="nav-call" class="nav-btn w-full flex items-center px-3 py-3 rounded-lg hover:bg-secondary/70 transition-all group" title="Chamada" aria-label="Navegar para Chamada">
-                        <div class="nav-icon bg-white/10 group-hover:bg-white/20 p-2 rounded-lg">
+                    <button id="nav-call" class="nav-btn w-full flex items-center px-3 py-3 rounded-lg hover:bg-blue-600 transition-all group" title="Chamada" aria-label="Navegar para Chamada">
+                        <div class="nav-icon bg-blue-700/50 group-hover:bg-blue-500 p-2 rounded-lg">
                             <svg class="w-5 h-5 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                             </svg>
                         </div>
                         <span class="hidden md:block ml-2">Chamada</span>
-                        <span class="notification-badge hidden md:block bg-yellow-500 text-white text-xs rounded-full px-2 py-1 ml-auto">1</span>
+                        <span class="notification-badge bg-yellow-500">1</span>
                     </button>
                 </li>
                 <li>
-                    <button id="nav-queues" class="nav-btn w-full flex items-center px-3 py-3 rounded-lg hover:bg-secondary/70 transition-all group" title="Filas" aria-label="Navegar para Filas">
-                        <div class="nav-icon bg-white/10 group-hover:bg-white/20 p-2 rounded-lg">
+                    <button id="nav-queues" class="nav-btn w-full flex items-center px-3 py-3 rounded-lg hover:bg-blue-600 transition-all group" title="Filas" aria-label="Navegar para Filas">
+                        <div class="nav-icon bg-blue-700/50 group-hover:bg-blue-500 p-2 rounded-lg">
                             <svg class="w-5 h-5 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2  SDI (System Digital Interface) 1.0
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                             </svg>
                         </div>
                         <span class="hidden md:block ml-2">Filas</span>
                     </button>
                 </li>
                 <li>
-                    <button id="nav-tickets" class="nav-btn w-full flex items-center px-3 py-3 rounded-lg hover:bg-secondary/70 transition-all group" title="Tickets" aria-label="Navegar para Tickets">
-                        <div class="nav-icon bg-white/10 group-hover:bg-white/20 p-2 rounded-lg">
+                    <button id="nav-tickets" class="nav-btn w-full flex items-center px-3 py-3 rounded-lg hover:bg-blue-600 transition-all group" title="Tickets" aria-label="Navegar para Tickets">
+                        <div class="nav-icon bg-blue-700/50 group-hover:bg-blue-500 p-2 rounded-lg">
                             <svg class="w-5 h-5 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
                             </svg>
@@ -114,8 +104,8 @@
                     </button>
                 </li>
                 <li>
-                    <button id="nav-reports" class="nav-btn w-full flex items-center px-3 py-3 rounded-lg hover:bg-secondary/70 transition-all group" title="Relatórios" aria-label="Navegar para Relatórios">
-                        <div class="nav-icon bg-white/10 group-hover:bg-white/20 p-2 rounded-lg">
+                    <button id="nav-reports" class="nav-btn w-full flex items-center px-3 py-3 rounded-lg hover:bg-blue-600 transition-all group" title="Relatórios" aria-label="Navegar para Relatórios">
+                        <div class="nav-icon bg-blue-700/50 group-hover:bg-blue-500 p-2 rounded-lg">
                             <svg class="w-5 h-5 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                             </svg>
@@ -124,11 +114,11 @@
                     </button>
                 </li>
                 <li>
-                    <button id="nav-settings" class="nav-btn w-full flex items-center px-3 py-3 rounded-lg hover:bg-secondary/70 transition-all group" title="Configurações" aria-label="Navegar para Configurações">
-                        <div class="nav-icon bg-white/10 group-hover:bg-white/20 p-2 rounded-lg">
+                    <button id="nav-settings" class="nav-btn w-full flex items-center px-3 py-3 rounded-lg hover:bg-blue-600 transition-all group" title="Configurações" aria-label="Navegar para Configurações">
+                        <div class="nav-icon bg-blue-700/50 group-hover:bg-blue-500 p-2 rounded-lg">
                             <svg class="w-5 h-5 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15sgiving 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                         </div>
                         <span class="hidden md:block ml-2">Configurações</span>
@@ -136,14 +126,14 @@
                 </li>
             </ul>
         </nav>
-        <div class="mt-auto pt-4 border-t border-white/20">
-            <div id="user-info" class="flex items-center px-2 py-3 rounded-lg hover:bg-white/10 transition-all cursor-pointer" aria-label="Informações do usuário">
-                <div class="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-white font-bold mr-2">JD</div>
+        <div class="mt-auto pt-4 border-t border-blue-700">
+            <div id="user-info" class="flex items-center px-2 py-3 rounded-lg hover:bg-blue-700/50 transition-all cursor-pointer" aria-label="Informações do usuário">
+                <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold mr-2">JD</div>
                 <div class="hidden md:block flex-1 min-w-0">
                     <p id="user-name" class="font-medium truncate">João da Silva</p>
-                    <p id="user-email" class="text-xs text-white/70 truncate">joao.silva@empresa.com</p>
+                    <p id="user-email" class="text-xs text-blue-200 truncate">joao.silva@empresa.com</p>
                 </div>
-                <button id="user-menu-btn" class="hidden md:block text-white/70 hover:text-white ml-2" aria-label="Menu do usuário">
+                <button id="user-menu-btn" class="hidden md:block text-blue-200 hover:text-white ml-2" aria-label="Menu do usuário">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
@@ -155,456 +145,55 @@
                 </svg>
                 <span class="hidden md:block">Sair</span>
             </button>
-            <button id="theme-toggle" class="w-full flex items-center justify-center px-3 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg mt-2 transition-all" title="Alternar tema" aria-label="Alternar entre tema claro e escuro">
-                <svg id="theme-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-            </button>
         </div>
     </aside>
 
-    <!-- Main Content -->
-    <main class="flex-grow p-4 md:p-8 bg-gradient-to-br from-neutral to-gray-100 dark:from-dark dark:to-gray-800 transition-all duration-300 ease-in-out ml-20 md:ml-64">
-        <!-- Toast Container -->
-        <div id="toast-container" class="fixed top-4 right-4 z-50"></div>
-        <!-- Toast Template -->
-        <template id="toast-template">
-            <div class="toast flex items-center p-4 mb-4 rounded-lg shadow-lg transition-opacity duration-300">
-                <div class="flex-1">
-                    <h3 class="toast-title font-semibold"></h3>
-                    <p class="toast-message text-sm"></p>
-                </div>
-                <button class="toast-close ml-4 text-gray-500 hover:text-gray-700" aria-label="Fechar notificação">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-        </template>
-
+    <!-- Conteúdo principal -->
+    <main class="flex-grow p-4 md:p-6 bg-gradient-to-br from-gray-50 to-blue-50 transition-all duration-300 ease-in-out">
         <!-- Loading Overlay -->
-        <div id="loading-overlay" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden" aria-hidden="true">
-            <div class="bg-white dark:bg-gray-800 rounded-xl p-8 max-w-md w-full mx-4 text-center neumorphic">
-                <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-secondary mx-auto mb-4"></div>
-                <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">Carregando...</h3>
-                <p class="text-gray-600 dark:text-gray-400" id="loading-message">Por favor, aguarde enquanto carregamos os dados</p>
+        <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" aria-hidden="true">
+            <div class="bg-white rounded-xl p-8 max-w-md w-full mx-4 text-center">
+                <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mx-auto mb-4"></div>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">Carregando...</h3>
+                <p class="text-gray-600" id="loading-message">Por favor, aguarde enquanto carregamos os dados</p>
             </div>
         </div>
 
-        <!-- Skeleton Template -->
-        <template id="skeleton-template">
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 border border-gray-100 dark:border-gray-700 animate-pulse">
-                <div class="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-4"></div>
-                <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
-                <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
-                <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-            </div>
-        </template>
-
-        <!-- Modals -->
-        <!-- Queue Modal -->
-        <div id="queue-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden" aria-hidden="true">
-            <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-lg w-full mx-4 neumorphic">
-                <h3 id="queue-modal-title" class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Nova Fila</h3>
-                <form id="queue-form" class="space-y-4">
-                    <input type="hidden" id="queue_id">
-                    <div>
-                        <label for="queue-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome da Fila</label>
-                        <input type="text" id="queue-name" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" required aria-label="Nome da fila">
-                    </div>
-                    <div>
-                        <label for="queue-prefix" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Prefixo</label>
-                        <input type="text" id="queue-prefix" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" required aria-label="Prefixo da fila">
-                    </div>
-                    <div>
-                        <label for="queue-description" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Descrição</label>
-                        <textarea id="queue-description" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" rows="3" aria-label="Descrição da fila"></textarea>
-                    </div>
-                    <div>
-                        <label for="queue-priority" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Prioridade</label>
-                        <select id="queue-priority" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Prioridade da fila">
-                            <option value="low">Baixa</option>
-                            <option value="normal">Normal</option>
-                            <option value="high">Alta</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="num-counters" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Número de Guichês</label>
-                        <input type="number" id="num-counters" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" min="1" required aria-label="Número de guichês">
-                    </div>
-                    <div>
-                        <label for="queue-status" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
-                        <select id="queue-status" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Status da fila">
-                            <option value="active">Ativa</option>
-                            <option value="inactive">Inativa</option>
-                        </select>
-                    </div>
-                    <div class="flex justify-end space-x-3">
-                        <button type="button" id="cancel-queue" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors neumorphic" aria-label="Cancelar">Cancelar</button>
-                        <button type="submit" class="px-4 py-2 bg-gradient-to-r from-accent to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-md transition-colors neumorphic" aria-label="Salvar fila">Salvar</button>
-                    </div>
-                </form>
-                <button id="close-queue-modal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" aria-label="Fechar modal">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-
-        <!-- Ticket Modal -->
-        <div id="ticket-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden" aria-hidden="true">
-            <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-lg w-full mx-4 neumorphic">
-                <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Novo Ticket</h3>
-                <form id="ticket-form" class="space-y-4">
-                    <div>
-                        <label for="ticket-queue" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Fila</label>
-                        <select id="ticket-queue" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" required aria-label="Selecionar fila">
-                            <option value="">Selecione uma fila</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="ticket-service" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Serviço</label>
-                        <input type="text" id="ticket-service" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" required aria-label="Nome do serviço">
-                    </div>
-                    <div>
-                        <label for="ticket-priority" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Prioridade</label>
-                        <select id="ticket-priority" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Prioridade do ticket">
-                            <option value="low">Baixa</option>
-                            <option value="normal">Normal</option>
-                            <option value="high">Alta</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="ticket-notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Observações</label>
-                        <textarea id="ticket-notes" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" rows="3" aria-label="Observações do ticket"></textarea>
-                    </div>
-                    <div class="flex justify-end space-x-3">
-                        <button type="button" id="cancel-ticket" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors neumorphic" aria-label="Cancelar">Cancelar</button>
-                        <button type="submit" class="px-4 py-2 bg-gradient-to-r from-accent to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-md transition-colors neumorphic" aria-label="Gerar ticket">Gerar</button>
-                    </div>
-                </form>
-                <button id="close-ticket-modal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" aria-label="Fechar modal">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-
-        <!-- Department Modal -->
-        <div id="department-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden" aria-hidden="true">
-            <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-lg w-full mx-4 neumorphic">
-                <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Novo Departamento</h3>
-                <form id="department-form" class="space-y-4">
-                    <div>
-                        <label for="dept-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome</label>
-                        <input type="text" id="dept-name" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" required aria-label="Nome do departamento">
-                    </div>
-                    <div>
-                        <label for="dept-sector" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Setor</label>
-                        <input type="text" id="dept-sector" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" required aria-label="Setor do departamento">
-                    </div>
-                    <div class="flex justify-end space-x-3">
-                        <button type="button" id="cancel-department-btn" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors neumorphic" aria-label="Cancelar">Cancelar</button>
-                        <button type="submit" class="px-4 py-2 bg-gradient-to-r from-accent to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-md transition-colors neumorphic" aria-label="Criar departamento">Criar</button>
-                    </div>
-                </form>
-                <button id="close-department-modal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" aria-label="Fechar modal">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-
-        <!-- Member Modal -->
-        <div id="member-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden" aria-hidden="true">
-            <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-lg w-full mx-4 neumorphic">
-                <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Novo Atendente</h3>
-                <form id="member-form" class="space-y-4">
-                    <div>
-                        <label for="member-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome</label>
-                        <input type="text" id="member-name" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" required aria-label="Nome do atendente">
-                    </div>
-                    <div>
-                        <label for="member-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">E-mail</label>
-                        <input type="email" id="member-email" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" required aria-label="E-mail do atendente">
-                    </div>
-                    <div>
-                        <label for="member-role" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Função</label>
-                        <select id="member-role" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" required aria-label="Função do atendente">
-                            <option value="attendant">Atendente</option>
-                            <option value="manager">Gerente</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="member-counter" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Guichê</label>
-                        <select id="member-counter" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Selecionar guichê">
-                            <option value="">Nenhum</option>
-                        </select>
-                    </div>
-                    <div class="flex justify-end space-x-3">
-                        <button type="button" id="cancel-member" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors neumorphic" aria-label="Cancelar">Cancelar</button>
-                        <button type="submit" class="px-4 py-2 bg-gradient-to-r from-accent to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-md transition-colors neumorphic" aria-label="Criar atendente">Criar</button>
-                    </div>
-                </form>
-                <button id="close-member-modal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" aria-label="Fechar modal">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-
-        <!-- Assign Queue Modal -->
-        <div id="assign-queue-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden" aria-hidden="true">
-            <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-lg w-full mx-4 neumorphic">
-                <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Atribuir Fila</h3>
-                <form id="assign-queue-form" class="space-y-4">
-                    <div>
-                        <label for="assign-queue-id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Fila</label>
-                        <select id="assign-queue-id" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" required aria-label="Selecionar fila para atribuição">
-                            <option value="">Selecione uma fila</option>
-                        </select>
-                    </div>
-                    <div class="flex justify-end space-x-3">
-                        <button type="button" id="cancel-assign-queue-btn" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors neumorphic" aria-label="Cancelar">Cancelar</button>
-                        <button type="submit" class="px-4 py-2 bg-gradient-to-r from-accent to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-md transition-colors neumorphic" aria-label="Atribuir fila">Atribuir</button>
-                    </div>
-                </form>
-                <button id="close-assign-queue-modal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" aria-label="Fechar modal">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-
-        <!-- Counter Modal -->
-        <div id="counter-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden" aria-hidden="true">
-            <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-lg w-full mx-4 neumorphic">
-                <h3 id="counter-modal-title" class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Novo Guichê</h3>
-                <form id="counter-form" class="space-y-4">
-                    <input type="hidden" id="counter_id">
-                    <div>
-                        <label for="counter-number" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Número do Guichê</label>
-                        <input type="text" id="counter-number" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" required aria-label="Número do guichê">
-                    </div>
-                    <div>
-                        <label for="counter-attendant" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Atendente</label>
-                        <select id="counter-attendant" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Selecionar atendente">
-                            <option value="">Nenhum</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="counter-status" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
-                        <select id="counter-status" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Status do guichê">
-                            <option value="active">Ativo</option>
-                            <option value="inactive">Inativo</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="counter-location" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Localização</label>
-                        <input type="text" id="counter-location" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Localização do guichê">
-                    </div>
-                    <div class="flex justify-end space-x-3">
-                        <button type="button" id="cancel-counter" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors neumorphic" aria-label="Cancelar">Cancelar</button>
-                        <button type="submit" class="px-4 py-2 bg-gradient-to-r from-accent to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-md transition-colors neumorphic" aria-label="Salvar guichê">Salvar</button>
-                    </div>
-                </form>
-                <button id="close-counter-modal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" aria-label="Fechar modal">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-
-        <!-- Call Settings Modal -->
-        <div id="call-settings-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden" aria-hidden="true">
-            <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-lg w-full mx-4 neumorphic">
-                <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Configurações de Chamada</h3>
-                <form id="call-settings-form" class="space-y-4">
-                    <div>
-                        <label for="call-priority" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Prioridade</label>
-                        <select id="call-priority" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Prioridade da chamada">
-                            <option value="fifo">FIFO</option>
-                            <option value="priority">Prioridade</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="call-counter" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Guichê</label>
-                        <select id="call-counter" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Selecionar guichê">
-                            <option value="auto">Automático</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="call-sound" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Som</label>
-                        <select id="call-sound" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Selecionar som">
-                            <option value="default">Padrão</option>
-                            <option value="beep">Beep</option>
-                            <option value="voice">Voz</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="call-interval" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Intervalo (segundos)</label>
-                        <input type="number" id="call-interval" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" min="10" required aria-label="Intervalo entre chamadas">
-                    </div>
-                    <div class="flex justify-end space-x-3">
-                        <button type="button" id="cancel-call-settings" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors neumorphic" aria-label="Cancelar">Cancelar</button>
-                        <button type="submit" class="px-4 py-2 bg-gradient-to-r from-accent to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-md transition-colors neumorphic" aria-label="Salvar configurações">Salvar</button>
-                    </div>
-                </form>
-                <button id="close-call-settings-modal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" aria-label="Fechar modal">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-
-        <!-- Export Report Modal -->
-        <div id="export-report-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden" aria-hidden="true">
-            <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-lg w-full mx-4 neumorphic">
-                <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Exportar Relatório</h3>
-                <form id="export-report-form" class="space-y-4">
-                    <div>
-                        <label for="export-format" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Formato</label>
-                        <select id="export-format" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" required aria-label="Selecionar formato de exportação">
-                            <option value="pdf">PDF</option>
-                            <option value="csv">CSV</option>
-                            <option value="xlsx">Excel</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="export-queue" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Fila</label>
-                        <select id="export-queue" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Selecionar fila para exportação">
-                            <option value="">Todas as filas</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="export-start-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Data Inicial</label>
-                        <input type="date" id="export-start-date" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" required aria-label="Data inicial para exportação">
-                    </div>
-                    <div>
-                        <label for="export-end-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Data Final</label>
-                        <input type="date" id="export-end-date" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" required aria-label="Data final para exportação">
-                    </div>
-                    <div class="flex justify-end space-x-3">
-                        <button type="button" id="cancel-export-report" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors neumorphic" aria-label="Cancelar">Cancelar</button>
-                        <button type="submit" class="px-4 py-2 bg-gradient-to-r from-accent to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-md transition-colors neumorphic" aria-label="Exportar relatório">Exportar</button>
-                    </div>
-                </form>
-                <button id="close-export-report-modal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" aria-label="Fechar modal">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-
-        <!-- Ticket Details Modal -->
-        <div id="ticket-details-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden" aria-hidden="true">
-            <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-lg w-full mx-4 neumorphic">
-                <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Detalhes do Ticket</h3>
-                <div class="space-y-4">
-                    <p><strong>Número:</strong> <span id="ticket-details-number"></span></p>
-                    <p><strong>Fila:</strong> <span id="ticket-details-queue"></span></p>
-                    <p><strong>Serviço:</strong> <span id="ticket-details-service"></span></p>
-                    <p><strong>Guichê:</strong> <span id="ticket-details-counter"></span></p>
-                    <p><strong>Status:</strong> <span id="ticket-details-status"></span></p>
-                    <p><strong>Emitido em:</strong> <span id="ticket-details-issued"></span></p>
-                    <p><strong>Observações:</strong> <span id="ticket-details-notes"></span></p>
-                </div>
-                <div class="flex justify-end mt-6">
-                    <button id="close-ticket-details" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors neumorphic" aria-label="Fechar">Fechar</button>
-                </div>
-                <button id="close-ticket-details-modal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" aria-label="Fechar modal">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-
-        <!-- Schedule Modal -->
-        <div id="schedule-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden" aria-hidden="true">
-            <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-lg w-full mx-4 neumorphic">
-                <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Novo Horário</h3>
-                <form id="schedule-form" class="space-y-4">
-                    <div>
-                        <label for="schedule-weekday" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Dia da Semana</label>
-                        <select id="schedule-weekday" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" required aria-label="Selecionar dia da semana">
-                            <option value="monday">Segunda-feira</option>
-                            <option value="tuesday">Terça-feira</option>
-                            <option value="wednesday">Quarta-feira</option>
-                            <option value="thursday">Quinta-feira</option>
-                            <option value="friday">Sexta-feira</option>
-                            <option value="saturday">Sábado</option>
-                            <option value="sunday">Domingo</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="schedule-open-time" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Horário de Abertura</label>
-                        <input type="time" id="schedule-open-time" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Horário de abertura">
-                    </div>
-                    <div>
-                        <label for="schedule-end-time" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Horário de Fechamento</label>
-                        <input type="time" id="schedule-end-time" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-secondary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" aria-label="Horário de fechamento">
-                    </div>
-                    <div class="flex items-center">
-                        <input type="checkbox" id="schedule-is-closed" class="h-4 w-4 text-secondary focus:ring-secondary border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600" aria-label="Dia fechado">
-                        <label for="schedule-is-closed" class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">Dia Fechado</label>
-                    </div>
-                    <div class="flex justify-end space-x-3">
-                        <button type="button" id="cancel-schedule-btn" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors neumorphic" aria-label="Cancelar">Cancelar</button>
-                        <button type="submit" class="px-4 py-2 bg-gradient-to-r from-accent to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-md transition-colors neumorphic" aria-label="Criar horário">Criar</button>
-                    </div>
-                </form>
-                <button id="close-schedule-modal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" aria-label="Fechar modal">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-
-        <!-- Dashboard Section -->
+        <!-- Dashboard -->
         <div id="dashboard-section">
             <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
                 <div class="flex-1">
-                    <h1 class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-200">Bem-vindo, <span id="department-name" class="text-secondary">Departamento</span></h1>
-                    <p class="text-gray-500 dark:text-gray-400">Visão geral do departamento - <span id="current-date" class="font-medium">Carregando...</span></p>
+                    <h1 class="text-2xl md:text-3xl font-bold text-gray-800">Bem-vindo, <span id="department-name" class="text-blue-600">Departamento</span></h1>
+                    <p class="text-gray-500">Visão geral do departamento - <span id="current-date" class="font-medium">Carregando...</span></p>
                 </div>
                 <div class="mt-4 md:mt-0 flex items-center space-x-3">
-                    <button id="refresh-data" class="p-2 bg-white dark:bg-gray-700 rounded-lg shadow hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors neumorphic" title="Atualizar dados" aria-label="Atualizar dados do dashboard">
-                        <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button id="refresh-data" class="p-2 bg-white rounded-lg shadow hover:bg-gray-50 transition-colors" title="Atualizar dados" aria-label="Atualizar dados do dashboard">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
                     </button>
                     <div class="relative">
-                        <button id="notifications-btn" class="p-2 bg-white dark:bg-gray-700 rounded-lg shadow hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors neumorphic relative" title="Notificações" aria-label="Ver notificações">
-                            <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <button id="notifications-btn" class="p-2 bg-white rounded-lg shadow hover:bg-gray-50 transition-colors relative" title="Notificações" aria-label="Ver notificações">
+                            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                             </svg>
                             <span id="notification-count" class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full hidden"></span>
                         </button>
-                        <div id="notifications-dropdown" class="hidden absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-xl z-10 border border-gray-200 dark:border-gray-700" role="menu" aria-labelledby="notifications-btn">
-                            <div class="p-3 border-b border-gray-200 dark:border-gray-700">
-                                <h3 class="font-semibold text-gray-800 dark:text-gray-200">Notificações</h3>
+                        <div id="notifications-dropdown" class="hidden absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-xl z-10 border border-gray-200" role="menu" aria-labelledby="notifications-btn">
+                            <div class="p-3 border-b border-gray-200">
+                                <h3 class="font-semibold text-gray-800">Notificações</h3>
                             </div>
-                            <div id="notifications-list" class="divide-y divide-gray-100 dark:divide-gray-700 max-h-60 overflow-y-auto" role="menu"></div>
-                            <div class="p-3 border-t border-gray-200 dark:border-gray-700 text-center">
-                                <a href="#" class="text-sm text-secondary hover:text-blue-800 dark:hover:text-blue-400 font-medium">Ver todas</a>
+                            <div id="notifications-list" class="divide-y divide-gray-100 max-h-60 overflow-y-auto" role="menu"></div>
+                            <div class="p-3 border-t border-gray-200 text-center">
+                                <a href="#" class="text-sm text-blue-600 hover:text-blue-800 font-medium">Ver todas</a>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-
+            
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div class="bg-gradient-to-r from-secondary to-blue-600 text-white p-5 rounded-xl shadow-lg flex items-center animate-fade-in hover:shadow-2xl transition-all neumorphic">
+                <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-5 rounded-xl shadow-lg flex items-center animate-fade-in hover-lift hover:shadow-xl transition-all">
                     <div class="p-3 bg-white/10 rounded-lg mr-4 flex-shrink-0">
                         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -618,7 +207,8 @@
                         </div>
                     </div>
                 </div>
-                <div class="bg-gradient-to-r from-accent to-green-600 text-white p-5 rounded-xl shadow-lg flex items-center animate-fade-in delay-100 hover:shadow-2xl transition-all neumorphic">
+                
+                <div class="bg-gradient-to-r from-green-500 to-green-600 text-white p-5 rounded-xl shadow-lg flex items-center animate-fade-in delay-100 hover-lift hover:shadow-xl transition-all">
                     <div class="p-3 bg-white/10 rounded-lg mr-4 flex-shrink-0">
                         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
@@ -632,7 +222,8 @@
                         </div>
                     </div>
                 </div>
-                <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white p-5 rounded-xl shadow-lg flex items-center animate-fade-in delay-200 hover:shadow-2xl transition-all neumorphic">
+                
+                <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white p-5 rounded-xl shadow-lg flex items-center animate-fade-in delay-200 hover-lift hover:shadow-xl transition-all">
                     <div class="p-3 bg-white/10 rounded-lg mr-4 flex-shrink-0">
                         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -646,7 +237,8 @@
                         </div>
                     </div>
                 </div>
-                <div class="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-5 rounded-xl shadow-lg flex items-center animate-fade-in delay-300 hover:shadow-2xl transition-all neumorphic">
+                
+                <div class="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-5 rounded-xl shadow-lg flex items-center animate-fade-in delay-300 hover-lift hover:shadow-xl transition-all">
                     <div class="p-3 bg-white/10 rounded-lg mr-4 flex-shrink-0">
                         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -661,52 +253,969 @@
                     </div>
                 </div>
             </div>
-
+            
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-100 dark:border-gray-700 neumorphic">
+                <div class="lg:col-span-2 bg-white rounded-xl shadow-lg p-6 border border-gray-100 glowing-border">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
-                        <h2 class="text-xl font-semibold mb-2 sm:mb-0 text-gray-800 dark:text-gray-200">Atividade Recente</h2>
+                        <h2 class="text-xl font-semibold mb-2 sm:mb-0">Atividade Recente</h2>
                         <div class="flex space-x-2">
-                            <button class="chart-period-btn active px-3 py-1 bg-secondary/20 text-secondary rounded-lg text-sm font-medium hover:bg-secondary/30" data-period="today" aria-label="Exibir atividade de hoje">Hoje</button>
-                            <button class="chart-period-btn px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600" data-period="week" aria-label="Exibir atividade da semana">Semana</button>
-                            <button class="chart-period-btn px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600" data-period="month" aria-label="Exibir atividade do mês">Mês</button>
+                            <button class="chart-period-btn active px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium" data-period="today" aria-label="Exibir atividade de hoje">Hoje</button>
+                            <button class="chart-period-btn px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium" data-period="week" aria-label="Exibir atividade da semana">Semana</button>
+                            <button class="chart-period-btn px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium" data-period="month" aria-label="Exibir atividade do mês">Mês</button>
                         </div>
                     </div>
                     <div class="relative h-64">
                         <canvas id="activity-chart"></canvas>
-                        <div id="chart-loading" class="absolute inset-0 bg-white/80 dark:bg-gray-800/80 flex items-center justify-center hidden" aria-hidden="true">
-                            <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-secondary"></div>
+                        <div id="chart-loading" class="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center hidden" aria-hidden="true">
+                            <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
                         </div>
                     </div>
                 </div>
-                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-100 dark:border-gray-700 neumorphic">
-                    <h3 class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-200">Filas Mais Ativas</h3>
+                
+                <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+                    <h3 class="text-lg font-semibold mb-4">Filas Mais Ativas</h3>
                     <div class="space-y-4" id="top-queues"></div>
                 </div>
             </div>
-
+            
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-100 dark:border-gray-700 neumorphic">
-                    <h3 class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-200">Alertas do Sistema</h3>
+                <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+                    <h3 class="text-lg font-semibold mb-4">Alertas do Sistema</h3>
                     <div class="space-y-3" id="system-alerts"></div>
                 </div>
-                <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-100 dark:border-gray-700 neumorphic">
-                    <h3 class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-200">Ações Rápidas</h3>
+                
+                <div class="lg:col-span-2 bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+                    <h3 class="text-lg font-semibold mb-4">Ações Rápidas</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                        <button id="quick-call" class="p-4 bg-blue-50 dark:bg-blue-900/50 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg border border-blue-100 dark:border-blue-800 flex flex-col items-center transition-colors neumorphic" aria-label="Chamar próximo ticket">
-                            <div class="bg-blue-100 dark:bg-blue-800 p-3 rounded-full mb-2">
-                                <svg class="w-6 h-6 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <button id="quick-call" class="p-4 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-100 flex flex-col items-center transition-colors" aria-label="Chamar próximo ticket">
+                            <div class="bg-blue-100 p-3 rounded-full mb-2">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0ондекс 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                 </svg>
                             </div>
-                            <span class="font-medium text-blue-800 dark:text-blue-200 text-center">Chamar Próximo</span>
+                            <span class="font-medium text-blue-800 text-center">Chamar Próximo</span>
                         </button>
-                        <button id="quick-add" class="p-4 bg-green-50 dark:bg-green-900/50 hover:bg-green-100 dark:hover:bg-green-900 rounded-lg border border-green-100 dark:border-green-800 flex flex-col items-center transition-colors neumorphic" aria-label="Adicionar novo ticket">
-                            <div class="bg-green-100 dark:bg-green-800 p-3 rounded-full mb-2">
-                                <svg class="w-6 h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24  SettingsManager24">
+                        <button id="quick-add" class="p-4 bg-green-50 hover:bg-green-100 rounded-lg border border-green-100 flex flex-col items-center transition-colors" aria-label="Adicionar novo ticket">
+                            <div class="bg-green-100 p-3 rounded-full mb-2">
+                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                 </svg>
                             </div>
-                            <span class="font-medium text-green-800 dark:text-green-200 text-center">Adicionar Ticket</span>
+                            <span class="font-medium text-green-800 text-center">Adicionar Ticket</span>
                         </button>
-                        <button id="quick-report" class="p-4 bg-purple-50 dark:bg-purple-900/50 hover:bg-purple
+                        <button id="quick-report" class="p-4 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-100 flex flex-col items-center transition-colors" aria-label="Gerar relatório">
+                            <div class="bg-purple-100 p-3 rounded-full mb-2">
+                                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                            <span class="font-medium text-purple-800 text-center">Gerar Relatório</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chamada -->
+        <div id="call-section" class="hidden">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-800">Chamada Atual</h2>
+                    <p class="text-gray-500">Gerencie as chamadas em tempo real</p>
+                </div>
+                <div class="mt-4 md:mt-0 flex items-center space-x-3">
+                    <button id="call-settings" class="p-2 bg-white rounded-lg shadow hover:bg-gray-50 transition-colors" title="Configurações de chamada" aria-label="Abrir configurações de chamada">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </button>
+                    <div class="flex items-center text-sm bg-green-100 text-green-800 px-3 py-1 rounded-full">
+                        <div class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                        <span>AO VIVO</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <!-- Painel de Chamada Principal -->
+                <div class="lg:col-span-2 bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-xl shadow-2xl p-6 md:p-8 flex flex-col items-center animate-zoom-in relative overflow-hidden">
+                    <div class="absolute -bottom-20 -right-20 w-60 h-60 bg-blue-700/20 rounded-full"></div>
+                    <div class="absolute -top-20 -left-20 w-60 h-60 bg-blue-700/20 rounded-full"></div>
+                    
+                    <div class="absolute top-4 right-4 flex items-center">
+                        <div class="w-3 h-3 bg-green-400 animate-pulse rounded-full mr-2"></div>
+                        <span class="text-xs text-white/80">CONECTADO</span>
+                    </div>
+                    
+                    <h3 class="text-xl md:text-2xl font-semibold mb-4 text-center">Senha Atual</h3>
+                    
+                    <div class="relative mb-2">
+                        <p id="current-ticket" class="text-6xl md:text-7xl font-bold animate-pulse text-shadow tracking-wider">---</p>
+                        <div id="ticket-counter" class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold shadow hidden"></div>
+                    </div>
+                    
+                    <div class="text-center mb-6">
+                        <p id="current-service" class="text-lg md:text-xl text-blue-100 font-medium"></p>
+                        <p id="current-counter" class="text-sm md:text-base text-blue-200"></p>
+                    </div>
+                    
+                    <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 w-full justify-center">
+                        <button id="call-next-btn" class="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-6 py-3 rounded-lg text-lg font-semibold shadow-lg hover:shadow-xl transition-all flex items-center justify-center" aria-label="Chamar próxima senha">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                            Chamar Próxima
+                        </button>
+                        <button id="recall-btn" class="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white px-4 py-3 rounded-lg text-lg font-semibold shadow-lg hover:shadow-xl transition-all flex items-center justify-center" aria-label="Rechamar senha atual">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Rechamar
+                        </button>
+                    </div>
+                    
+                    <div class="w-full mt-6 bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                        <div class="flex justify-between text-xs text-blue-100 mb-1">
+                            <span>Tempo de espera médio</span>
+                            <span id="avg-wait-time">N/A</span>
+                        </div>
+                        <div class="w-full bg-white/20 rounded-full h-2">
+                            <div id="wait-bar" class="bg-green-400 h-2 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Próximos na Fila -->
+                <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-semibold">Próximos na Fila</h3>
+                        <button id="refresh-queue" class="text-blue-600 hover:text-blue-800 p-1 rounded-full hover:bg-blue-50" aria-label="Atualizar lista de próximos na fila">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="space-y-3" id="next-queue"></div>
+                    <button id="view-all-queue" class="w-full mt-4 text-center text-sm text-blue-600 hover:text-blue-800 font-medium py-2" aria-label="Ver todas as filas">
+                        Ver todas as filas →
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Últimas Chamadas -->
+            <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xl font-semibold">Últimas Chamadas</h3>
+                    <div class="flex items-center space-x-3">
+                        <select id="call-filter" class="p-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500" aria-label="Filtrar chamadas por fila">
+                            <option value="">Todas as filas</option>
+                        </select>
+                        <button id="view-all-calls" class="text-sm text-blue-600 hover:text-blue-800 font-medium" aria-label="Ver todas as chamadas">Ver Todas</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ticket</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serviço</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guichê</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hora</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-calls-table" class="bg-white divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filas -->
+        <div id="queues-section" class="hidden">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-800">Gerenciar Filas</h2>
+                    <p class="text-gray-500">Configure e monitore as filas do departamento</p>
+                </div>
+                <div class="mt-4 md:mt-0 flex space-x-3">
+                    <button id="export-queues" class="p-2 bg-white rounded-lg shadow hover:bg-gray-50 transition-colors" title="Exportar filas" aria-label="Exportar filas">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                    </button>
+                    <button id="create-queue-btn" class="flex items-center px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-md transition-colors" aria-label="Criar nova fila">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Criar Fila
+                    </button>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-lg p-4 mb-6 border border-gray-100">
+                <div class="flex flex-col md:flex-row md:items-center gap-4">
+                    <div class="relative flex-grow">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                        <input type="text" id="queue-filter" placeholder="Buscar por nome, prefixo ou descrição..." class="pl-10 p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500" aria-label="Buscar filas">
+                    </div>
+                    <div class="flex gap-2">
+                        <select id="queue-status-filter" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" aria-label="Filtrar filas por status">
+                            <option value="all">Todas as filas</option>
+                            <option value="active">Ativas</option>
+                            <option value="inactive">Inativas</option>
+                            <option value="full">Completas</option>
+                        </select>
+                        <button id="queue-advanced-filter" class="p-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors" aria-label="Filtros avançados para filas">
+                            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="queues-loading" class="hidden" aria-hidden="true">
+                <div class="flex justify-center items-center py-12">
+                    <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                </div>
+            </div>
+            
+            <div id="queues-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            
+            <div class="mt-6 flex items-center justify-between bg-white rounded-xl shadow-lg p-4 border border-gray-100">
+                <div class="text-sm text-gray-500">
+                    Mostrando <span id="queues-start">1</span> a <span id="queues-end">0</span> de <span id="queues-total">0</span> filas
+                </div>
+                <div class="flex space-x-2">
+                    <button id="queues-prev" class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 transition-colors" disabled aria-label="Página anterior de filas">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    <button id="queues-next" class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 transition-colors" aria-label="Próxima página de filas">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </divquait
+
+        <!-- Tickets -->
+        <div id="tickets-section" class="hidden">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-800">Gerenciar Tickets</h2>
+                    <p class="text-gray-500">Visualize e gerencie tickets emitidos</p>
+                </div>
+                <div class="mt-4 md:mt-0 flex space-x-3">
+                    <button id="export-tickets" class="p-2 bg-white rounded-lg shadow hover:bg-gray-50 transition-colors" title="Exportar tickets" aria-label="Exportar tickets">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                    </button>
+                    <button id="validate-qr-btn" class="flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-colors" aria-label="Validar QR code">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                        Validar QR
+                    </button>
+                    <button id="generate-ticket-btn" class="flex items-center px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-md transition-colors" aria-label="Gerar novo ticket">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Novo Ticket
+                    </button>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-lg p-4 mb-6 border border-gray-100">
+                <div class="flex flex-col md:flex-row md:items-center gap-4">
+                    <div class="relative flex-grow">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                        <input type="text" id="ticket-filter" placeholder="Buscar por número, serviço ou status..." class="pl-10 p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500" aria-label="Buscar tickets">
+                    </div>
+                    <div class="flex gap-2">
+                        <select id="ticket-status-filter" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" aria-label="Filtrar tickets por status">
+                            <option value="all">Todos os status</option>
+                            <option value="pending">Pendentes</option>
+                            <option value="called">Chamados</option>
+                            <option value="completed">Finalizados</option>
+                            <option value="canceled">Cancelados</option>
+                        </select>
+                        <select id="ticket-queue-filter" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" aria-label="Filtrar tickets por fila">
+                            <option value="all">Todas as filas</option>
+                        </select>
+                        <select id="ticket-source-filter" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" aria-label="Filtrar tickets por origem">
+                            <option value="all">Todas as origens</option>
+                            <option value="totem">Totem</option>
+                            <option value="manual">Manual</option>
+                        </select>
+                        <button id="ticket-advanced-filter" class="p-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors" aria-label="Filtros avançados para tickets">
+                            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="tickets-loading" class="hidden" aria-hidden="true">
+                <div class="flex justify-center items-center py-12">
+                    <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                </div>
+            </div>
+            
+            <div id="tickets-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            
+            <div class="flex items-center justify-between bg-white rounded-xl shadow-lg p-4 border border-gray-100">
+                <div class="text-sm text-gray-500">
+                    Mostrando <span id="tickets-start">1</span> a <span id="tickets-end">0</span> de <span id="tickets-total">0</span> tickets
+                </div>
+                <div class="flex space-x-2">
+                    <button id="tickets-prev" class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 transition-colors" disabled aria-label="Página anterior de tickets">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    <button id="tickets-next" class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 transition-colors" aria-label="Próxima página de tickets">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Relatórios -->
+        <div id="reports-section" class="hidden">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-800">Relatórios</h2>
+                    <p class="text-gray-500">Analise o desempenho do departamento</p>
+                </div>
+                <div class="mt-4 md:mt-0 flex space-x-3">
+                    <button id="print-report" class="p-2 bg-white rounded-lg shadow hover:bg-gray-50 transition-colors" title="Imprimir relatório" aria-label="Imprimir relatório">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                    </button>
+                    <button id="export-report-btn" class="flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-colors" aria-label="Exportar relatório">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Exportar
+                    </button>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div>
+                        <label for="report-period" class="block text-sm font-medium text-gray-700 mb-1">Período</label>
+                        <select id="report-period" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Selecionar período do relatório">
+                            <option value="today">Hoje</option>
+                            <option value="week">Esta semana</option>
+                            <option value="month">Este mês</option>
+                            <option value="quarter">Este trimestre</option>
+                            <option value="year">Este ano</option>
+                            <option value="custom">Personalizado</option>
+                        </select>
+                    </div>
+                    <div id="custom-start-date" class="hidden">
+                        <label for="start-date" class="block text-sm font-medium text-gray-700 mb-1">Data inicial</label>
+                        <input type="date" id="start-date" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Selecionar data inicial">
+                    </div>
+                    <div id="custom-end-date" class="hidden">
+                        <label for="end-date" class="block text-sm font-medium text-gray-700 mb-1">Data final</label>
+                        <input type="date" id="end-date" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Selecionar data final">
+                    </div>
+                    <div>
+                        <label for="report-type" class="block text-sm font-medium text-gray-700 mb-1">Tipo de relatório</label>
+                        <select id="report-type" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Selecionar tipo de relatório">
+                            <option value="summary">Resumo</option>
+                            <option value="detailed">Detalhado</option>
+                            <option value="comparative">Comparativo</option>
+                            <option value="performance">Desempenho</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div>
+                        <label for="report-queue" class="block text-sm font-medium text-gray-700 mb-1">Fila</label>
+                        <select id="report-queue" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Selecionar fila para relatório">
+                            <option value="all">Todas as filas</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="report-attendant" class="block text-sm font-medium text-gray-700 mb-1">Atendente</label>
+                        <select id="report-attendant" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Selecionar atendente para relatório">
+                            <option value="all">Todos</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="report-group" class="block text-sm font-medium text-gray-700 mb-1">Agrupamento</label>
+                        <select id="report-group" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Selecionar agrupamento do relatório">
+                            <option value="none">Nenhum</option>
+                            <option value="day">Por dia</option>
+                            <option value="week">Por semana</option>
+                            <option value="month">Por mês</option>
+                            <option value="queue">Por fila</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end">
+                    <button id="generate-report-btn" class="flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-md transition-colors" aria-label="Gerar relatório">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Gerar Relatório
+                    </button>
+                </div>
+            </div>
+            
+            <div id="report-results"></div>
+        </div>
+
+        <!-- Configurações -->
+        <div id="settings-section" class="hidden">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-800">Configurações</h2>
+                    <p class="text-gray-500">Personalize as configurações do departamento</p>
+                </div>
+                <button id="save-settings-btn" class="mt-4 md:mt-0 flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-colors" aria-label="Salvar alterações de configurações">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Salvar Alterações
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2">
+                    <!-- Informações do Departamento -->
+                    <div class="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
+                        <h3 class="text-xl font-semibold mb-4">Informações do Departamento</h3>
+                        <form id="department-form">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label for="dept-name" class="block text-sm font-medium text-gray-700 mb-1">Nome do Departamento*</label>
+                                    <input type="text" id="dept-name" name="dept-name" required class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Nome do departamento">
+                                </div>
+                                <div>
+                                    <label for="dept-id" class="block text-sm font-medium text-gray-700 mb-1">ID do Departamento</label>
+                                    <input type="text" id="dept-id" name="dept-id" readonly class="p-3 border rounded-lg w-full bg-gray-100" aria-label="ID do departamento (somente leitura)">
+                                </div>
+                            </div>
+                            <div class="mb-4">
+                                <label for="dept-description" class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                                <textarea id="dept-description" name="dept-description" rows="3" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Descrição do departamento"></textarea>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label for="dept-email" class="block text-sm font-medium text-gray-700 mb-1">Email de Contato</label>
+                                    <input type="email" id="dept-email" name="dept-email" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Email de contato do departamento">
+                                </div>
+                                <div>
+                                    <label for="dept-phone" class="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+                                    <input type="tel" id="dept-phone" name="dept-phone" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Telefone do departamento">
+                                </div>
+                            </div>
+                            <div class="mb-4">
+                                <label for="dept-location" class="block text-sm font-medium text-gray-700 mb-1">Localização</label>
+                                <input type="text" id="dept-location" name="dept-location" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Localização do departamento">
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Preferências de Exibição -->
+<div class="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
+    <h3 class="text-xl font-semibold mb-4">Preferências de Exibição</h3>
+    <div class="space-y-4">
+        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+            <div>
+                <label for="theme-select" class="block text-sm font-medium text-gray-700 mb-1">Tema do Painel</label>
+                <p class="text-sm text-gray-500">Escolha entre tema claro ou escuro</p>
+            </div>
+            <select id="theme-select" class="p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" aria-label="Selecionar tema do painel">
+                <option value="light">Claro</option>
+                <option value="dark">Escuro</option>
+                <option value="system">Sistema</option>
+            </select>
+        </div>
+        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+            <div>
+                <label for="language-select" class="block text-sm font-medium text-gray-700 mb-1">Idioma</label>
+                <p class="text-sm text-gray-500">Selecione o idioma do painel</p>
+            </div>
+            <select id="language-select" class="p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" aria-label="Selecionar idioma do painel">
+                <option value="pt-BR">Português (Brasil)</option>
+                <option value="en-US">English (United States)</option>
+                <option value="es-ES">Español (España)</option>
+            </select>
+        </div>
+        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+            <div>
+                <label for="datetime-format" class="block text-sm font-medium text-gray-700 mb-1">Formato de Data/Hora</label>
+                <p class="text-sm text-gray-500">Escolha o formato de exibição de data e hora</p>
+            </div>
+            <select id="datetime-format" class="p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" aria-label="Selecionar formato de data e hora">
+                <option value="dd/mm/yyyy">DD/MM/YYYY</option>
+                <option value="mm/dd/yyyy">MM/DD/YYYY</option>
+                <option value="yyyy-mm-dd">YYYY-MM-DD</option>
+            </select>
+        </div>
+        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+            <div>
+                <label for="notifications-enabled" class="block text-sm font-medium text-gray-700 mb-1">Notificações</label>
+                <p class="text-sm text-gray-500">Ativar ou desativar notificações no painel</p>
+            </div>
+            <input type="checkbox" id="notifications-enabled" class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" aria-label="Ativar ou desativar notificações">
+        </div>
+    </div>
+</div>
+
+<!-- Gerenciamento de Guichês -->
+<div class="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            <h3 class="text-xl font-semibold">Guichês</h3>
+            <p class="text-sm text-gray-500">Gerencie os guichês disponíveis no departamento</p>
+        </div>
+        <button id="create-counter-btn" class="flex items-center px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-md transition-colors" aria-label="Criar novo guichê">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Novo Guichê
+        </button>
+    </div>
+    <div class="relative mb-4">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+        </div>
+        <input type="text" id="counter-filter" placeholder="Buscar por número ou atendente..." class="pl-10 p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500" aria-label="Buscar guichês">
+    </div>
+    <div id="counters-container" class="space-y-3"></div>
+</div>
+</div>
+
+<!-- Gerenciamento de Membros -->
+<div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            <h3 class="text-xl font-semibold">Membros da Equipe</h3>
+            <p class="text-sm text-gray-500">Gerencie os atendentes e administradores</p>
+        </div>
+        <button id="add-member-btn" class="flex items-center px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-md transition-colors" aria-label="Adicionar novo membro">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Adicionar Membro
+        </button>
+    </div>
+    <div class="relative mb-4">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+        </div>
+        <input type="text" id="member-filter" placeholder="Buscar por nome ou email..." class="pl-10 p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500" aria-label="Buscar membros">
+    </div>
+    <div id="members-container" class="space-y-3"></div>
+</div>
+</div>
+</div>
+
+<!-- Modal para Criar/Editar Fila -->
+<div id="queue-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" role="dialog" aria-labelledby="queue-modal-title" aria-modal="true">
+    <div class="bg-white rounded-xl p-6 max-w-lg w-full mx-4 animate-zoom-in">
+        <div class="flex items-center justify-between mb-4">
+            <h3 id="queue-modal-title" class="text-xl font-semibold text-gray-800">Criar Nova Fila</h3>
+            <button id="close-queue-modal" class="text-gray-500 hover:text-gray-700" aria-label="Fechar modal de fila">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <form id="queue-form">
+            <div class="mb-4">
+                <label for="queue-name" class="block text-sm font-medium text-gray-700 mb-1">Nome da Fila*</label>
+                <input type="text" id="queue-name" name="queue-name" required class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Nome da fila">
+            </div>
+            <div class="mb-4">
+                <label for="queue-prefix" class="block text-sm font-medium text-gray-700 mb-1">Prefixo*</label>
+                <input type="text" id="queue-prefix" name="queue-prefix" required class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Prefixo da fila">
+            </div>
+            <div class="mb-4">
+                <label for="queue-description" class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                <textarea id="queue-description" name="queue-description" rows="3" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Descrição da fila"></textarea>
+            </div>
+            <div class="mb-4">
+                <label for="queue-priority" class="block text-sm font-medium text-gray-700 mb-1">Prioridade</label>
+                <select id="queue-priority" name="queue-priority" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Prioridade da fila">
+                    <option value="normal">Normal</option>
+                    <option value="high">Alta</option>
+                    <option value="low">Baixa</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="num-counters" class="block text-sm font-medium text-gray-700 mb-1">Número de Guichês</label>
+                <input type="number" id="num-counters" name="num-counters" min="1" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Número de guichês">
+            </div>
+            <div class="mb-4">
+                <label for="queue-status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select id="queue-status" name="queue-status" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Status da fila">
+                    <option value="active">Ativa</option>
+                    <option value="inactive">Inativa</option>
+                </select>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button type="button" id="cancel-queue" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors" aria-label="Cancelar criação de fila">Cancelar</button>
+                <button type="submit" id="save-queue" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-colors" aria-label="Salvar fila">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal para Validar QR Code -->
+<div id="qr-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" role="dialog" aria-labelledby="qr-modal-title" aria-modal="true">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 animate-zoom-in">
+        <div class="flex items-center justify-between mb-4">
+            <h3 id="qr-modal-title" class="text-xl font-semibold text-gray-800">Validar QR Code</h3>
+            <button id="close-qr-modal" class="text-gray-500 hover:text-gray-700" aria-label="Fechar modal de validação de QR code">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div class="mb-4">
+            <label for="qr-input" class="block text-sm font-medium text-gray-700 mb-1">Código QR</label>
+            <input type="text" id="qr-input" name="qr-input" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Inserir código QR">
+        </div>
+        <div class="mb-4">
+            <button id="scan-qr-btn" class="w-full flex items-center justify-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-colors" aria-label="Escanear QR code">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9h18M9 3v18" />
+                </svg>
+                Escanear QR
+            </button>
+        </div>
+        <div class="flex justify-end space-x-3">
+            <button id="cancel-qr" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors" aria-label="Cancelar validação de QR code">Cancelar</button>
+            <button id="validate-qr" class="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-md transition-colors" aria-label="Validar QR code">Validar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Gerar Ticket -->
+<div id="ticket-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" role="dialog" aria-labelledby="ticket-modal-title" aria-modal="true">
+    <div class="bg-white rounded-xl p-6 max-w-lg w-full mx-4 animate-zoom-in">
+        <div class="flex items-center justify-between mb-4">
+            <h3 id="ticket-modal-title" class="text-xl font-semibold text-gray-800">Gerar Novo Ticket</h3>
+            <button id="close-ticket-modal" class="text-gray-500 hover:text-gray-700" aria-label="Fechar modal de geração de ticket">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <form id="ticket-form">
+            <div class="mb-4">
+                <label for="ticket-queue" class="block text-sm font-medium text-gray-700 mb-1">Fila*</label>
+                <select id="ticket-queue" name="ticket-queue" required class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Selecionar fila para o ticket">
+                    <option value="">Selecione uma fila</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="ticket-service" class="block text-sm font-medium text-gray-700 mb-1">Serviço*</label>
+                <input type="text" id="ticket-service" name="ticket-service" required class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Serviço do ticket">
+            </div>
+            <div class="mb-4">
+                <label for="ticket-priority" class="block text-sm font-medium text-gray-700 mb-1">Prioridade</label>
+                <select id="ticket-priority" name="ticket-priority" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Prioridade do ticket">
+                    <option value="normal">Normal</option>
+                    <option value="high">Alta</option>
+                    <option value="low">Baixa</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="ticket-notes" class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
+                <textarea id="ticket-notes" name="ticket-notes" rows="3" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Observações do ticket"></textarea>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button type="button" id="cancel-ticket" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors" aria-label="Cancelar geração de ticket">Cancelar</button>
+                <button type="submit" id="save-ticket" class="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg shadow-md transition-colors" aria-label="Gerar ticket">Gerar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal para Adicionar Membro -->
+<div id="member-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" role="dialog" aria-labelledby="member-modal-title" aria-modal="true">
+    <div class="bg-white rounded-xl p-6 max-w-lg w-full mx-4 animate-zoom-in">
+        <div class="flex items-center justify-between mb-4">
+            <h3 id="member-modal-title" class="text-xl font-semibold text-gray-800">Adicionar Membro</h3>
+            <button id="close-member-modal" class="text-gray-500 hover:text-gray-700" aria-label="Fechar modal de adição de membro">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <form id="member-form">
+            <div class="mb-4">
+                <label for="member-name" class="block text-sm font-medium text-gray-700 mb-1">Nome*</label>
+                <input type="text" id="member-name" name="member-name" required class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Nome do membro">
+            </div>
+            <div class="mb-4">
+                <label for="member-email" class="block text-sm font-medium text-gray-700 mb-1">Email*</label>
+                <input type="email" id="member-email" name="member-email" required class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Email do membro">
+            </div>
+            <div class="mb-4">
+                <label for="member-role" class="block text-sm font-medium text-gray-700 mb-1">Função*</label>
+                <select id="member-role" name="member-role" required class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Função do membro">
+                    <option value="attendant">Atendente</option>
+                    <option value="admin">Administrador</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="member-counter" class="block text-sm font-medium text-gray-700 mb-1">Guichê Associado</label>
+                <select id="member-counter" name="member-counter" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Guichê associado ao membro">
+                    <option value="">Nenhum</option>
+                </select>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button type="button" id="cancel-member" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors" aria-label="Cancelar adição de membro">Cancelar</button>
+                <button type="submit" id="save-member" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-colors" aria-label="Adicionar membro">Adicionar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal para Configurações de Chamada -->
+<div id="call-settings-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center ulceration z-50 hidden" role="dialog" aria-labelledby="call-settings-modal-title" aria-modal="true">
+    <div class="bg-white rounded-xl p-6 max-w-lg w-full mx-4 animate-zoom-in">
+        <div class="flex items-center justify-between mb-4">
+            <h3 id="call-settings-modal-title" class="text-xl font-semibold text-gray-800">Configurações de Chamada</h3>
+            <button id="close-call-settings-modal" class="text-gray-500 hover:text-gray-700" aria-label="Fechar modal de configurações de chamada">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <form id="call-settings-form">
+            <div class="mb-4">
+                <label for="call-priority" class="block text-sm font-medium text-gray-700 mb-1">Prioridade de Chamada</label>
+                <select id="call-priority" name="call-priority" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Prioridade de chamada">
+                    <option value="fifo">FIFO (Primeiro a entrar, primeiro a sair)</option>
+                    <option value="priority">Baseado em prioridade</option>
+                    <option value="manual">Manual</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="call-counter" class="block text-sm font-medium text-gray-700 mb-1">Guichê Padrão</label>
+                <select id="call-counter" name="call-counter" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Guichê padrão para chamadas">
+                    <option value="auto">Automático</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="call-sound" class="block text-sm font-medium text-gray-700 mb-1">Som de Notificação</label>
+                <select id="call-sound" name="call-sound" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Som de notificação de chamada">
+                    <option value="default">Padrão</option>
+                    <option value="bell">Sino</option>
+                    <option value="chime">Toque</option>
+                    <option value="none">Nenhum</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="call-interval" class="block text-sm font-medium text-gray-700 mb-1">Intervalo entre Chamadas (segundos)</label>
+                <input type="number" id="call-interval" name="call-interval" min="1" value="30" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Intervalo entre chamadas em segundos">
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button type="button" id="cancel-call-settings" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors" aria-label="Cancelar configurações de chamada">Cancelar</button>
+                <button type="submit" id="save-call-settings" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-colors" aria-label="Salvar configurações de chamada">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal para Detalhes de Ticket -->
+<div id="ticket-details-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" role="dialog" aria-labelledby="ticket-details-modal-title" aria-modal="true">
+    <div class="bg-white rounded-xl p-6 max-w-lg w-full mx-4 animate-zoom-in">
+        <div class="flex items-center justify-between mb-4">
+            <h3 id="ticket-details-modal-title" class="text-xl font-semibold text-gray-800">Detalhes do Ticket</h3>
+            <button id="close-ticket-details-modal" class="text-gray-500 hover:text-gray-700" aria-label="Fechar modal de detalhes do ticket">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Número do Ticket</label>
+                <p id="ticket-details-number" class="p-3 bg-gray-100 rounded-lg">---</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Fila</label>
+                <p id="ticket-details-queue" class="p-3 bg-gray-100 rounded-lg">---</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Serviço</label>
+                <p id="ticket-details-service" class="p-3 bg-gray-100 rounded-lg">---</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Guichê</label>
+                <p id="ticket-details-counter" class="p-3 bg-gray-100 rounded-lg">---</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <p id="ticket-details-status" class="p-3 bg-gray-100 rounded-lg">---</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Data/Hora de Emissão</label>
+                <p id="ticket-details-issued" class="p-3 bg-gray-100 rounded-lg">---</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
+                <p id="ticket-details-notes" class="p-3 bg-gray-100 rounded-lg">---</p>
+            </div>
+        </div>
+        <div class="flex justify-end space-x-3 mt-4">
+            <button id="close-ticket-details" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors" aria-label="Fechar detalhes do ticket">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Exportar Relatórios -->
+<div id="export-report-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" role="dialog" aria-labelledby="export-report-modal-title" aria-modal="true">
+    <div class="bg-white rounded-xl p-6 max-w-lg w-full mx-4 animate-zoom-in">
+        <div class="flex items-center justify-between mb-4">
+            <h3 id="export-report-modal-title" class="text-xl font-semibold text-gray-800">Exportar Relatório</h3>
+            <button id="close-export-report-modal" class="text-gray-500 hover:text-gray-700" aria-label="Fechar modal de exportação de relatório">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <form id="export-report-form">
+            <div class="mb-4">
+                <label for="export-format" class="block text-sm font-medium text-gray-700 mb-1">Formato de Exportação*</label>
+                <select id="export-format" name="export-format" required class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Formato de exportação do relatório">
+                    <option value="pdf">PDF</option>
+                    <option value="csv">CSV</option>
+                    <option value="xlsx">Excel</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="export-queue" class="block text-sm font-medium text-gray-700 mb-1">Fila</label>
+                <select id="export-queue" name="export-queue" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Selecionar fila para exportação">
+                    <option value="all">Todas as filas</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="export-start-date" class="block text-sm font-medium text-gray-700 mb-1">Data Inicial</label>
+                <input type="date" id="export-start-date" name="export-start-date" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Data inicial para exportação">
+            </div>
+            <div class="mb-4">
+                <label for="export-end-date" class="block text-sm font-medium text-gray-700 mb-1">Data Final</label>
+                <input type="date" id="export-end-date" name="export-end-date" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Data final para exportação">
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button type="button" id="cancel-export-report" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors" aria-label="Cancelar exportação de relatório">Cancelar</button>
+                <button type="submit" id="save-export-report" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-colors" aria-label="Exportar relatório">Exportar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal para Criar/Editar Guichê -->
+<div id="counter-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" role="dialog" aria-labelledby="counter-modal-title" aria-modal="true">
+    <div class="bg-white rounded-xl p-6 max-w-lg w-full mx-4 animate-zoom-in">
+        <div class="flex items-center justify-between mb-4">
+            <h3 id="counter-modal-title" class="text-xl font-semibold text-gray-800">Criar Novo Guichê</h3>
+            <button id="close-counter-modal" class="text-gray-500 hover:text-gray-700" aria-label="Fechar modal de guichê">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <form id="counter-form">
+            <div class="mb-4">
+                <label for="counter-number" class="block text-sm font-medium text-gray-700 mb-1">Número do Guichê*</label>
+                <input type="text" id="counter-number" name="counter-number" required class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Número do guichê">
+            </div>
+            <div class="mb-4">
+                <label for="counter-attendant" class="block text-sm font-medium text-gray-700 mb-1">Atendente</label>
+                <select id="counter-attendant" name="counter-attendant" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Atendente associado ao guichê">
+                    <option value="">Nenhum</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="counter-status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select id="counter-status" name="counter-status" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Status do guichê">
+                    <option value="active">Ativo</option>
+                    <option value="inactive">Inativo</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="counter-location" class="block text-sm font-medium text-gray-700 mb-1">Localização</label>
+                <input type="text" id="counter-location" name="counter-location" class="p-3 border rounded-lg w-full focus:ring-2 focus:ring-blue-500" aria-label="Localização do guichê">
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button type="button" id="cancel-counter" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors" aria-label="Cancelar criação de guichê">Cancelar</button>
+                <button type="submit" id="save-counter" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-colors" aria-label="Salvar guichê">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal de Erro -->
+<div id="error-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" role="dialog" aria-labelledby="error-modal-title" aria-modal="true">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 animate-zoom-in">
+        <div class="flex items-center justify-between mb-4">
+            <h3 id="error-modal-title" class="text-xl font-semibold text-red-600">Erro</h3>
+            <button id="close-error-modal" class="text-gray-500 hover:text-gray-700" aria-label="Fechar modal de erro">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <p id="error-message" class="text-gray-600 mb-4"></p>
+        <div class="flex justify-end">
+            <button id="error-ok" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors" aria-label="Fechar modal de erro">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Sucesso -->
+<div id="success-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" role="dialog" aria-labelledby="success-modal-title" aria-modal="true">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 animate-zoom-in">
+        <div class="flex items-center justify-between mb-4">
+            <h3 id="success-modal-title" class="text-xl font-semibold text-green-600">Sucesso</h3>
+            <button id="close-success-modal" class="text-gray-500 hover:text-gray-700" aria-label="Fechar modal de sucesso">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <p id="success-message" class="text-gray-600 mb-4"></p>
+        <div class="flex justify-end">
+            <button id="success-ok" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors" aria-label="Fechar modal de sucesso">OK</button>
+        </div>
+    </div>
+</div>
+</main>
+</body>
+</html>
