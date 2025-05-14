@@ -995,6 +995,445 @@ class DashboardManager {
     }
 }
 
+class CallManager {
+    constructor() {
+        this.currentQueueId = null;
+        this.currentTicket = null;
+        this.timeElapsedInterval = null;
+        this.initEventListeners();
+        this.loadCallSettings();
+        this.loadRecentCalls();
+        this.setupSocketIO();
+    }
+
+    initEventListeners() {
+        // Botão de configurações
+        document.getElementById('call-settings-btn').addEventListener('click', () => {
+            document.getElementById('call-settings-modal').classList.remove('hidden');
+        });
+
+        // Formulário de configurações
+        document.getElementById('call-settings-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.saveCallSettings();
+        });
+
+        // Botões de cancelar e fechar modal
+        document.getElementById('cancel-call-settings').addEventListener('click', () => {
+            document.getElementById('call-settings-modal').classList.add('hidden');
+        });
+        document.getElementById('close-call-settings-modal').addEventListener('click', () => {
+            document.getElementById('call-settings-modal').classList.add('hidden');
+        });
+
+        // Botão Chamar Próxima
+        document.getElementById('call-next-btn').addEventListener('click', () => {
+            if (!this.currentQueueId) {
+                Utils.showToast('Selecione uma fila no filtro', 'error');
+                return;
+            }
+            this.callNextTicket();
+        });
+
+        // Botão Rechamar
+        document.getElementById('recall-btn').addEventListener('click', () => {
+            this.recallTicket();
+        });
+
+        // Botão Finalizar
+        document.getElementById('complete-call-btn').addEventListener('click', () => {
+            this.completeTicket();
+        });
+
+        // Botão Ver Detalhes
+        document.getElementById('view-ticket-btn').addEventListener('click', () => {
+            this.viewTicketDetails();
+        });
+
+        // Botão Pausar
+        document.getElementById('pause-call-btn').addEventListener('click', () => {
+            queueManager.toggleQueuePause(this.currentQueueId);
+        });
+
+        // Botão Retomar
+        document.getElementById('resume-call-btn').addEventListener('click', () => {
+            queueManager.toggleQueuePause(this.currentQueueId);
+        });
+
+        // Botão Cancelar
+        document.getElementById('cancel-call-btn').addEventListener('click', () => {
+            this.cancelTicket();
+        });
+
+        // Botão Atualizar Próximos
+        document.getElementById('refresh-queue').addEventListener('click', () => {
+            this.loadNextInQueue();
+        });
+
+        // Filtro de busca de últimas chamadas
+        document.getElementById('last-calls-filter').addEventListener('input', (e) => {
+            this.filterLastCalls(e.target.value);
+        });
+
+        // Filtro de filas
+        document.getElementById('queue-filter-select').addEventListener('change', (e) => {
+            this.currentQueueId = e.target.value;
+            this.loadNextInQueue();
+            this.updateCallButtonState();
+        });
+    }
+
+    async loadCallSettings() {
+        try {
+            Utils.showLoading(true, 'Carregando configurações de chamada...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/call_settings`);
+            const settings = response.data;
+            document.getElementById('call-priority').value = settings.priority || 'fifo';
+            document.getElementById('call-counter').value = settings.counter_id || 'auto';
+            document.getElementById('call-sound').value = settings.sound || 'default';
+            document.getElementById('call-interval').value = settings.interval || 30;
+            await this.loadCountersForCallSettings();
+        } catch (error) {
+            console.error('Erro ao carregar configurações de chamada:', error);
+            Utils.showToast('Erro ao carregar configurações de chamada', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async loadCountersForCallSettings() {
+        try {
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/queues`);
+            const queues = response.data;
+            const counterSelect = document.getElementById('call-counter');
+            counterSelect.innerHTML = '<option value="auto">Automático</option>';
+            queues.forEach(queue => {
+                for (let i = 1; i <= queue.num_counters; i++) {
+                    const option = document.createElement('option');
+                    option.value = `${queue.id}:${i}`;
+                    option.textContent = `${queue.service_name} - Guichê ${i}`;
+                    counterSelect.appendChild(option);
+                }
+            });
+        } catch (error) {
+            console.error('Erro ao carregar guichês:', error);
+        }
+    }
+
+    async saveCallSettings() {
+        try {
+            Utils.showLoading(true, 'Salvando configurações de chamada...');
+            const form = document.getElementById('call-settings-form');
+            const data = {
+                priority: form.priority.value,
+                counter_id: form.counter_id.value,
+                sound: form.sound.value,
+                interval: parseInt(form.interval.value)
+            };
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/call_settings`, data);
+            Utils.showToast('Configurações salvas com sucesso', 'success');
+            document.getElementById('call-settings-modal').classList.add('hidden');
+        } catch (error) {
+            console.error('Erro ao salvar configurações de chamada:', error);
+            Utils.showToast(error.response?.data?.error || 'Erro ao salvar configurações', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async callNextTicket() {
+        try {
+            Utils.showLoading(true, 'Chamando próximo ticket...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const counter = document.getElementById('call-counter').value;
+            const response = await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/queues/${this.currentQueueId}/call`, {
+                counter: counter.includes(':') ? parseInt(counter.split(':')[1]) : counter
+            });
+            this.currentTicket = response.data.ticket;
+            this.updateCallPanel();
+            this.playCallSound();
+            this.startTimeElapsed();
+            this.loadNextInQueue();
+            this.loadRecentCalls();
+            Utils.showToast(response.data.message, 'success');
+        } catch (error) {
+            console.error('Erro ao chamar ticket:', error);
+            Utils.showToast(error.response?.data?.error || 'Erro ao chamar ticket', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async recallTicket() {
+        if (!this.currentTicket) {
+            Utils.showToast('Nenhum ticket atual para rechamar', 'error');
+            return;
+        }
+        try {
+            Utils.showLoading(true, 'Rechamando ticket...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/queues/${this.currentQueueId}/recall`, {
+                ticket_id: this.currentTicket.id
+            });
+            this.playCallSound();
+            Utils.showToast(response.data.message || 'Ticket rechamado com sucesso', 'success');
+        } catch (error) {
+            console.error('Erro ao rechamar ticket:', error);
+            Utils.showToast(error.response?.data?.error || 'Erro ao rechamar ticket', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async completeTicket() {
+        if (!this.currentTicket) {
+            Utils.showToast('Nenhum ticket atual para finalizar', 'error');
+            return;
+        }
+        try {
+            Utils.showLoading(true, 'Finalizando ticket...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/queues/${this.currentQueueId}/tickets/${this.currentTicket.id}/complete`);
+            this.currentTicket = null;
+            this.updateCallPanel();
+            this.stopTimeElapsed();
+            this.loadNextInQueue();
+            this.loadRecentCalls();
+            Utils.showToast(response.data.message, 'success');
+        } catch (error) {
+            console.error('Erro ao finalizar ticket:', error);
+            Utils.showToast(error.response?.data?.error || 'Erro ao finalizar ticket', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async cancelTicket() {
+        if (!this.currentTicket) {
+            Utils.showToast('Nenhum ticket atual para cancelar', 'error');
+            return;
+        }
+        try {
+            Utils.showLoading(true, 'Cancelando ticket...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/queues/${this.currentQueueId}/tickets/${this.currentTicket.id}/cancel`);
+            this.currentTicket = null;
+            this.updateCallPanel();
+            this.stopTimeElapsed();
+            this.loadNextInQueue();
+            this.loadRecentCalls();
+            Utils.showToast(response.data.message || 'Ticket cancelado com sucesso', 'success');
+        } catch (error) {
+            console.error('Erro ao cancelar ticket:', error);
+            Utils.showToast(error.response?.data?.error || 'Erro ao cancelar ticket', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async viewTicketDetails() {
+        if (!this.currentTicket) {
+            Utils.showToast('Nenhum ticket atual para visualizar', 'error');
+            return;
+        }
+        try {
+            Utils.showLoading(true, 'Carregando detalhes do ticket...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/queues/${this.currentQueueId}/tickets/${this.currentTicket.id}`);
+            const ticket = response.data;
+            // Exibir detalhes em um modal ou popup
+            Utils.showToast(`Ticket: ${ticket.ticket_number}\nServiço: ${ticket.service_name}\nGuichê: ${ticket.counter}\nStatus: ${ticket.status}`, 'info');
+        } catch (error) {
+            console.error('Erro ao carregar detalhes do ticket:', error);
+            Utils.showToast(error.response?.data?.error || 'Erro ao carregar detalhes', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async loadNextInQueue() {
+        if (!this.currentQueueId) {
+            document.getElementById('next-in-queue').innerHTML = '<p class="text-gray-500">Selecione uma fila no filtro</p>';
+            return;
+        }
+        try {
+            Utils.showLoading(true, 'Carregando próximos na fila...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/queues/${this.currentQueueId}/next_tickets`);
+            const tickets = response.data;
+            const container = document.getElementById('next-in-queue');
+            container.innerHTML = '';
+            if (tickets.length === 0) {
+                container.innerHTML = '<p class="text-gray-500">Nenhum ticket pendente</p>';
+                return;
+            }
+            tickets.forEach(ticket => {
+                const ticketItem = document.createElement('div');
+                ticketItem.className = 'bg-gray-50 rounded-lg p-3 flex justify-between items-center';
+                ticketItem.innerHTML = `
+                    <div>
+                        <p class="text-sm font-medium">${ticket.ticket_number}</p>
+                        <p class="text-xs text-gray-500">${ticket.service_name}</p>
+                    </div>
+                    <span class="text-xs text-gray-500">${ticket.priority ? 'Prioridade' : 'Normal'}</span>
+                `;
+                container.appendChild(ticketItem);
+            });
+        } catch (error) {
+            console.error('Erro ao carregar próximos na fila:', error);
+            Utils.showToast('Erro ao carregar próximos na fila', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    async loadRecentCalls() {
+        try {
+            Utils.showLoading(true, 'Carregando últimas chamadas...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/recent_calls`);
+            const calls = response.data;
+            const tbody = document.getElementById('last-calls');
+            tbody.innerHTML = '';
+            calls.forEach(call => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="py-3 px-4 text-sm">${call.ticket_number}</td>
+                    <td class="py-3 px-4 text-sm">${call.service_name}</td>
+                    <td class="py-3 px-4 text-sm">${call.counter || 'N/A'}</td>
+                    <td class="py-3 px-4 text-sm">${call.called_at ? new Date(call.called_at).toLocaleTimeString() : 'N/A'}</td>
+                    <td class="py-3 px-4 text-sm">${call.status}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        } catch (error) {
+            console.error('Erro ao carregar últimas chamadas:', error);
+            Utils.showToast('Erro ao carregar últimas chamadas', 'error');
+        } finally {
+            Utils.showLoading(false);
+        }
+    }
+
+    filterLastCalls(searchText) {
+        const rows = document.querySelectorAll('#last-calls tr');
+        const search = searchText.toLowerCase();
+        rows.forEach(row => {
+            const ticketNumber = row.cells[0].textContent.toLowerCase();
+            const serviceName = row.cells[1].textContent.toLowerCase();
+            row.style.display = ticketNumber.includes(search) || serviceName.includes(search) ? '' : 'none';
+        });
+    }
+
+    async loadQueueFilter() {
+        try {
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/queues`);
+            const queues = response.data;
+            const select = document.getElementById('queue-filter-select');
+            select.innerHTML = '<option value="">Selecione uma fila</option>';
+            queues.forEach(queue => {
+                const option = document.createElement('option');
+                option.value = queue.id;
+                option.textContent = `${queue.service_name} (${queue.prefix})`;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Erro ao carregar filtro de filas:', error);
+            Utils.showToast('Erro ao carregar filas', 'error');
+        }
+    }
+
+    updateCallPanel() {
+        const ticketEl = document.getElementById('current-ticket');
+        const serviceEl = document.getElementById('current-service');
+        const counterEl = document.getElementById('current-counter');
+        const statusEl = document.getElementById('call-status');
+        const avgWaitEl = document.getElementById('avg-wait-time');
+        const waitBar = document.getElementById('wait-bar');
+
+        if (this.currentTicket) {
+            ticketEl.textContent = this.currentTicket.ticket_number;
+            serviceEl.textContent = this.currentTicket.service_name || 'N/A';
+            counterEl.textContent = `Guichê ${this.currentTicket.counter}`;
+            statusEl.textContent = 'Ativa';
+            avgWaitEl.textContent = this.currentTicket.avg_wait_time ? `${this.currentTicket.avg_wait_time} min` : 'N/A';
+            waitBar.style.width = this.currentTicket.avg_wait_time ? `${Math.min(this.currentTicket.avg_wait_time * 5, 100)}%` : '0%';
+        } else {
+            ticketEl.textContent = '---';
+            serviceEl.textContent = '';
+            counterEl.textContent = '';
+            statusEl.textContent = 'Inativa';
+            avgWaitEl.textContent = 'N/A';
+            waitBar.style.width = '0%';
+        }
+    }
+
+    playCallSound() {
+        const sound = document.getElementById('call-sound').value;
+        const audio = new Audio(`/sounds/${sound}.mp3`);
+        audio.play().catch(err => console.error('Erro ao tocar som:', err));
+    }
+
+    startTimeElapsed() {
+        this.stopTimeElapsed();
+        const timeEl = document.getElementById('current-time-elapsed').querySelector('span');
+        let seconds = 0;
+        this.timeElapsedInterval = setInterval(() => {
+            seconds++;
+            timeEl.textContent = `${seconds}s`;
+        }, 1000);
+    }
+
+    stopTimeElapsed() {
+        if (this.timeElapsedInterval) {
+            clearInterval(this.timeElapsedInterval);
+            this.timeElapsedInterval = null;
+            document.getElementById('current-time-elapsed').querySelector('span').textContent = '0s';
+        }
+    }
+
+    updateCallButtonState() {
+        const callBtn = document.getElementById('call-next-btn');
+        callBtn.disabled = !this.currentQueueId;
+        callBtn.classList.toggle('opacity-50', !this.currentQueueId);
+        callBtn.classList.toggle('cursor-not-allowed', !this.currentQueueId);
+    }
+
+    setupSocketIO() {
+        socket.on('ticket_called', (data) => {
+            if (data.queue_id === this.currentQueueId) {
+                this.currentTicket = {
+                    id: data.ticket_id,
+                    ticket_number: data.ticket_number,
+                    counter: data.counter,
+                    service_name: data.service_name
+                };
+                this.updateCallPanel();
+                this.playCallSound();
+                this.startTimeElapsed();
+                this.loadNextInQueue();
+                this.loadRecentCalls();
+            }
+        });
+        socket.on('ticket_completed', (data) => {
+            if (data.queue_id === this.currentQueueId) {
+                this.currentTicket = null;
+                this.updateCallPanel();
+                this.stopTimeElapsed();
+                this.loadNextInQueue();
+                this.loadRecentCalls();
+            }
+        });
+        socket.on('queue_updated', () => {
+            this.loadQueueFilter();
+            this.loadNextInQueue();
+        });
+    }
+}
 const queueManager = new QueueManager();
 const ticketManager = new TicketManager();
 const reportManager = new ReportManager();

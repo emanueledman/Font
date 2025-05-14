@@ -463,6 +463,12 @@
                             </svg>
                             Rechamar
                         </button>
+                        <button id="complete-call-btn" class="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-6 py-4 rounded-lg text-xl font-semibold shadow-lg hover:shadow-xl transition-all flex items-center justify-center tooltip" aria-label="Finalizar chamada atual" data-tooltip="Finalizar ticket atual" type="button">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-join="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            Finalizar
+                        </button>
                         <button id="view-ticket-btn" class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-3 rounded-lg text-lg font-semibold shadow-lg hover:shadow-xl transition-all flex items-center justify-center tooltip" aria-label="Ver detalhes do ticket" data-tooltip="Ver detalhes do ticket atual" type="button">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-join="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm6 0c0 2.21-.895 4.202-2.343 5.657M3 12c0-2.21.895-4.202 2.343-5.657m12.314 0A9 9 0 013 12a9 9 0 0114.657-7.657" />
@@ -517,6 +523,12 @@
                                 <path stroke-linecap="round" stroke-join="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
                         </button>
+                    </div>
+                    <div class="mb-4">
+                        <label for="queue-filter-select" class="block text-sm font-medium text-gray-700">Filtrar por Fila</label>
+                        <select id="queue-filter-select" class="mt-1 block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" aria-label="Selecionar fila">
+                            <option value="">Selecione uma fila</option>
+                        </select>
                     </div>
                     <div id="next-in-queue" class="space-y-3"></div>
                 </div>
