@@ -1365,7 +1365,7 @@ class CallManager {
                     <td class="py-3 px-4 text-sm">${call.ticket_number}</td>
                     <td class="py-3 px-4 text-sm">${call.service_name}</td>
                     <td class="py-3 px-4 text-sm">${call.counter || 'N/A'}</td>
-                    <td class="py-3 px-4 text-sm">${call.called_at ? new Date(call.called_at).toLocaleTimeString('pt-BR') : 'N/A'}</td>
+                    <td class="py-3 px-4 text-sm">${call.attended_at ? new Date(call.attended_at).toLocaleTimeString('pt-BR') : 'N/A'}</td>
                     <td class="py-3 px-4 text-sm">${call.status}</td>
                 `;
                 tbody.appendChild(row);
