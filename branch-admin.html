@@ -4,981 +4,717 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel do Gestor - Fila Fácil</title>
+    <title>Fila Fácil | Painel Administrativo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            200: '#ddd6fe',
+                            300: '#c4b5fd',
+                            400: '#a78bfa',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            700: '#6d28d9',
+                            800: '#5b21b6',
+                            900: '#4f46e5', // Usado como principal
+                            950: '#3c3788',
+                        },
+                        neutral: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        },
+                        accent: '#f97316',
+                        success: '#10b981',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        card: '0 2px 8px 0 rgba(0, 0, 0, 0.08)',
+                        elevated: '0 10px 20px 0 rgba(0, 0, 0, 0.05)',
+                    },
+                    transitionProperty: {
+                        'height': 'height, max-height',
+                    },
+                },
+            },
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root {
-            --primary: #0c4a6e;
-            --secondary: #475569;
-            --bg: #f1f5f9;
-            --panel-bg: #ffffff;
-            --accent: #f97316;
-            --success: #10b981;
-            --border: #e2e8f0;
-        }
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
         body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background: var(--bg);
-            color: var(--secondary);
-            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
         }
-        .menu-container {
-            position: fixed;
-            top: 24px;
-            left: 24px;
-            z-index: 1000;
+
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
         }
-        .menu-toggle {
-            background: var(--panel-bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            width: 48px;
-            height: 48px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
+
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .animate-pulse-slow {
+            animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .sidebar-collapsed {
+            width: 64px;
+        }
+
+        .sidebar-collapsed .sidebar-text {
+            display: none;
+        }
+
+        .sidebar-collapsed .logo-text {
+            display: none;
+        }
+
+        .sidebar-collapsed .user-info {
+            display: none;
+        }
+
+        .sidebar-collapsed .nav-btn {
             justify-content: center;
-            transition: all 0.2s ease;
         }
-        .menu-toggle:hover {
-            background: var(--primary);
-            border-color: var(--primary);
-            color: #fff;
-        }
-        .menu {
-            position: absolute;
-            top: 60px;
-            left: 0;
-            background: var(--panel-bg);
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(-10px);
-            transition: all 0.3s ease;
-        }
-        .menu.active {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0);
-        }
-        .menu ul {
-            list-style: none;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        .menu button {
-            background: transparent;
-            border: none;
-            padding: 12px 16px;
-            border-radius: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            color: var(--secondary);
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-        .menu button:hover, .menu button.active {
-            background: var(--primary);
-            color: #fff;
-        }
-        .menu button svg {
-            width: 20px;
-            height: 20px;
-        }
-        .notification-badge {
-            background: var(--accent);
-            color: #fff;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            margin-left: auto;
-        }
-        main {
-            padding: 40px;
-            max-width: 1440px;
-            margin: 0 auto;
-        }
-        .panel {
-            background: var(--panel-bg);
-            border-radius: 12px 12px 12px 0;
-            padding: 24px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            border-left: 4px solid var(--primary);
-            transition: box-shadow 0.2s ease;
-        }
-        .panel:hover {
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-        }
-        h2 {
-            font-size: 1.75rem;
-            font-weight: 600;
-            color: var(--primary);
-            margin-bottom: 20px;
-        }
-        h3 {
-            font-size: 1.125rem;
-            font-weight: 500;
-            color: var(--secondary);
-            margin-bottom: 16px;
-        }
-        .btn-primary {
-            background: var(--primary);
-            color: #fff;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-        .btn-primary:hover {
-            background: #083a56;
-            transform: scale(1.02);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        }
-        .btn-success {
-            background: var(--success);
-            color: #fff;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-        .btn-success:hover {
-            background: #059669;
-            transform: scale(1.02);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        }
-        .btn-cancel {
-            background: var(--secondary);
-            color: #fff;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-        .btn-cancel:hover {
-            background: #334155;
-            transform: scale(1.02);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        }
+
         .modal {
             display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.5);
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
         }
+
         .modal.active {
             display: flex;
         }
-        .modal-content {
-            background: var(--panel-bg);
-            border-radius: 12px;
-            padding: 32px;
-            max-width: 600px;
-            width: 90%;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-            animation: fadeIn 0.3s ease;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        .modal-content button.absolute {
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 8px;
-            position: absolute;
-            top: 16px;
-            right: 16px;
-        }
-        #loading-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-        #loading-overlay div {
-            color: #fff;
-            font-size: 1.25rem;
-            background: var(--primary);
-            padding: 12px 24px;
-            border-radius: 8px;
-        }
-        #toast-container {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            z-index: 1000;
-        }
-        .toast {
-            background: var(--panel-bg);
-            border-radius: 8px;
-            padding: 16px 24px;
-            margin-bottom: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            animation: slideInRight 0.3s ease;
-        }
-        @keyframes slideInRight {
-            from { opacity: 0; transform: translateX(20px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-        .toast.bg-green-100 {
-            border-left: 4px solid var(--success);
-            color: var(--secondary);
-        }
-        .toast.bg-blue-100 {
-            border-left: 4px solid var(--primary);
-            color: var(--secondary);
-        }
-        .toast.bg-red-100 {
-            border-left: 4px solid var(--accent);
-            color: var(--secondary);
-        }
-        .toast .toast-close {
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 4px;
-        }
-        .skeleton {
-            background: var(--border);
-            border-radius: 4px;
-            height: 16px;
-            margin: 8px 0;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-        input, select, textarea {
-            border: none;
-            border-bottom: 2px solid var(--border);
-            padding: 10px 4px;
-            width: 100%;
-            margin-top: 4px;
-            font-size: 0.875rem;
-            transition: border 0.2s;
-            background: transparent;
-        }
+
         input:focus, select:focus, textarea:focus {
-            border-bottom-color: var(--primary);
             outline: none;
-        }
-        label {
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: var(--secondary);
-            margin-bottom: 4px;
-            display: block;
-        }
-        button:focus {
-            outline: 2px solid var(--primary);
-            outline-offset: 2px;
-        }
-        .grid {
-            display: grid;
-            gap: 24px;
-        }
-        .grid-cols-1 {
-            grid-template-columns: 1fr;
-        }
-        .grid-cols-2 {
-            grid-template-columns: repeat(2, 1fr);
-        }
-        .grid-cols-3 {
-            grid-template-columns: repeat(3, 1fr);
-        }
-        .grid-cols-4 {
-            grid-template-columns: repeat(4, 1fr);
-        }
-        .flex {
-            display: flex;
-        }
-        .items-center {
-            align-items: center;
-        }
-        .justify-between {
-            justify-content: space-between;
-        }
-        .space-x-2 > * + * {
-            margin-left: 8px;
-        }
-        .space-x-4 > * + * {
-            margin-left: 16px;
-        }
-        .space-y-2 > * + * {
-            margin-top: 8px;
-        }
-        .space-y-4 > * + * {
-            margin-top: 16px;
-        }
-        .space-y-6 > * + * {
-            margin-top: 24px;
-        }
-        .hidden {
-            display: none;
-        }
-        @media (max-width: 768px) {
-            main {
-                padding: 16px;
-            }
-            .menu {
-                top: 48px;
-                width: 200px;
-            }
-            .panel {
-                border-radius: 8px;
-            }
-        }
-        @media (min-width: 768px) {
-            .md\:grid-cols-2 {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            .md\:grid-cols-3 {
-                grid-template-columns: repeat(3, 1fr);
-            }
-            .md\:grid-cols-4 {
-                grid-template-columns: repeat(4, 1fr);
-            }
-        }
-        @media (min-width: 1024px) {
-            .lg\:grid-cols-2 {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            .lg\:grid-cols-3 {
-                grid-template-columns: repeat(3, 1fr);
-            }
-            .lg\:grid-cols-4 {
-                grid-template-columns: repeat(4, 1fr);
-            }
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
         }
     </style>
 </head>
-<body>
+<body class="bg-neutral-50 font-sans min-h-screen text-neutral-900">
     <!-- Loading Overlay -->
-    <div id="loading-overlay" class="hidden">
-        <div>Carregando...</div>
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="flex flex-col items-center">
+            <div class="w-12 h-12 border-4 border-primary-900 border-t-transparent rounded-full animate-spin"></div>
+            <p class="text-white mt-4 font-medium">Carregando...</p>
+        </div>
     </div>
 
     <!-- Toast Container -->
-    <div id="toast-container"></div>
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
 
     <!-- Toast Template -->
     <template id="toast-template">
-        <div class="toast">
+        <div class="toast bg-white rounded-lg shadow-elevated p-4 flex justify-between items-center border border-neutral-100 max-w-sm">
             <div>
-                <span class="toast-title"></span>
-                <p class="toast-message"></p>
+                <span class="toast-title font-medium text-neutral-800"></span>
+                <p class="toast-message text-sm text-neutral-600"></p>
             </div>
-            <button class="toast-close" aria-label="Fechar notificação">
-                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+            <button class="toast-close text-neutral-500 hover:text-neutral-700" aria-label="Fechar notificação">
+                <i class="fas fa-times"></i>
             </button>
         </div>
     </template>
 
     <!-- Skeleton Template -->
     <template id="skeleton-template">
-        <div class="skeleton"></div>
+        <div class="skeleton bg-neutral-200 rounded h-4 animate-pulse-slow"></div>
     </template>
 
-    <!-- Menu -->
-    <div class="menu-container">
-        <button class="menu-toggle" id="sidebar-toggle" aria-label="Abrir menu">
-            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-        </button>
-        <nav class="menu" id="sidebar">
-            <ul>
-                <li>
-                    <button id="nav-dashboard" class="nav-btn active" title="Dashboard" aria-label="Navegar para Dashboard">
-                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                        </svg>
-                        Dashboard
-                        <span class="notification-badge">3</span>
-                    </button>
-                </li>
-                <li>
-                    <button id="nav-call" class="nav-btn" title="Chamada" aria-label="Navegar para Chamada">
-                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                        </svg>
-                        Chamada
-                    </button>
-                </li>
-                <li>
-                    <button id="nav-queues" class="nav-btn" title="Filas" aria-label="Navegar para Filas">
-                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                        Filas
-                    </button>
-                </li>
-                <li>
-                    <button id="nav-tickets" class="nav-btn" title="Tickets" aria-label="Navegar para Tickets">
-                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-                        </svg>
-                        Tickets
-                    </button>
-                </li>
-                <li>
-                    <button id="nav-reports" class="nav-btn" title="Relatórios" aria-label="Navegar para Relatórios">
-                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Relatórios
-                    </button>
-                </li>
-                <li>
-                    <button id="nav-settings" class="nav-btn" title="Configurações" aria-label="Navegar para Configurações">
-                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        Configurações
-                    </button>
-                </li>
-                <li>
-                    <button id="logout" title="Sair" aria-label="Sair do sistema">
-                        <svg width="20" height="20" fill="none" stroke="var(--accent)" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
-                        Sair
-                    </button>
-                </li>
-            </ul>
-        </nav>
-    </div>
-
-    <!-- Main Content -->
-    <main>
-        <!-- Dashboard Section -->
-        <div id="dashboard-section" class="panel space-y-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h2>Bem-vindo, <span id="user-name">Usuário</span></h2>
-                    <p id="current-date" style="font-size: 0.875rem; color: var(--secondary);"></p>
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-64 bg-white border-r border-neutral-200 flex flex-col shadow-sm transition-all duration-300 z-20">
+            <div class="p-4 flex items-center justify-between border-b border-neutral-200">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 bg-primary-900 text-white rounded-lg flex items-center justify-center">
+                        <span class="text-xl font-bold">FF</span>
+                    </div>
+                    <h1 class="text-xl font-semibold ml-3 text-neutral-800 logo-text">Fila Fácil</h1>
                 </div>
-                <button id="refresh-data" class="btn-primary" aria-label="Atualizar dados">
-                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display: inline; margin-right: 8px;">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Atualizar
+                <button id="sidebar-toggle" class="text-neutral-500 hover:text-neutral-700" aria-label="Alternar sidebar">
+                    <i class="fas fa-chevron-left"></i>
                 </button>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-                <div class="panel">
-                    <p style="font-size: 0.875rem; color: var(--secondary);">Filas Ativas</p>
-                    <p id="active-queues" style="font-size: 1.5rem; font-weight: 600; color: var(--primary);">0</p>
+            <nav class="mt-6 px-4 flex-1 overflow-y-auto scrollbar-hide">
+                <div class="space-y-1">
+                    <button id="nav-dashboard" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg font-medium text-neutral-700 hover:bg-neutral-100 group transition-colors active">
+                        <span class="inline-block mr-3 text-neutral-500 group-hover:text-primary-900">
+                            <i class="fas fa-chart-line"></i>
+                        </span>
+                        <span class="sidebar-text">Dashboard</span>
+                    </button>
+                    <button id="nav-call" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg font-medium text-neutral-700 hover:bg-neutral-100 group transition-colors">
+                        <span class="inline-block mr-3 text-neutral-500 group-hover:text-primary-900">
+                            <i class="fas fa-bullhorn"></i>
+                        </span>
+                        <span class="sidebar-text">Chamada</span>
+                    </button>
+                    <button id="nav-queues" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg font-medium text-neutral-700 hover:bg-neutral-100 group transition-colors">
+                        <span class="inline-block mr-3 text-neutral-500 group-hover:text-primary-900">
+                            <i class="fas fa-users"></i>
+                        </span>
+                        <span class="sidebar-text">Filas</span>
+                    </button>
+                    <button id="nav-tickets" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg font-medium text-neutral-700 hover:bg-neutral-100 group transition-colors">
+                        <span class="inline-block mr-3 text-neutral-500 group-hover:text-primary-900">
+                            <i class="fas fa-ticket-alt"></i>
+                        </span>
+                        <span class="sidebar-text">Tickets</span>
+                    </button>
+                    <button id="nav-reports" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg font-medium text-neutral-700 hover:bg-neutral-100 group transition-colors">
+                        <span class="inline-block mr-3 text-neutral-500 group-hover:text-primary-900">
+                            <i class="fas fa-chart-bar"></i>
+                        </span>
+                        <span class="sidebar-text">Relatórios</span>
+                    </button>
+                    <button id="nav-settings" class="nav-btn flex items-center w-full px-4 py-3 rounded-lg font-medium text-neutral-700 hover:bg-neutral-100 group transition-colors">
+                        <span class="inline-block mr-3 text-neutral-500 group-hover:text-primary-900">
+                            <i class="fas fa-cog"></i>
+                        </span>
+                        <span class="sidebar-text">Configurações</span>
+                    </button>
                 </div>
-                <div class="panel">
-                    <p style="font-size: 0.875rem; color: var(--secondary);">Tickets Pendentes</p>
-                    <p id="pending-tickets" style="font-size: 1.5rem; font-weight: 600; color: var(--primary);">0</p>
-                </div>
-                <div class="panel">
-                    <p style="font-size: 0.875rem; color: var(--secondary);">Chamadas Hoje</p>
-                    <p id="today-calls" style="font-size: 1.5rem; font-weight: 600; color: var(--primary);">0</p>
-                </div>
-                <div class="panel">
-                    <p style="font-size: 0.875rem; color: var(--secondary);">Atendentes Ativos</p>
-                    <p id="active-users" style="font-size: 1.5rem; font-weight: 600; color: var(--primary);">0</p>
+            </nav>
+            <div class="p-4 border-t border-neutral-200">
+                <div class="flex items-center user-info">
+                    <div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-900 font-semibold">
+                        <span id="user-initials">AA</span>
+                    </div>
+                    <div class="ml-3">
+                        <p id="user-name" class="text-sm font-medium text-neutral-800">Admin User</p>
+                        <p id="user-role" class="text-xs text-neutral-500">Administrador</p>
+                    </div>
+                    <button id="logout" class="ml-auto text-neutral-500 hover:text-accent p-1" title="Sair" aria-label="Sair do sistema">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
                 </div>
             </div>
-            <div class="grid grid-cols-1 lg:grid-cols-2">
-                <div class="panel">
-                    <h3>Atividade Recente</h3>
-                    <canvas id="activity-chart" height="256"></canvas>
-                </div>
-                <div class="panel">
-                    <h3>Últimos Tickets</h3>
-                    <div id="recent-tickets" class="space-y-2"></div>
-                </div>
-            </div>
-        </div>
+        </aside>
 
-        <!-- Call Section -->
-        <div id="call-section" class="panel space-y-6 hidden">
-            <h2>Chamada</h2>
-            <div class="panel">
-                <h3>Chamada Atual</h3>
-                <div id="current-call" style="text-align: center;">
-                    <p id="current-ticket" style="font-size: 2rem; font-weight: 600; color: var(--primary);">Nenhum</p>
-                    <p id="current-queue" style="font-size: 0.875rem; color: var(--secondary);">Nenhuma fila</p>
-                    <p id="current-counter" style="font-size: 0.875rem; color: var(--secondary);">Nenhum guichê</p>
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col overflow-hidden bg-neutral-50">
+            <!-- Top Header -->
+            <header class="bg-white border-b border-neutral-200 py-4 px-6 flex items-center justify-between shadow-sm">
+                <div class="flex items-center">
+                    <button id="mobile-sidebar-toggle" class="lg:hidden mr-4 text-neutral-500 hover:text-neutral-800" aria-label="Abrir sidebar">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h2 id="page-title" class="text-xl font-semibold text-neutral-800">Dashboard</h2>
                 </div>
-                <div class="flex justify-center space-x-4">
-                    <button id="call-next" class="btn-success">Chamar Próximo</button>
-                    <button id="recall" class="btn-primary">Rechamar</button>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <button id="notifications-btn" class="text-neutral-500 hover:text-neutral-800 p-2 rounded-full hover:bg-neutral-100" aria-label="Notificações">
+                            <i class="fas fa-bell"></i>
+                            <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-accent"></span>
+                        </button>
+                    </div>
+                    <div>
+                        <p id="current-date" class="text-sm text-neutral-600"></p>
+                    </div>
                 </div>
-            </div>
-        </div>
+            </header>
 
-        <!-- Queues Section -->
-        <div id="queues-section" class="panel space-y-6 hidden">
-            <div class="flex items-center justify-between">
-                <h2>Filas</h2>
-                <button id="create-queue-btn" class="btn-primary">Nova Fila</button>
-            </div>
-            <div class="panel">
-                <h3>Lista de Filas</h3>
-                <div id="queues-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3"></div>
-            </div>
-        </div>
+            <!-- Content Area -->
+            <div class="flex-1 overflow-y-auto p-6">
+                <!-- Dashboard Section -->
+                <div id="dashboard-section" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div class="bg-white rounded-xl shadow-card p-6 border border-neutral-100">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-neutral-500">Filas Ativas</p>
+                                    <h3 id="active-queues" class="text-2xl font-bold mt-1 text-neutral-800">0</h3>
+                                </div>
+                                <div class="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center text-primary-900">
+                                    <i class="fas fa-list"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-card p-6 border border-neutral-100">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-neutral-500">Tickets Pendentes</p>
+                                    <h3 id="pending-tickets" class="text-2xl font-bold mt-1 text-neutral-800">0</h3>
+                                </div>
+                                <div class="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center text-accent">
+                                    <i class="fas fa-ticket-alt"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-card p-6 border border-neutral-100">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-neutral-500">Chamadas Hoje</p>
+                                    <h3 id="today-calls" class="text-2xl font-bold mt-1 text-neutral-800">0</h3>
+                                </div>
+                                <div class="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center text-success">
+                                    <i class="fas fa-phone-alt"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-card p-6 border border-neutral-100">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-neutral-500">Atendentes Ativos</p>
+                                    <h3 id="active-users" class="text-2xl font-bold mt-1 text-neutral-800">0</h3>
+                                </div>
+                                <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white rounded-xl shadow-card p-6 border border-neutral-100">
+                            <h3 class="font-semibold text-neutral-800 mb-4">Atividade Recente</h3>
+                            <div id="recent-tickets" class="space-y-4"></div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-card p-6 border border-neutral-100">
+                            <h3 class="font-semibold text-neutral-800 mb-4">Atendimentos por Hora</h3>
+                            <canvas id="activity-chart" height="256"></canvas>
+                        </div>
+                    </div>
+                </div>
 
-        <!-- Tickets Section -->
-        <div id="tickets-section" class="panel space-y-6 hidden">
-            <div class="flex items-center justify-between">
-                <h2>Tickets</h2>
-                <div class="flex space-x-4">
-                    <select id="ticket-source-filter" aria-label="Filtrar por origem do ticket">
-                        <option value="all">Todos</option>
-                        <option value="manual">Manual</option>
-                        <option value="totem">Totem</option>
-                    </select>
-                    <button id="generate-ticket-btn" class="btn-primary">Gerar Ticket</button>
+                <!-- Call Section -->
+                <div id="call-section" class="hidden space-y-6">
+                    <div class="bg-white rounded-xl shadow-card p-6 border border-neutral-100">
+                        <h2 class="text-xl font-semibold mb-6 text-neutral-800">Chamada</h2>
+                        <div id="current-call" class="text-center">
+                            <p id="current-ticket" class="text-3xl font-bold text-primary-900">Nenhum</p>
+                            <p id="current-queue" class="text-sm text-neutral-500 mt-2">Nenhuma fila</p>
+                            <p id="current-counter" class="text-sm text-neutral-500">Nenhum guichê</p>
+                        </div>
+                        <div class="flex justify-center space-x-4 mt-6">
+                            <button id="call-next" class="px-4 py-2 bg-success text-white rounded-lg hover:bg-success/90 transition-colors">Chamar Próximo</button>
+                            <button id="recall" class="px-4 py-2 bg-primary-900 text-white rounded-lg hover:bg-primary-800 transition-colors">Rechamar</button>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="panel">
-                <h3>Lista de Tickets</h3>
-                <div id="tickets-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3"></div>
-            </div>
-        </div>
 
-        <!-- Reports Section -->
-        <div id="reports-section" class="panel space-y-6 hidden">
-            <div class="flex items-center justify-between">
-                <h2>Relatórios</h2>
-                <div class="flex space-x-4">
-                    <input type="date" id="report-date" aria-label="Selecionar data do relatório">
-                    <button id="generate-report-btn" class="btn-primary">Gerar Relatório</button>
-                    <button id="export-report-btn" class="btn-primary">Exportar</button>
+                <!-- Queues Section -->
+                <div id="queues-section" class="hidden space-y-6">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-xl font-semibold text-neutral-800">Filas</h2>
+                        <button id="create-queue-btn" class="px-4 py-2 bg-primary-900 text-white rounded-lg hover:bg-primary-800 transition-colors">Nova Fila</button>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-card p-6 border border-neutral-100">
+                        <h3 class="font-semibold text-neutral-800 mb-4">Lista de Filas</h3>
+                        <div id="queues-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                    </div>
                 </div>
-            </div>
-            <div class="panel">
-                <h3>Resultados</h3>
-                <div id="report-results" class="space-y-4"></div>
-            </div>
-        </div>
 
-        <!-- Settings Section -->
-        <div id="settings-section" class="panel space-y-6 hidden">
-            <h2>Configurações</h2>
-            <div class="grid grid-cols-1 lg:grid-cols-2">
-                <div class="panel">
-                    <h3>Departamento</h3>
-                    <button id="create-department-btn" class="btn-primary">Novo Departamento</button>
-                    <div id="departments-container" class="space-y-2"></div>
+                <!-- Tickets Section -->
+                <div id="tickets-section" class="hidden space-y-6">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-xl font-semibold text-neutral-800">Tickets</h2>
+                        <div class="flex space-x-4">
+                            <select id="ticket-source-filter" class="border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:border-primary-900" aria-label="Filtrar por origem do ticket">
+                                <option value="all">Todos</option>
+                                <option value="manual">Manual</option>
+                                <option value="totem">Totem</option>
+                            </select>
+                            <button id="generate-ticket-btn" class="px-4 py-2 bg-primary-900 text-white rounded-lg hover:bg-primary-800 transition-colors">Gerar Ticket</button>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-card p-6 border border-neutral-100">
+                        <h3 class="font-semibold text-neutral-800 mb-4">Lista de Tickets</h3>
+                        <div id="tickets-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                    </div>
                 </div>
-                <div class="panel">
-                    <h3>Membros</h3>
-                    <button id="add-member-btn" class="btn-primary">Adicionar Membro</button>
-                    <div id="members-container" class="space-y-2"></div>
+
+                <!-- Reports Section -->
+                <div id="reports-section" class="hidden space-y-6">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-xl font-semibold text-neutral-800">Relatórios</h2>
+                        <div class="flex space-x-4">
+                            <input type="date" id="report-date" class="border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:border-primary-900" aria-label="Selecionar data do relatório">
+                            <button id="generate-report-btn" class="px-4 py-2 bg-primary-900 text-white rounded-lg hover:bg-primary-800 transition-colors">Gerar Relatório</button>
+                            <button id="export-report-btn" class="px-4 py-2 bg-primary-900 text-white rounded-lg hover:bg-primary-800 transition-colors">Exportar</button>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-card p-6 border border-neutral-100">
+                        <h3 class="font-semibold text-neutral-800 mb-4">Resultados</h3>
+                        <div id="report-results" class="space-y-4"></div>
+                    </div>
                 </div>
-                <div class="panel">
-                    <h3>Horários</h3>
-                    <button id="create-schedule-btn" class="btn-primary">Novo Horário</button>
-                    <div id="schedules-container" class="space-y-2"></div>
-                </div>
-                <div class="panel">
-                    <h3>Guichês</h3>
-                    <button id="create-counter-btn" class="btn-primary">Novo Guichê</button>
-                    <div id="counters-container" class="space-y-2"></div>
-                </div>
-                <div class="panel">
-                    <h3>Chamadas</h3>
-                    <button id="call-settings-btn" class="btn-primary">Configurar Chamadas</button>
+
+                <!-- Settings Section -->
+                <div id="settings-section" class="hidden space-y-6">
+                    <h2 class="text-xl font-semibold text-neutral-800">Configurações</h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white rounded-xl shadow-card p-6 border border-neutral-100">
+                            <h3 class="font-semibold text-neutral-800 mb-4">Departamento</h3>
+                            <button id="create-department-btn" class="px-4 py-2 bg-primary-900 text-white rounded-lg hover:bg-primary-800 transition-colors">Novo Departamento</button>
+                            <div id="departments-container" class="space-y-2 mt-4"></div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-card p-6 border border-neutral-100">
+                            <h3 class="font-semibold text-neutral-800 mb-4">Membros</h3>
+                            <button id="add-member-btn" class="px-4 py-2 bg-primary-900 text-white rounded-lg hover:bg-primary-800 transition-colors">Adicionar Membro</button>
+                            <div id="members-container" class="space-y-2 mt-4"></div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-card p-6 border border-neutral-100">
+                            <h3 class="font-semibold text-neutral-800 mb-4">Horários</h3>
+                            <button id="create-schedule-btn" class="px-4 py-2 bg-primary-900 text-white rounded-lg hover:bg-primary-800 transition-colors">Novo Horário</button>
+                            <div id="schedules-container" class="space-y-2 mt-4"></div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-card p-6 border border-neutral-100">
+                            <h3 class="font-semibold text-neutral-800 mb-4">Guichês</h3>
+                            <button id="create-counter-btn" class="px-4 py-2 bg-primary-900 text-white rounded-lg hover:bg-primary-800 transition-colors">Novo Guichê</button>
+                            <div id="counters-container" class="space-y-2 mt-4"></div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-card p-6 border border-neutral-100">
+                            <h3 class="font-semibold text-neutral-800 mb-4">Chamadas</h3>
+                            <button id="call-settings-btn" class="px-4 py-2 bg-primary-900 text-white rounded-lg hover:bg-primary-800 transition-colors">Configurar Chamadas</button>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </main>
+        </main>
+    </div>
 
     <!-- Queue Modal -->
-    <div id="queue-modal" class="modal hidden">
-        <div class="modal-content">
-            <h3 id="queue-modal-title">Nova Fila</h3>
-            <form id="queue-form">
+    <div id="queue-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 max-w-lg w-full shadow-elevated">
+            <h3 id="queue-modal-title" class="text-lg font-semibold text-neutral-800 mb-4">Nova Fila</h3>
+            <form id="queue-form" class="space-y-4">
                 <input type="hidden" id="queue_id">
-                <div class="space-y-4">
-                    <div>
-                        <label for="queue-name">Nome da Fila</label>
-                        <input type="text" id="queue-name" required>
-                    </div>
-                    <div>
-                        <label for="queue-prefix">Prefixo</label>
-                        <input type="text" id="queue-prefix" required>
-                    </div>
-                    <div>
-                        <label for="queue-description">Descrição</label>
-                        <textarea id="queue-description"></textarea>
-                    </div>
-                    <div>
-                        <label for="queue-priority">Prioridade</label>
-                        <select id="queue-priority">
-                            <option value="normal">Normal</option>
-                            <option value="high">Alta</option>
-                            <option value="low">Baixa</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="num-counters">Número de Guichês</label>
-                        <input type="number" id="num-counters" required>
-                    </div>
-                    <div>
-                        <label for="queue-status">Status</label>
-                        <select id="queue-status">
-                            <option value="Aberto">Aberto</option>
-                            <option value="Fechado">Fechado</option>
-                        </select>
-                    </div>
+                <div>
+                    <label for="queue-name" class="text-sm font-medium text-neutral-700">Nome da Fila</label>
+                    <input type="text" id="queue-name" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900" required>
+                </div>
+                <div>
+                    <label for="queue-prefix" class="text-sm font-medium text-neutral-700">Prefixo</label>
+                    <input type="text" id="queue-prefix" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900" required>
+                </div>
+                <div>
+                    <label for="queue-description" class="text-sm font-medium text-neutral-700">Descrição</label>
+                    <textarea id="queue-description" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900"></textarea>
+                </div>
+                <div>
+                    <label for="queue-priority" class="text-sm font-medium text-neutral-700">Prioridade</label>
+                    <select id="queue-priority" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900">
+                        <option value="normal">Normal</option>
+                        <option value="high">Alta</option>
+                        <option value="low">Baixa</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="num-counters" class="text-sm font-medium text-neutral-700">Número de Guichês</label>
+                    <input type="number" id="num-counters" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900" required>
+                </div>
+                <div>
+                    <label for="queue-status" class="text-sm font-medium text-neutral-700">Status</label>
+                    <select id="queue-status" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900">
+                        <option value="Aberto">Aberto</option>
+                        <option value="Fechado">Fechado</option>
+                    </select>
                 </div>
                 <div class="flex justify-end space-x-2 mt-6">
-                    <button type="button" id="cancel-queue" class="btn-cancel">Cancelar</button>
-                    <button type="submit" class="btn-primary">Salvar</button>
+                    <button type="button" id="cancel-queue" class="px-4 py-2 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-primary-900 text-white rounded-lg hover:bg-primary-800 transition-colors">Salvar</button>
                 </div>
             </form>
-            <button id="close-queue-modal" class="absolute" aria-label="Fechar modal">
-                <svg width="24" height="24" fill="none" stroke="var(--secondary)" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+            <button id="close-queue-modal" class="absolute top-4 right-4 text-neutral-500 hover:text-neutral-700" aria-label="Fechar modal">
+                <i class="fas fa-times"></i>
             </button>
         </div>
     </div>
 
     <!-- Ticket Modal -->
-    <div id="ticket-modal" class="modal hidden">
-        <div class="modal-content">
-            <h3>Gerar Ticket</h3>
-            <form id="ticket-form">
-                <div class="space-y-4">
-                    <div>
-                        <label for="ticket-queue">Fila</label>
-                        <select id="ticket-queue" required></select>
-                    </div>
-                    <div>
-                        <label for="ticket-service">Serviço</label>
-                        <input type="text" id="ticket-service" required>
-                    </div>
-                    <div>
-                        <label for="ticket-priority">Prioridade</label>
-                        <select id="ticket-priority">
-                            <option value="normal">Normal</option>
-                            <option value="high">Alta</option>
-                            <option value="low">Baixa</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="ticket-notes">Observações</label>
-                        <textarea id="ticket-notes"></textarea>
-                    </div>
+    <div id="ticket-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 max-w-lg w-full shadow-elevated">
+            <h3 class="text-lg font-semibold text-neutral-800 mb-4">Gerar Ticket</h3>
+            <form id="ticket-form" class="space-y-4">
+                <div>
+                    <label for="ticket-queue" class="text-sm font-medium text-neutral-700">Fila</label>
+                    <select id="ticket-queue" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900" required></select>
+                </div>
+                <div>
+                    <label for="ticket-service" class="text-sm font-medium text-neutral-700">Serviço</label>
+                    <input type="text" id="ticket-service" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900" required>
+                </div>
+                <div>
+                    <label for="ticket-priority" class="text-sm font-medium text-neutral-700">Prioridade</label>
+                    <select id="ticket-priority" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900">
+                        <option value="normal">Normal</option>
+                        <option value="high">Alta</option>
+                        <option value="low">Baixa</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="ticket-notes" class="text-sm font-medium text-neutral-700">Observações</label>
+                    <textarea id="ticket-notes" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900"></textarea>
                 </div>
                 <div class="flex justify-end space-x-2 mt-6">
-                    <button type="button" id="cancel-ticket" class="btn-cancel">Cancelar</button>
-                    <button type="submit" class="btn-primary">Gerar</button>
+                    <button type="button" id="cancel-ticket" class="px-4 py-2 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-primary-900 text-white rounded-lg hover:bg-primary-800 transition-colors">Gerar</button>
                 </div>
             </form>
-            <button id="close-ticket-modal" class="absolute" aria-label="Fechar modal">
-                <svg width="24" height="24" fill="none" stroke="var(--secondary)" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+            <button id="close-ticket-modal" class="absolute top-4 right-4 text-neutral-500 hover:text-neutral-700" aria-label="Fechar modal">
+                <i class="fas fa-times"></i>
             </button>
         </div>
     </div>
 
     <!-- Department Modal -->
-    <div id="department-modal" class="modal hidden">
-        <div class="modal-content">
-            <h3>Novo Departamento</h3>
-            <form id="department-form">
-                <div class="space-y-4">
-                    <div>
-                        <label for="dept-name">Nome</label>
-                        <input type="text" id="dept-name" required>
-                    </div>
-                    <div>
-                        <label for="dept-sector">Setor</label>
-                        <input type="text" id="dept-sector" required>
-                    </div>
+    <div id="department-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 max-w-lg w-full shadow-elevated">
+            <h3 class="text-lg font-semibold text-neutral-800 mb-4">Novo Departamento</h3>
+            <form id="department-form" class="space-y-4">
+                <div>
+                    <label for="dept-name" class="text-sm font-medium text-neutral-700">Nome</label>
+                    <input type="text" id="dept-name" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900" required>
+                </div>
+                <div>
+                    <label for="dept-sector" class="text-sm font-medium text-neutral-700">Setor</label>
+                    <input type="text" id="dept-sector" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900" required>
                 </div>
                 <div class="flex justify-end space-x-2 mt-6">
-                    <button type="button" id="cancel-department-btn" class="btn-cancel">Cancelar</button>
-                    <button type="submit" class="btn-primary">Salvar</button>
+                    <button type="button" id="cancel-department-btn" class="px-4 py-2 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-primary-900 text-white rounded-lg hover:bg-primary-800 transition-colors">Salvar</button>
                 </div>
             </form>
-            <button id="close-department-modal" class="absolute" aria-label="Fechar modal">
-                <svg width="24" height="24" fill="none" stroke="var(--secondary)" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+            <button id="close-department-modal" class="absolute top-4 right-4 text-neutral-500 hover:text-neutral-700" aria-label="Fechar modal">
+                <i class="fas fa-times"></i>
             </button>
         </div>
     </div>
 
     <!-- Member Modal -->
-    <div id="member-modal" class="modal hidden">
-        <div class="modal-content">
-            <h3>Adicionar Membro</h3>
-            <form id="member-form">
-                <div class="space-y-4">
-                    <div>
-                        <label for="member-email">Email</label>
-                        <input type="email" id="member-email" required>
-                    </div>
-                    <div>
-                        <label for="member-name">Nome</label>
-                        <input type="text" id="member-name" required>
-                    </div>
-                    <div>
-                        <label for="member-role">Papel</label>
-                        <select id="member-role">
-                            <option value="attendant">Atendente</option>
-                            <option value="branch_admin">Administrador</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="member-counter">Guichê</label>
-                        <select id="member-counter">
-                            <option value="">Nenhum</option>
-                        </select>
-                    </div>
+    <div id="member-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 max-w-lg w-full shadow-elevated">
+            <h3 class="text-lg font-semibold text-neutral-800 mb-4">Adicionar Membro</h3>
+            <form id="member-form" class="space-y-4">
+                <div>
+                    <label for="member-email" class="text-sm font-medium text-neutral-700">Email</label>
+                    <input type="email" id="member-email" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900" required>
+                </div>
+                <div>
+                    <label for="member-name" class="text-sm font-medium text-neutral-700">Nome</label>
+                    <input type="text" id="member-name" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900" required>
+                </div>
+                <div>
+                    <label for="member-role" class="text-sm font-medium text-neutral-700">Papel</label>
+                    <select id="member-role" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900">
+                        <option value="attendant">Atendente</option>
+                        <option value="branch_admin">Administrador</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="member-counter" class="text-sm font-medium text-neutral-700">Guichê</label>
+                    <select id="member-counter" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900">
+                        <option value="">Nenhum</option>
+                    </select>
                 </div>
                 <div class="flex justify-end space-x-2 mt-6">
-                    <button type="button" id="cancel-member" class="btn-cancel">Cancelar</button>
-                    <button type="submit" class="btn-primary">Adicionar</button>
+                    <button type="button" id="cancel-member" class="px-4 py-2 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-primary-900 text-white rounded-lg hover:bg-primary-800 transition-colors">Adicionar</button>
                 </div>
             </form>
-            <button id="close-member-modal" class="absolute" aria-label="Fechar modal">
-                <svg width="24" height="24" fill="none" stroke="var(--secondary)" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+            <button id="close-member-modal" class="absolute top-4 right-4 text-neutral-500 hover:text-neutral-700" aria-label="Fechar modal">
+                <i class="fas fa-times"></i>
             </button>
         </div>
     </div>
 
     <!-- Schedule Modal -->
-    <div id="schedule-modal" class="modal hidden">
-        <div class="modal-content">
-            <h3>Novo Horário</h3>
-            <form id="schedule-form">
-                <div class="space-y-4">
-                    <div>
-                        <label for="schedule-weekday">Dia da Semana</label>
-                        <select id="schedule-weekday" required>
-                            <option value="Segunda-feira">Segunda-feira</option>
-                            <option value="Terça-feira">Terça-feira</option>
-                            <option value="Quarta-feira">Quarta-feira</option>
-                            <option value="Quinta-feira">Quinta-feira</option>
-                            <option value="Sexta-feira">Sexta-feira</option>
-                            <option value="Sábado">Sábado</option>
-                            <option value="Domingo">Domingo</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="schedule-open-time">Horário de Abertura</label>
-                        <input type="time" id="schedule-open-time" required>
-                    </div>
-                    <div>
-                        <label for="schedule-end-time">Horário de Fechamento</label>
-                        <input type="time" id="schedule-end-time" required>
-                    </div>
-                    <div>
-                        <label><input type="checkbox" id="schedule-is-closed"> Fechado</label>
-                    </div>
+    <div id="schedule-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 max-w-lg w-full shadow-elevated">
+            <h3 class="text-lg font-semibold text-neutral-800 mb-4">Novo Horário</h3>
+            <form id="schedule-form" class="space-y-4">
+                <div>
+                    <label for="schedule-weekday" class="text-sm font-medium text-neutral-700">Dia da Semana</label>
+                    <select id="schedule-weekday" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900" required>
+                        <option value="Segunda-feira">Segunda-feira</option>
+                        <option value="Terça-feira">Terça-feira</option>
+                        <option value="Quarta-feira">Quarta-feira</option>
+                        <option value="Quinta-feira">Quinta-feira</option>
+                        <option value="Sexta-feira">Sexta-feira</option>
+                        <option value="Sábado">Sábado</option>
+                        <option value="Domingo">Domingo</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="schedule-open-time" class="text-sm font-medium text-neutral-700">Horário de Abertura</label>
+                    <input type="time" id="schedule-open-time" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900" required>
+                </div>
+                <div>
+                    <label for="schedule-end-time" class="text-sm font-medium text-neutral-700">Horário de Fechamento</label>
+                    <input type="time" id="schedule-end-time" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900" required>
+                </div>
+                <div>
+                    <label class="flex items-center text-sm font-medium text-neutral-700">
+                        <input type="checkbox" id="schedule-is-closed" class="mr-2"> Fechado
+                    </label>
                 </div>
                 <div class="flex justify-end space-x-2 mt-6">
-                    <button type="button" id="cancel-schedule-btn" class="btn-cancel">Cancelar</button>
-                    <button type="submit" class="btn-primary">Salvar</button>
+                    <button type="button" id="cancel-schedule-btn" class="px-4 py-2 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-primary-900 text-white rounded-lg hover:bg-primary-800 transition-colors">Salvar</button>
                 </div>
             </form>
-            <button id="close-schedule-modal" class="absolute" aria-label="Fechar modal">
-                <svg width="24" height="24" fill="none" stroke="var(--secondary)" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+            <button id="close-schedule-modal" class="absolute top-4 right-4 text-neutral-500 hover:text-neutral-700" aria-label="Fechar modal">
+                <i class="fas fa-times"></i>
             </button>
         </div>
     </div>
 
     <!-- Assign Queue Modal -->
-    <div id="assign-queue-modal" class="modal hidden">
-        <div class="modal-content">
-            <h3>Atribuir Fila</h3>
-            <form id="assign-queue-form">
-                <div class="space-y-4">
-                    <div>
-                        <label for="assign-queue-id">Fila</label>
-                        <select id="assign-queue-id" required></select>
-                    </div>
+    <div id="assign-queue-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 max-w-lg w-full shadow-elevated">
+            <h3 class="text-lg font-semibold text-neutral-800 mb-4">Atribuir Fila</h3>
+            <form id="assign-queue-form" class="space-y-4">
+                <div>
+                    <label for="assign-queue-id" class="text-sm font-medium text-neutral-700">Fila</label>
+                    <select id="assign-queue-id" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900" required></select>
                 </div>
                 <div class="flex justify-end space-x-2 mt-6">
-                    <button type="button" id="cancel-assign-queue-btn" class="btn-cancel">Cancelar</button>
-                    <button type="submit" class="btn-primary">Atribuir</button>
+                    <button type="button" id="cancel-assign-queue-btn" class="px-4 py-2 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-primary-900 text-white rounded-lg hover:bg-primary-800 transition-colors">Atribuir</button>
                 </div>
             </form>
-            <button id="close-assign-queue-modal" class="absolute" aria-label="Fechar modal">
-                <svg width="24" height="24" fill="none" stroke="var(--secondary)" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+            <button id="close-assign-queue-modal" class="absolute top-4 right-4 text-neutral-500 hover:text-neutral-700" aria-label="Fechar modal">
+                <i class="fas fa-times"></i>
             </button>
         </div>
     </div>
 
     <!-- Counter Modal -->
-    <div id="counter-modal" class="modal hidden">
-        <div class="modal-content">
-            <h3 id="counter-modal-title">Novo Guichê</h3>
-            <form id="counter-form">
+    <div id="counter-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 max-w-lg w-full shadow-elevated">
+            <h3 id="counter-modal-title" class="text-lg font-semibold text-neutral-800 mb-4">Novo Guichê</h3>
+            <form id="counter-form" class="space-y-4">
                 <input type="hidden" id="counter_id">
-                <div class="space-y-4">
-                    <div>
-                        <label for="counter-number">Número</label>
-                        <input type="text" id="counter-number" required>
-                    </div>
-                    <div>
-                        <label for="counter-attendant">Atendente</label>
-                        <select id="counter-attendant"></select>
-                    </div>
-                    <div>
-                        <label for="counter-status">Status</label>
-                        <select id="counter-status">
-                            <option value="Ativo">Ativo</option>
-                            <option value="Inativo">Inativo</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="counter-location">Localização</label>
-                        <input type="text" id="counter-location">
-                    </div>
+                <div>
+                    <label for="counter-number" class="text-sm font-medium text-neutral-700">Número</label>
+                    <input type="text" id="counter-number" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900" required>
+                </div>
+                <div>
+                    <label for="counter-attendant" class="text-sm font-medium text-neutral-700">Atendente</label>
+                    <select id="counter-attendant" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900"></select>
+                </div>
+                <div>
+                    <label for="counter-status" class="text-sm font-medium text-neutral-700">Status</label>
+                    <select id="counter-status" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900">
+                        <option value="Ativo">Ativo</option>
+                        <option value="Inativo">Inativo</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="counter-location" class="text-sm font-medium text-neutral-700">Localização</label>
+                    <input type="text" id="counter-location" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900">
                 </div>
                 <div class="flex justify-end space-x-2 mt-6">
-                    <button type="button" id="cancel-counter" class="btn-cancel">Cancelar</button>
-                    <button type="submit" class="btn-primary">Salvar</button>
+                    <button type="button" id="cancel-counter" class="px-4 py-2 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-primary-900 text-white rounded-lg hover:bg-primary-800 transition-colors">Salvar</button>
                 </div>
             </form>
-            <button id="close-counter-modal" class="absolute" aria-label="Fechar modal">
-                <svg width="24" height="24" fill="none" stroke="var(--secondary)" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+            <button id="close-counter-modal" class="absolute top-4 right-4 text-neutral-500 hover:text-neutral-700" aria-label="Fechar modal">
+                <i class="fas fa-times"></i>
             </button>
         </div>
     </div>
 
     <!-- Call Settings Modal -->
-    <div id="call-settings-modal" class="modal hidden">
-        <div class="modal-content">
-            <h3>Configurações de Chamada</h3>
-            <form id="call-settings-form">
-                <div class="space-y-4">
-                    <div>
-                        <label for="call-priority">Prioridade</label>
-                        <select id="call-priority">
-                            <option value="fifo">FIFO</option>
-                            <option value="priority">Prioridade</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="call-counter">Guichê</label>
-                        <select id="call-counter"></select>
-                    </div>
-                    <div>
-                        <label for="call-sound">Som</label>
-                        <select id="call-sound">
-                            <option value="default">Padrão</option>
-                            <option value="beep">Beep</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="call-interval">Intervalo (segundos)</label>
-                        <input type="number" id="call-interval" required>
-                    </div>
+    <div id="call-settings-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 max-w-lg w-full shadow-elevated">
+            <h3 class="text-lg font-semibold text-neutral-800 mb-4">Configurações de Chamada</h3>
+            <form id="call-settings-form" class="space-y-4">
+                <div>
+                    <label for="call-priority" class="text-sm font-medium text-neutral-700">Prioridade</label>
+                    <select id="call-priority" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900">
+                        <option value="fifo">FIFO</option>
+                        <option value="priority">Prioridade</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="call-counter" class="text-sm font-medium text-neutral-700">Guichê</label>
+                    <select id="call-counter" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900"></select>
+                </div>
+                <div>
+                    <label for="call-sound" class="text-sm font-medium text-neutral-700">Som</label>
+                    <select id="call-sound" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900">
+                        <option value="default">Padrão</option>
+                        <option value="beep">Beep</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="call-interval" class="text-sm font-medium text-neutral-700">Intervalo (segundos)</label>
+                    <input type="number" id="call-interval" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900" required>
                 </div>
                 <div class="flex justify-end space-x-2 mt-6">
-                    <button type="button" id="cancel-call-settings" class="btn-cancel">Cancelar</button>
-                    <button type="submit" class="btn-primary">Salvar</button>
+                    <button type="button" id="cancel-call-settings" class="px-4 py-2 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-primary-900 text-white rounded-lg hover:bg-primary-800 transition-colors">Salvar</button>
                 </div>
             </form>
-            <button id="close-call-settings-modal" class="absolute" aria-label="Fechar modal">
-                <svg width="24" height="24" fill="none" stroke="var(--secondary)" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+            <button id="close-call-settings-modal" class="absolute top-4 right-4 text-neutral-500 hover:text-neutral-700" aria-label="Fechar modal">
+                <i class="fas fa-times"></i>
             </button>
         </div>
     </div>
 
     <!-- Export Report Modal -->
-    <div id="export-report-modal" class="modal hidden">
-        <div class="modal-content">
-            <h3>Exportar Relatório</h3>
-            <form id="export-report-form">
-                <div class="space-y-4">
-                    <div>
-                        <label for="export-format">Formato</label>
-                        <select id="export-format">
-                            <option value="pdf">PDF</option>
-                            <option value="csv">CSV</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="export-queue">Fila</label>
-                        <select id="export-queue"></select>
-                    </div>
-                    <div>
-                        <label for="export-start-date">Data Inicial</label>
-                        <input type="date" id="export-start-date" required>
-                    </div>
-                    <div>
-                        <label for="export-end-date">Data Final</label>
-                        <input type="date" id="export-end-date" required>
-                    </div>
+    <div id="export-report-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 max-w-lg w-full shadow-elevated">
+            <h3 class="text-lg font-semibold text-neutral-800 mb-4">Exportar Relatório</h3>
+            <form id="export-report-form" class="space-y-4">
+                <div>
+                    <label for="export-format" class="text-sm font-medium text-neutral-700">Formato</label>
+                    <select id="export-format" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900">
+                        <option value="pdf">PDF</option>
+                        <option value="csv">CSV</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="export-queue" class="text-sm font-medium text-neutral-700">Fila</label>
+                    <select id="export-queue" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900"></select>
+                </div>
+                <div>
+                    <label for="export-start-date" class="text-sm font-medium text-neutral-700">Data Inicial</label>
+                    <input type="date" id="export-start-date" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900" required>
+                </div>
+                <div>
+                    <label for="export-end-date" class="text-sm font-medium text-neutral-700">Data Final</label>
+                    <input type="date" id="export-end-date" class="w-full border border-neutral-200 rounded-lg px-3 py-2 mt-1 focus:border-primary-900" required>
                 </div>
                 <div class="flex justify-end space-x-2 mt-6">
-                    <button type="button" id="cancel-export-report" class="btn-cancel">Cancelar</button>
-                    <button type="submit" class="btn-primary">Exportar</button>
+                    <button type="button" id="cancel-export-report" class="px-4 py-2 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-primary-900 text-white rounded-lg hover:bg-primary-800 transition-colors">Exportar</button>
                 </div>
             </form>
-            <button id="close-export-report-modal" class="absolute" aria-label="Fechar modal">
-                <svg width="24" height="24" fill="none" stroke="var(--secondary)" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+            <button id="close-export-report-modal" class="absolute top-4 right-4 text-neutral-500 hover:text-neutral-700" aria-label="Fechar modal">
+                <i class="fas fa-times"></i>
             </button>
         </div>
     </div>
 
     <!-- Ticket Details Modal -->
-    <div id="ticket-details-modal" class="modal hidden">
-        <div class="modal-content">
-            <h3>Detalhes do Ticket</h3>
+    <div id="ticket-details-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 max-w-lg w-full shadow-elevated">
+            <h3 class="text-lg font-semibold text-neutral-800 mb-4">Detalhes do Ticket</h3>
             <div class="space-y-2">
                 <p><strong>Número:</strong> <span id="ticket-details-number"></span></p>
                 <p><strong>Fila:</strong> <span id="ticket-details-queue"></span></p>
@@ -989,12 +725,10 @@
                 <p><strong>Observações:</strong> <span id="ticket-details-notes"></span></p>
             </div>
             <div class="flex justify-end mt-6">
-                <button id="close-ticket-details" class="btn-primary">Fechar</button>
+                <button id="close-ticket-details" class="px-4 py-2 bg-primary-900 text-white rounded-lg hover:bg-primary-800 transition-colors">Fechar</button>
             </div>
-            <button id="close-ticket-details-modal" class="absolute" aria-label="Fechar modal">
-                <svg width="24" height="24" fill="none" stroke="var(--secondary)" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+            <button id="close-ticket-details-modal" class="absolute top-4 right-4 text-neutral-500 hover:text-neutral-700" aria-label="Fechar modal">
+                <i class="fas fa-times"></i>
             </button>
         </div>
     </div>
@@ -1006,18 +740,21 @@
     <script src="/js/login.js"></script>
     <script src="/js/branch-admin.js"></script>
     <script>
-        // Script para ativar/desativar o menu flutuante
-        const toggle = document.getElementById('sidebar-toggle');
-        const menu = document.getElementById('sidebar');
-        toggle.addEventListener('click', () => {
-            menu.classList.toggle('active');
+        // Script para alternar sidebar
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const mobileSidebarToggle = document.getElementById('mobile-sidebar-toggle');
+        
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('sidebar-collapsed');
+            sidebarToggle.querySelector('i').classList.toggle('fa-chevron-left');
+            sidebarToggle.querySelector('i').classList.toggle('fa-chevron-right');
         });
-        // Fechar menu ao clicar fora
-        document.addEventListener('click', (e) => {
-            if (!menu.contains(e.target) && !toggle.contains(e.target)) {
-                menu.classList.remove('active');
-            }
+
+        mobileSidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('-translate-x-full');
         });
+
         // Ativar/desativar modais
         document.querySelectorAll('.modal').forEach(modal => {
             modal.addEventListener('click', (e) => {
@@ -1026,13 +763,33 @@
                     modal.classList.add('hidden');
                 }
             });
-            const closeButtons = modal.querySelectorAll('[id*="close-"]');
+            const closeButtons = modal.querySelectorAll('[id*="close-"], [id*="cancel-"]');
             closeButtons.forEach(btn => {
                 btn.addEventListener('click', () => {
                     modal.classList.remove('active');
                     modal.classList.add('hidden');
                 });
             });
+        });
+
+        // Atualizar título da página
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const title = btn.querySelector('.sidebar-text').textContent;
+                document.getElementById('page-title').textContent = title;
+                document.querySelectorAll('main > div').forEach(section => section.classList.add('hidden'));
+                document.getElementById(`${btn.id.replace('nav-', '')}-section`).classList.remove('hidden');
+            });
+        });
+
+        // Atualizar data atual
+        document.getElementById('current-date').textContent = new Date().toLocaleDateString('pt-BR', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
         });
     </script>
 </body>
