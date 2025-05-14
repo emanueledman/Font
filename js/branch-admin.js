@@ -56,35 +56,116 @@ const Utils = {
         window.URL.revokeObjectURL(url);
     }
 };
-
 class QueueManager {
+    constructor() {
+        this.initEventListeners();
+        this.currentPage = 1;
+        this.perPage = 10;
+        this.filterText = '';
+    }
+
+    initEventListeners() {
+        // Filtro de busca
+        document.getElementById('queue-filter').addEventListener('input', (e) => {
+            this.filterText = e.target.value.toLowerCase();
+            this.loadQueues();
+        });
+
+        // Botão para abrir o modal de criação
+        document.getElementById('create-queue-btn').addEventListener('click', () => {
+            this.openCreateQueueModal();
+        });
+
+        // Formulário do modal
+        document.getElementById('queue-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.submitQueueForm();
+        });
+
+        // Botões de cancelar e fechar modal
+        document.getElementById('cancel-queue').addEventListener('click', () => {
+            document.getElementById('queue-modal').classList.add('hidden');
+        });
+        document.getElementById('close-queue-modal').addEventListener('click', () => {
+            document.getElementById('queue-modal').classList.add('hidden');
+        });
+    }
+
     async loadQueues() {
         try {
             Utils.showLoading(true, 'Carregando filas...');
             const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
             const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/queues`, {
-                params: { refresh: true }
+                params: { refresh: true, page: this.currentPage, per_page: this.perPage }
             });
             const queues = response.data;
+
             const container = document.getElementById('queues-container');
             container.innerHTML = '';
-            queues.forEach(queue => {
+
+            // Filtrar filas com base no texto de busca
+            const filteredQueues = queues.filter(queue =>
+                queue.service_name.toLowerCase().includes(this.filterText) ||
+                queue.prefix.toLowerCase().includes(this.filterText) ||
+                queue.department_name.toLowerCase().includes(this.filterText)
+            );
+
+            if (filteredQueues.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center">Nenhuma fila encontrada.</p>';
+                return;
+            }
+
+            filteredQueues.forEach(queue => {
+                const statusColor = {
+                    'Aberto': 'bg-green-100 text-green-800',
+                    'Pausado': 'bg-yellow-100 text-yellow-800',
+                    'Fechado': 'bg-red-100 text-red-800',
+                    'Lotado': 'bg-orange-100 text-orange-800'
+                }[queue.status] || 'bg-gray-100 text-gray-800';
+
                 const queueCard = document.createElement('div');
-                queueCard.className = 'bg-white rounded-xl shadow-lg p-4 border border-gray-100';
+                queueCard.className = 'bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow';
                 queueCard.innerHTML = `
-                    <h3 class="text-lg font-semibold">${queue.service_name}</h3>
-                    <p class="text-sm text-gray-500">Prefixo: ${queue.prefix}</p>
-                    <p class="text-sm text-gray-500">Departamento: ${queue.department_name}</p>
-                    <p class="text-sm text-gray-500">Status: ${queue.status}</p>
-                    <p class="text-sm text-gray-500">Tempo de espera estimado: ${queue.estimated_wait_time ? queue.estimated_wait_time + ' min' : 'N/A'}</p>
-                    <div class="mt-2 space-x-2">
-                        <button class="edit-queue-btn text-blue-600 hover:text-blue-800" data-id="${queue.id}">Editar</button>
-                        <button class="call-ticket-btn text-green-600 hover:text-green-800" data-id="${queue.id}">Chamar</button>
-                        <button class="pause-queue-btn text-yellow-600 hover:text-yellow-800" data-id="${queue.id}">${queue.status === 'Pausado' ? 'Retomar' : 'Pausar'}</button>
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-semibold text-gray-800">${queue.service_name}</h3>
+                        <span class="px-3 py-1 rounded-full text-sm font-medium ${statusColor}">${queue.status}</span>
+                    </div>
+                    <p class="text-sm text-gray-600 mt-1">Prefixo: ${queue.prefix}</p>
+                    <p class="text-sm text-gray-600">Departamento: ${queue.department_name}</p>
+                    <p class="text-sm text-gray-600">Tickets Ativos: ${queue.active_tickets}/${queue.daily_limit}</p>
+                    <p class="text-sm text-gray-600">Guichês: ${queue.num_counters}</p>
+                    <p class="text-sm text-gray-600">Tempo de Espera Estimado: ${queue.estimated_wait_time ? queue.estimated_wait_time + ' min' : 'N/A'}</p>
+                    <div class="mt-4 flex space-x-3">
+                        <button class="edit-queue-btn flex items-center text-blue-600 hover:text-blue-800" data-id="${queue.id}">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                            Editar
+                        </button>
+                        <button class="call-ticket-btn flex items-center text-green-600 hover:text-green-800" data-id="${queue.id}">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                            </svg>
+                            Chamar
+                        </button>
+                        <button class="pause-queue-btn flex items-center text-yellow-600 hover:text-yellow-800" data-id="${queue.id}">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${queue.status === 'Pausado' ? 'M5 3v18m14-18v18' : 'M10 9v6m4-6v6'}" />
+                            </svg>
+                            ${queue.status === 'Pausado' ? 'Retomar' : 'Pausar'}
+                        </button>
+                        <button class="totem-ticket-btn flex items-center text-purple-600 hover:text-purple-800" data-id="${queue.id}">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                            Gerar Ticket Totem
+                        </button>
                     </div>
                 `;
                 container.appendChild(queueCard);
             });
+
+            // Adicionar event listeners
             document.querySelectorAll('.edit-queue-btn').forEach(btn => {
                 btn.addEventListener('click', () => this.editQueue(btn.dataset.id));
             });
@@ -94,6 +175,9 @@ class QueueManager {
             document.querySelectorAll('.pause-queue-btn').forEach(btn => {
                 btn.addEventListener('click', () => this.toggleQueuePause(btn.dataset.id));
             });
+            document.querySelectorAll('.totem-ticket-btn').forEach(btn => {
+                btn.addEventListener('click', () => this.generateTotemTicket(btn.dataset.id));
+            });
         } catch (error) {
             console.error('Erro ao carregar filas:', error);
             Utils.showToast('Erro ao carregar filas', 'error');
@@ -102,17 +186,80 @@ class QueueManager {
         }
     }
 
-    async createQueue(data) {
+    async loadDepartmentsAndServices() {
         try {
-            Utils.showLoading(true, 'Criando fila...');
             const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-            const response = await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/queues`, data);
-            Utils.showToast(response.data.message || 'Fila criada com sucesso', 'success');
+            const [deptResponse, serviceResponse] = await Promise.all([
+                axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/departments`),
+                axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/services`) // Supõe uma rota para serviços
+            ]);
+
+            const deptSelect = document.getElementById('queue-department');
+            const serviceSelect = document.getElementById('queue-service');
+            deptSelect.innerHTML = '<option value="">Selecione um departamento</option>';
+            serviceSelect.innerHTML = '<option value="">Selecione um serviço</option>';
+
+            deptResponse.data.forEach(dept => {
+                const option = document.createElement('option');
+                option.value = dept.id;
+                option.textContent = dept.name;
+                deptSelect.appendChild(option);
+            });
+
+            serviceResponse.data.forEach(service => {
+                const option = document.createElement('option');
+                option.value = service.id;
+                option.textContent = service.name;
+                serviceSelect.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Erro ao carregar departamentos e serviços:', error);
+            Utils.showToast('Erro ao carregar opções', 'error');
+        }
+    }
+
+    openCreateQueueModal() {
+        document.getElementById('queue-modal-title').textContent = 'Nova Fila';
+        document.getElementById('queue-form').reset();
+        document.getElementById('queue_id').value = '';
+        document.getElementById('queue-modal').classList.remove('hidden');
+        this.loadDepartmentsAndServices();
+    }
+
+    async submitQueueForm() {
+        const form = document.getElementById('queue-form');
+        const data = {
+            department_id: form.department_id.value,
+            service_id: form.service_id.value,
+            prefix: form.prefix.value,
+            daily_limit: parseInt(form.daily_limit.value),
+            num_counters: parseInt(form.num_counters.value)
+        };
+
+        // Validação básica
+        if (!data.department_id || !data.service_id || !data.prefix || data.daily_limit <= 0 || data.num_counters <= 0) {
+            Utils.showToast('Preencha todos os campos corretamente', 'error');
+            return;
+        }
+
+        try {
+            Utils.showLoading(true, 'Salvando fila...');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            const queueId = form.queue_id.value;
+            if (queueId) {
+                // Atualizar fila (PUT)
+                await axios.put(`${API_BASE}/api/branch_admin/branches/${branchId}/queues/${queueId}`, data);
+                Utils.showToast('Fila atualizada com sucesso', 'success');
+            } else {
+                // Criar nova fila (POST)
+                await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/queues`, data);
+                Utils.showToast('Fila criada com sucesso', 'success');
+            }
             document.getElementById('queue-modal').classList.add('hidden');
             this.loadQueues();
         } catch (error) {
-            console.error('Erro ao criar fila:', error);
-            Utils.showToast(error.response?.data?.error || 'Erro ao criar fila', 'error');
+            console.error('Erro ao salvar fila:', error);
+            Utils.showToast(error.response?.data?.error || 'Erro ao salvar fila', 'error');
         } finally {
             Utils.showLoading(false);
         }
@@ -125,12 +272,14 @@ class QueueManager {
             const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/queues`);
             const queue = response.data.find(q => q.id === queueId);
             if (!queue) throw new Error('Fila não encontrada');
+
+            await this.loadDepartmentsAndServices();
             document.getElementById('queue-modal-title').textContent = 'Editar Fila';
-            document.getElementById('queue-name').value = queue.service_name;
+            document.getElementById('queue-department').value = queue.department_id;
+            document.getElementById('queue-service').value = queue.service_id;
             document.getElementById('queue-prefix').value = queue.prefix;
-            document.getElementById('queue-description').value = queue.description || '';
-            document.getElementById('num-counters').value = queue.num_counters;
             document.getElementById('daily-limit').value = queue.daily_limit;
+            document.getElementById('num-counters').value = queue.num_counters;
             document.getElementById('queue_id').value = queue.id;
             document.getElementById('queue-modal').classList.remove('hidden');
         } catch (error) {
@@ -145,8 +294,14 @@ class QueueManager {
         try {
             Utils.showLoading(true, 'Atualizando status da fila...');
             const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-            const response = await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/queues/${queueId}/pause`);
-            Utils.showToast(response.data.message || 'Status da fila atualizado', 'success');
+            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/queues`);
+            const queue = response.data.find(q => q.id === queueId);
+            if (!queue) throw new Error('Fila não encontrada');
+
+            const isPaused = queue.status === 'Pausado';
+            const data = isPaused ? { daily_limit: queue.daily_limit || 100 } : { daily_limit: 0 };
+            await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/queues/${queueId}/pause`, data);
+            Utils.showToast(`Fila ${isPaused ? 'retomada' : 'pausada'} com sucesso`, 'success');
             this.loadQueues();
         } catch (error) {
             console.error('Erro ao pausar/retomar fila:', error);
