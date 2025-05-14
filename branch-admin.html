@@ -7,13 +7,13 @@
     <title>Painel do Gestor - Fila Fácil</title>
     <style>
         :root {
-            --primary: #0f766e;
-            --secondary: #64748b;
-            --bg: #f8fafc;
-            --card-bg: #ffffff;
-            --accent: #f472b6;
-            --success: #10b981;
-            --border: #e2e8f0;
+            --primary: #06b6d4;
+            --secondary: #ec4899;
+            --bg: #0f172a;
+            --panel-bg: #1e293b;
+            --text: #f8fafc;
+            --accent: #22d3ee;
+            --success: #34d399;
         }
         * {
             box-sizing: border-box;
@@ -23,179 +23,216 @@
         body {
             font-family: system-ui, -apple-system, sans-serif;
             background: var(--bg);
-            color: var(--secondary);
-            display: flex;
+            color: var(--text);
             min-height: 100vh;
-            overflow-x: hidden;
+            overflow: hidden;
+            perspective: 1000px;
         }
-        .sidebar {
-            width: 80px;
-            background: var(--card-bg);
-            border-radius: 0 16px 16px 0;
-            padding: 24px 16px;
-            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        .menu-container {
             position: fixed;
-            top: 0;
-            bottom: 0;
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
-            z-index: 10;
+            top: 32px;
+            left: 32px;
+            z-index: 1000;
         }
-        .sidebar.w-64 {
-            width: 256px;
-        }
-        .sidebar h1 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--primary);
-            margin-bottom: 2rem;
-        }
-        .sidebar nav ul {
-            list-style: none;
-        }
-        .sidebar nav li {
-            margin-bottom: 12px;
-        }
-        .sidebar button {
-            width: 100%;
-            padding: 12px;
-            background: transparent;
+        .menu-toggle {
+            background: var(--panel-bg);
             border: none;
-            border-radius: 8px;
-            color: var(--secondary);
-            text-align: left;
+            border-radius: 50%;
+            width: 64px;
+            height: 64px;
             cursor: pointer;
             display: flex;
             align-items: center;
-            transition: all 0.2s ease;
+            justify-content: center;
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.5);
+            transition: transform 0.3s ease;
         }
-        .sidebar button:hover, .sidebar button.active {
-            background: var(--primary);
-            color: #fff;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-        .sidebar button svg {
-            width: 28px;
-            height: 28px;
-            margin-right: 12px;
-            transition: transform 0.2s;
-        }
-        .sidebar button:hover svg {
+        .menu-toggle:hover {
             transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(6, 182, 212, 0.7);
         }
-        .sidebar .notification-badge {
-            background: var(--accent);
-            color: #fff;
-            width: 24px;
-            height: 24px;
+        .menu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform: scale(0);
+            transform-origin: center;
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        .menu.active {
+            transform: scale(1);
+        }
+        .menu ul {
+            list-style: none;
+            display: grid;
+            grid-template: repeat(2, 1fr) / repeat(3, 1fr);
+            gap: 16px;
+            background: var(--panel-bg);
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 0 40px rgba(6, 182, 212, 0.3);
+        }
+        .menu button {
+            background: transparent;
+            border: none;
+            color: var(--text);
+            cursor: pointer;
+            padding: 16px;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .menu button:hover, .menu button.active {
+            background: var(--primary);
+            transform: translateZ(20px);
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.5);
+        }
+        .menu button svg {
+            width: 32px;
+            height: 32px;
+        }
+        .menu button span {
+            position: absolute;
+            bottom: -24px;
+            font-size: 0.75rem;
+            color: var(--text);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .menu button:hover span {
+            opacity: 1;
+        }
+        .notification-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: var(--secondary);
+            color: var(--text);
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
-            margin-left: auto;
-        }
-        .sidebar #sidebar-toggle {
-            background: none;
-            padding: 8px;
-            margin-left: auto;
+            font-size: 10px;
         }
         main {
-            flex: 1;
-            padding: 32px;
-            margin-left: 80px;
-            transition: margin-left 0.3s;
+            padding: 48px;
+            display: grid;
+            gap: 32px;
+            transform-style: preserve-3d;
         }
-        .sidebar.w-64 ~ main {
-            margin-left: 256px;
+        .panel {
+            background: var(--panel-bg);
+            border-radius: 16px;
+            padding: 32px;
+            transform: rotateY(5deg) rotateX(5deg);
+            transition: transform 0.4s ease;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(6, 182, 212, 0.2);
+        }
+        .panel:hover {
+            transform: rotateY(0deg) rotateX(0deg) translateZ(20px);
         }
         h2 {
-            font-size: 2rem;
-            font-weight: 600;
+            font-size: 2.5rem;
+            font-weight: 700;
             color: var(--primary);
-            margin-bottom: 1.5rem;
+            text-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+            margin-bottom: 24px;
         }
         h3 {
-            font-size: 1.25rem;
+            font-size: 1.5rem;
             font-weight: 500;
-            margin-bottom: 1rem;
-        }
-        .card {
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            transition: transform 0.2s, box-shadow 0.2s;
-            border-left: 4px solid var(--primary);
-        }
-        .card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            color: var(--text);
+            margin-bottom: 16px;
         }
         .btn-primary {
             background: var(--primary);
-            color: #fff;
+            color: var(--text);
             padding: 12px 24px;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             font-weight: 500;
-            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        .btn-primary:hover::before {
+            width: 200px;
+            height: 200px;
         }
         .btn-primary:hover {
-            background: #115e59;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.7);
+            transform: translateY(-2px);
         }
         .btn-success {
             background: var(--success);
-            color: #fff;
+            color: var(--text);
             padding: 12px 24px;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             font-weight: 500;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
         }
         .btn-success:hover {
-            background: #059669;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 0 20px rgba(52, 211, 153, 0.7);
+            transform: translateY(-2px);
         }
         .btn-cancel {
             background: var(--secondary);
-            color: #fff;
+            color: var(--text);
             padding: 12px 24px;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             font-weight: 500;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
         }
         .btn-cancel:hover {
-            background: #475569;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 0 20px rgba(236, 72, 153, 0.7);
+            transform: translateY(-2px);
         }
         .modal {
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(15, 23, 42, 0.95);
+            z-index: 1000;
+            transform: scale(0.8);
+            transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        .modal.active {
+            display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
-            backdrop-filter: blur(4px);
+            transform: scale(1);
         }
         .modal-content {
-            background: var(--card-bg);
+            background: var(--panel-bg);
             border-radius: 16px;
-            padding: 32px;
-            max-width: 640px;
-            width: 90%;
-            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+            padding: 48px;
+            max-width: 90%;
+            width: 720px;
+            box-shadow: 0 0 60px rgba(6, 182, 212, 0.4);
             position: relative;
-            animation: fadeIn 0.3s ease;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
+            transform: translateZ(50px);
         }
         .modal-content button.absolute {
             background: none;
@@ -209,19 +246,19 @@
         #loading-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(15, 23, 42, 0.9);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 1000;
-            backdrop-filter: blur(2px);
         }
         #loading-overlay div {
-            color: #fff;
-            font-size: 1.25rem;
+            color: var(--text);
+            font-size: 1.5rem;
             background: var(--primary);
-            padding: 12px 24px;
-            border-radius: 8px;
+            padding: 16px 32px;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.5);
         }
         #toast-container {
             position: fixed;
@@ -230,34 +267,37 @@
             z-index: 1000;
         }
         .toast {
-            background: var(--card-bg);
-            border-radius: 8px;
+            background: var(--panel-bg);
+            border-radius: 12px;
             padding: 16px 24px;
             margin-bottom: 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            animation: slideIn 0.3s ease;
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+            animation: glitch 0.3s ease;
         }
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(100%); }
-            to { opacity: 1; transform: translateX(0); }
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(2px, -2px); }
+            60% { transform: translate(-2px, 2px); }
+            100% { transform: translate(0); }
         }
         .toast.bg-green-100 {
-            background: #d1fae5;
-            border-left: 4px solid var(--success);
+            background: #065f46;
+            border: 2px solid var(--success);
             color: var(--success);
         }
         .toast.bg-blue-100 {
-            background: #e0f2fe;
-            border-left: 4px solid var(--primary);
+            background: #164e63;
+            border: 2px solid var(--primary);
             color: var(--primary);
         }
         .toast.bg-red-100 {
-            background: #fce7f3;
-            border-left: 4px solid var(--accent);
-            color: var(--accent);
+            background: #701a75;
+            border: 2px solid var(--secondary);
+            color: var(--secondary);
         }
         .toast .toast-close {
             background: none;
@@ -278,33 +318,34 @@
             100% { opacity: 1; }
         }
         input, select, textarea {
-            border: 1px solid var(--border);
+            border: 2px solid var(--primary);
             border-radius: 8px;
             padding: 12px;
             width: 100%;
             margin-top: 4px;
             font-size: 1rem;
-            transition: border 0.2s;
+            background: var(--panel-bg);
+            color: var(--text);
+            transition: all 0.3s ease;
         }
         input:focus, select:focus, textarea:focus {
-            border-color: var(--primary);
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.2);
+            border-color: var(--accent);
+            box-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
         }
         label {
             font-size: 0.875rem;
             font-weight: 500;
-            color: var(--secondary);
+            color: var(--text);
             margin-bottom: 4px;
             display: block;
         }
         button:focus {
-            outline: 2px solid var(--primary);
+            outline: 2px solid var(--accent);
             outline-offset: 2px;
         }
         .grid {
             display: grid;
-            gap: 24px;
+            gap: 32px;
         }
         .grid-cols-1 {
             grid-template-columns: 1fr;
@@ -401,87 +442,83 @@
         <div class="skeleton"></div>
     </template>
 
-    <!-- Sidebar -->
-    <aside id="sidebar" class="sidebar">
-        <div class="flex items-center space-x-2 border-b border-[var(--border)] pb-4 mb-6">
-            <img src="assets/logo-icon.png" alt="Logo Fila Fácil" width="40" height="40">
-            <h1 class="hidden md:block">Fila Fácil</h1>
-            <button id="sidebar-toggle" aria-label="Alternar menu lateral">
-                <svg width="28" height="28" fill="none" stroke="var(--primary)" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-            </button>
-        </div>
-        <nav>
+    <!-- Menu -->
+    <div class="menu-container">
+        <button class="menu-toggle" id="sidebar-toggle" aria-label="Abrir menu">
+            <svg width="32" height="32" fill="none" stroke="var(--primary)" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+        </button>
+        <nav class="menu" id="sidebar">
             <ul>
                 <li>
                     <button id="nav-dashboard" class="nav-btn active" title="Dashboard" aria-label="Navegar para Dashboard">
-                        <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                         </svg>
-                        <span class="hidden md:block">Dashboard</span>
+                        <span>Dashboard</span>
                         <span class="notification-badge">3</span>
                     </button>
                 </li>
                 <li>
                     <button id="nav-call" class="nav-btn" title="Chamada" aria-label="Navegar para Chamada">
-                        <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                         </svg>
-                        <span class="hidden md:block">Chamada</span>
+                        <span>Chamada</span>
                     </button>
                 </li>
                 <li>
                     <button id="nav-queues" class="nav-btn" title="Filas" aria-label="Navegar para Filas">
-                        <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                         </svg>
-                        <span class="hidden md:block">Filas</span>
+                        <span>Filas</span>
                     </button>
                 </li>
                 <li>
                     <button id="nav-tickets" class="nav-btn" title="Tickets" aria-label="Navegar para Tickets">
-                        <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
                         </svg>
-                        <span class="hidden md:block">Tickets</span>
+                        <span>Tickets</span>
                     </button>
                 </li>
                 <li>
                     <button id="nav-reports" class="nav-btn" title="Relatórios" aria-label="Navegar para Relatórios">
-                        <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        <span class="hidden md:block">Relatórios</span>
+                        <span>Relatórios</span>
                     </button>
                 </li>
                 <li>
                     <button id="nav-settings" class="nav-btn" title="Configurações" aria-label="Navegar para Configurações">
-                        <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
-                        <span class="hidden md:block">Configurações</span>
+                        <span>Configurações</span>
                     </button>
                 </li>
             </ul>
+            <button id="logout" title="Sair" aria-label="Sair do sistema">
+                <svg width="32" height="32" fill="none" stroke="var(--secondary)" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span>Sair</span>
+            </button>
         </nav>
-        <button id="logout" title="Sair" aria-label="Sair do sistema">
-            <svg width="28" height="28" fill="none" stroke="var(--accent)" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            <span class="hidden md:block">Sair</span>
-        </button>
-    </aside>
+    </div>
 
     <!-- Main Content -->
     <main>
         <!-- Dashboard Section -->
-        <div id="dashboard-section" class="space-y-6">
+        <div id="dashboard-section" class="panel space-y-6">
             <div class="flex items-center justify-between">
                 <div>
                     <h2>Bem-vindo, <span id="user-name">Usuário</span></h2>
-                    <p id="current-date" style="font-size: 0.875rem; color: var(--secondary);"></p>
+                    <p id="current-date" style="font-size: 0.875rem; color: var(--text);"></p>
                 </div>
                 <button id="refresh-data" class="btn-primary" aria-label="Atualizar dados">
                     <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display: inline; margin-right: 8px;">
@@ -491,29 +528,29 @@
                 </button>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-                <div class="card">
-                    <p style="font-size: 0.875rem; color: var(--secondary);">Filas Ativas</p>
-                    <p id="active-queues" style="font-size: 1.75rem; font-weight: 600; color: var(--primary);">0</p>
+                <div class="panel">
+                    <p style="font-size: 0.875rem; color: var(--text);">Filas Ativas</p>
+                    <p id="active-queues" style="font-size: 2rem; font-weight: 600; color: var(--primary);">0</p>
                 </div>
-                <div class="card">
-                    <p style="font-size: 0.875rem; color: var(--secondary);">Tickets Pendentes</p>
-                    <p id="pending-tickets" style="font-size: 1.75rem; font-weight: 600; color: var(--primary);">0</p>
+                <div class="panel">
+                    <p style="font-size: 0.875rem; color: var(--text);">Tickets Pendentes</p>
+                    <p id="pending-tickets" style="font-size: 2rem; font-weight: 600; color: var(--primary);">0</p>
                 </div>
-                <div class="card">
-                    <p style="font-size: 0.875rem; color: var(--secondary);">Chamadas Hoje</p>
-                    <p id="today-calls" style="font-size: 1.75rem; font-weight: 600; color: var(--primary);">0</p>
+                <div class="panel">
+                    <p style="font-size: 0.875rem; color: var(--text);">Chamadas Hoje</p>
+                    <p id="today-calls" style="font-size: 2rem; font-weight: 600; color: var(--primary);">0</p>
                 </div>
-                <div class="card">
-                    <p style="font-size: 0.875rem; color: var(--secondary);">Atendentes Ativos</p>
-                    <p id="active-users" style="font-size: 1.75rem; font-weight: 600; color: var(--primary);">0</p>
+                <div class="panel">
+                    <p style="font-size: 0.875rem; color: var(--text);">Atendentes Ativos</p>
+                    <p id="active-users" style="font-size: 2rem; font-weight: 600; color: var(--primary);">0</p>
                 </div>
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-2">
-                <div class="card">
+                <div class="panel">
                     <h3>Atividade Recente</h3>
                     <canvas id="activity-chart" height="256"></canvas>
                 </div>
-                <div class="card">
+                <div class="panel">
                     <h3>Últimos Tickets</h3>
                     <div id="recent-tickets" class="space-y-2"></div>
                 </div>
@@ -521,14 +558,14 @@
         </div>
 
         <!-- Call Section -->
-        <div id="call-section" class="space-y-6 hidden">
+        <div id="call-section" class="panel space-y-6 hidden">
             <h2>Chamada</h2>
-            <div class="card">
+            <div class="panel">
                 <h3>Chamada Atual</h3>
                 <div id="current-call" style="text-align: center;">
-                    <p id="current-ticket" style="font-size: 2.5rem; font-weight: 600; color: var(--primary);">Nenhum</p>
-                    <p id="current-queue" style="font-size: 0.875rem; color: var(--secondary);">Nenhuma fila</p>
-                    <p id="current-counter" style="font-size: 0.875rem; color: var(--secondary);">Nenhum guichê</p>
+                    <p id="current-ticket" style="font-size: 3rem; font-weight: 600; color: var(--primary);">Nenhum</p>
+                    <p id="current-queue" style="font-size: 0.875rem; color: var(--text);">Nenhuma fila</p>
+                    <p id="current-counter" style="font-size: 0.875rem; color: var(--text);">Nenhum guichê</p>
                 </div>
                 <div class="flex justify-center space-x-4">
                     <button id="call-next" class="btn-success">Chamar Próximo</button>
@@ -538,19 +575,19 @@
         </div>
 
         <!-- Queues Section -->
-        <div id="queues-section" class="space-y-6 hidden">
+        <div id="queues-section" class="panel space-y-6 hidden">
             <div class="flex items-center justify-between">
                 <h2>Filas</h2>
                 <button id="create-queue-btn" class="btn-primary">Nova Fila</button>
             </div>
-            <div class="card">
+            <div class="panel">
                 <h3>Lista de Filas</h3>
                 <div id="queues-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3"></div>
             </div>
         </div>
 
         <!-- Tickets Section -->
-        <div id="tickets-section" class="space-y-6 hidden">
+        <div id="tickets-section" class="panel space-y-6 hidden">
             <div class="flex items-center justify-between">
                 <h2>Tickets</h2>
                 <div class="flex space-x-4">
@@ -562,14 +599,14 @@
                     <button id="generate-ticket-btn" class="btn-primary">Gerar Ticket</button>
                 </div>
             </div>
-            <div class="card">
+            <div class="panel">
                 <h3>Lista de Tickets</h3>
                 <div id="tickets-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3"></div>
             </div>
         </div>
 
         <!-- Reports Section -->
-        <div id="reports-section" class="space-y-6 hidden">
+        <div id="reports-section" class="panel space-y-6 hidden">
             <div class="flex items-center justify-between">
                 <h2>Relatórios</h2>
                 <div class="flex space-x-4">
@@ -578,37 +615,37 @@
                     <button id="export-report-btn" class="btn-primary">Exportar</button>
                 </div>
             </div>
-            <div class="card">
+            <div class="panel">
                 <h3>Resultados</h3>
                 <div id="report-results" class="space-y-4"></div>
             </div>
         </div>
 
         <!-- Settings Section -->
-        <div id="settings-section" class="space-y-6 hidden">
+        <div id="settings-section" class="panel space-y-6 hidden">
             <h2>Configurações</h2>
             <div class="grid grid-cols-1 lg:grid-cols-2">
-                <div class="card">
+                <div class="panel">
                     <h3>Departamento</h3>
                     <button id="create-department-btn" class="btn-primary">Novo Departamento</button>
                     <div id="departments-container" class="space-y-2"></div>
                 </div>
-                <div class="card">
+                <div class="panel">
                     <h3>Membros</h3>
                     <button id="add-member-btn" class="btn-primary">Adicionar Membro</button>
                     <div id="members-container" class="space-y-2"></div>
                 </div>
-                <div class="card">
+                <div class="panel">
                     <h3>Horários</h3>
                     <button id="create-schedule-btn" class="btn-primary">Novo Horário</button>
                     <div id="schedules-container" class="space-y-2"></div>
                 </div>
-                <div class="card">
+                <div class="panel">
                     <h3>Guichês</h3>
                     <button id="create-counter-btn" class="btn-primary">Novo Guichê</button>
                     <div id="counters-container" class="space-y-2"></div>
                 </div>
-                <div class="card">
+                <div class="panel">
                     <h3>Chamadas</h3>
                     <button id="call-settings-btn" class="btn-primary">Configurar Chamadas</button>
                 </div>
@@ -661,7 +698,7 @@
                 </div>
             </form>
             <button id="close-queue-modal" class="absolute" aria-label="Fechar modal">
-                <svg width="24" height="24" fill="none" stroke="var(--secondary)" viewBox="0 0 24 24">
+                <svg width="24" height="24" fill="none" stroke="var(--text)" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -695,13 +732,13 @@
                         <textarea id="ticket-notes"></textarea>
                     </div>
                 </div>
-                <div class="flexy's justify-end space-x-2 mt-6">
+                <div class="flex justify-end space-x-2 mt-6">
                     <button type="button" id="cancel-ticket" class="btn-cancel">Cancelar</button>
                     <button type="submit" class="btn-primary">Gerar</button>
                 </div>
             </form>
             <button id="close-ticket-modal" class="absolute" aria-label="Fechar modal">
-                <svg width="24" height="24" fill="none" stroke="var(--secondary)" viewBox="0 0 24 24">
+                <svg width="24" height="24" fill="none" stroke="var(--text)" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -729,7 +766,7 @@
                 </div>
             </form>
             <button id="close-department-modal" class="absolute" aria-label="Fechar modal">
-                <svg width="24" height="24" fill="none" stroke="var(--secondary)" viewBox="0 0 24 24">
+                <svg width="24" height="24" fill="none" stroke="var(--text)" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -770,7 +807,7 @@
                 </div>
             </form>
             <button id="close-member-modal" class="absolute" aria-label="Fechar modal">
-                <svg width="24" height="24" fill="none" stroke="var(--secondary)" viewBox="0 0 24 24">
+                <svg width="24" height="24" fill="none" stroke="var(--text)" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -813,7 +850,7 @@
                 </div>
             </form>
             <button id="close-schedule-modal" class="absolute" aria-label="Fechar modal">
-                <svg width="24" height="24" fill="none" stroke="var(--secondary)" viewBox="0 0 24 24">
+                <svg width="24" height="24" fill="none" stroke="var(--text)" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -837,7 +874,7 @@
                 </div>
             </form>
             <button id="close-assign-queue-modal" class="absolute" aria-label="Fechar modal">
-                <svg width="24" height="24" fill="none" stroke="var(--secondary)" viewBox="0 0 24 24">
+                <svg width="24" height="24" fill="none" stroke="var(--text)" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -877,7 +914,7 @@
                 </div>
             </form>
             <button id="close-counter-modal" class="absolute" aria-label="Fechar modal">
-                <svg width="24" height="24" fill="none" stroke="var(--secondary)" viewBox="0 0 24 24">
+                <svg width="24" height="24" fill="none" stroke="var(--text)" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -919,7 +956,7 @@
                 </div>
             </form>
             <button id="close-call-settings-modal" class="absolute" aria-label="Fechar modal">
-                <svg width="24" height="24" fill="none" stroke="var(--secondary)" viewBox="0 0 24 24">
+                <svg width="24" height="24" fill="none" stroke="var(--text)" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -958,7 +995,7 @@
                 </div>
             </form>
             <button id="close-export-report-modal" class="absolute" aria-label="Fechar modal">
-                <svg width="24" height="24" fill="none" stroke="var(--secondary)" viewBox="0 0 24 24">
+                <svg width="24" height="24" fill="none" stroke="var(--text)" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -982,7 +1019,7 @@
                 <button id="close-ticket-details" class="btn-primary">Fechar</button>
             </div>
             <button id="close-ticket-details-modal" class="absolute" aria-label="Fechar modal">
-                <svg width="24" height="24" fill="none" stroke="var(--secondary)" viewBox="0 0 24 24">
+                <svg width="24" height="24" fill="none" stroke="var(--text)" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -995,5 +1032,35 @@
     <script src="/js/authService.js"></script>
     <script src="/js/login.js"></script>
     <script src="/js/branch-admin.js"></script>
+    <script>
+        // Script para ativar/desativar o menu radial
+        const toggle = document.getElementById('sidebar-toggle');
+        const menu = document.getElementById('sidebar');
+        toggle.addEventListener('click', () => {
+            menu.classList.toggle('active');
+        });
+        // Fechar menu ao clicar fora
+        document.addEventListener('click', (e) => {
+            if (!menu.contains(e.target) && !toggle.contains(e.target)) {
+                menu.classList.remove('active');
+            }
+        });
+        // Ativar/desativar modais
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                    modal.classList.add('hidden');
+                }
+            });
+            const closeButtons = modal.querySelectorAll('[id*="close-"]');
+            closeButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    modal.classList.remove('active');
+                    modal.classList.add('hidden');
+                });
+            });
+        });
+    </script>
 </body>
 </html>
