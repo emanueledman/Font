@@ -1003,31 +1003,32 @@ class CallManager {
         this.initEventListeners();
         this.loadCallSettings();
         this.loadRecentCalls();
+        this.loadQueueFilter(); // Carregar filtro de filas no construtor
         this.setupSocketIO();
     }
 
     initEventListeners() {
         // Botão de configurações
-        document.getElementById('call-settings-btn').addEventListener('click', () => {
+        document.getElementById('call-settings-btn')?.addEventListener('click', () => {
             document.getElementById('call-settings-modal').classList.remove('hidden');
         });
 
         // Formulário de configurações
-        document.getElementById('call-settings-form').addEventListener('submit', (e) => {
+        document.getElementById('call-settings-form')?.addEventListener('submit', (e) => {
             e.preventDefault();
             this.saveCallSettings();
         });
 
         // Botões de cancelar e fechar modal
-        document.getElementById('cancel-call-settings').addEventListener('click', () => {
+        document.getElementById('cancel-call-settings')?.addEventListener('click', () => {
             document.getElementById('call-settings-modal').classList.add('hidden');
         });
-        document.getElementById('close-call-settings-modal').addEventListener('click', () => {
+        document.getElementById('close-call-settings-modal')?.addEventListener('click', () => {
             document.getElementById('call-settings-modal').classList.add('hidden');
         });
 
         // Botão Chamar Próxima
-        document.getElementById('call-next-btn').addEventListener('click', () => {
+        document.getElementById('call-next-btn')?.addEventListener('click', () => {
             if (!this.currentQueueId) {
                 Utils.showToast('Selecione uma fila no filtro', 'error');
                 return;
@@ -1036,48 +1037,57 @@ class CallManager {
         });
 
         // Botão Rechamar
-        document.getElementById('recall-btn').addEventListener('click', () => {
+        document.getElementById('recall-btn')?.addEventListener('click', () => {
             this.recallTicket();
         });
 
         // Botão Finalizar
-        document.getElementById('complete-call-btn').addEventListener('click', () => {
+        document.getElementById('complete-call-btn')?.addEventListener('click', () => {
             this.completeTicket();
         });
 
         // Botão Ver Detalhes
-        document.getElementById('view-ticket-btn').addEventListener('click', () => {
+        document.getElementById('view-ticket-btn')?.addEventListener('click', () => {
             this.viewTicketDetails();
         });
 
         // Botão Pausar
-        document.getElementById('pause-call-btn').addEventListener('click', () => {
-            queueManager.toggleQueuePause(this.currentQueueId);
+        document.getElementById('pause-call-btn')?.addEventListener('click', () => {
+            if (this.currentQueueId) {
+                queueManager.toggleQueuePause(this.currentQueueId);
+            } else {
+                Utils.showToast('Selecione uma fila para pausar', 'error');
+            }
         });
 
         // Botão Retomar
-        document.getElementById('resume-call-btn').addEventListener('click', () => {
-            queueManager.toggleQueuePause(this.currentQueueId);
+        document.getElementById('resume-call-btn')?.addEventListener('click', () => {
+            if (this.currentQueueId) {
+                queueManager.toggleQueuePause(this.currentQueueId);
+            } else {
+                Utils.showToast('Selecione uma fila para retomar', 'error');
+            }
         });
 
         // Botão Cancelar
-        document.getElementById('cancel-call-btn').addEventListener('click', () => {
+        document.getElementById('cancel-call-btn')?.addEventListener('click', () => {
             this.cancelTicket();
         });
 
         // Botão Atualizar Próximos
-        document.getElementById('refresh-queue').addEventListener('click', () => {
+        document.getElementById('refresh-queue')?.addEventListener('click', () => {
             this.loadNextInQueue();
         });
 
         // Filtro de busca de últimas chamadas
-        document.getElementById('last-calls-filter').addEventListener('input', (e) => {
+        document.getElementById('last-calls-filter')?.addEventListener('input', (e) => {
             this.filterLastCalls(e.target.value);
         });
 
         // Filtro de filas
-        document.getElementById('queue-filter-select').addEventListener('change', (e) => {
-            this.currentQueueId = e.target.value;
+        document.getElementById('queue-filter-select')?.addEventListener('change', (e) => {
+            this.currentQueueId = e.target.value || null;
+            console.log(`Filtro de fila alterado: currentQueueId=${this.currentQueueId}`);
             this.loadNextInQueue();
             this.updateCallButtonState();
         });
@@ -1087,6 +1097,7 @@ class CallManager {
         try {
             Utils.showLoading(true, 'Carregando configurações de chamada...');
             const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            if (!branchId) throw new Error('branchId não encontrado no armazenamento');
             const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/call_settings`);
             const settings = response.data;
             document.getElementById('call-priority').value = settings.priority || 'fifo';
@@ -1105,6 +1116,7 @@ class CallManager {
     async loadCountersForCallSettings() {
         try {
             const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            if (!branchId) throw new Error('branchId não encontrado no armazenamento');
             const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/queues`);
             const queues = response.data;
             const counterSelect = document.getElementById('call-counter');
@@ -1112,13 +1124,14 @@ class CallManager {
             queues.forEach(queue => {
                 for (let i = 1; i <= queue.num_counters; i++) {
                     const option = document.createElement('option');
-                    option.value = `${queue.id}:${i}`;
+                    option.value = i; // Enviar apenas o número do guichê
                     option.textContent = `${queue.service_name} - Guichê ${i}`;
                     counterSelect.appendChild(option);
                 }
             });
         } catch (error) {
             console.error('Erro ao carregar guichês:', error);
+            Utils.showToast('Erro ao carregar guichês', 'error');
         }
     }
 
@@ -1128,11 +1141,12 @@ class CallManager {
             const form = document.getElementById('call-settings-form');
             const data = {
                 priority: form.priority.value,
-                counter_id: form.counter_id.value,
+                counter: form.counter_id.value === 'auto' ? 'auto' : parseInt(form.counter_id.value),
                 sound: form.sound.value,
                 interval: parseInt(form.interval.value)
             };
             const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            if (!branchId) throw new Error('branchId não encontrado no armazenamento');
             await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/call_settings`, data);
             Utils.showToast('Configurações salvas com sucesso', 'success');
             document.getElementById('call-settings-modal').classList.add('hidden');
@@ -1145,20 +1159,35 @@ class CallManager {
     }
 
     async callNextTicket() {
+        if (!this.currentQueueId) {
+            Utils.showToast('Selecione uma fila válida', 'error');
+            return;
+        }
         try {
             Utils.showLoading(true, 'Chamando próximo ticket...');
             const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-            const counter = document.getElementById('call-counter').value;
-            const response = await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/queues/${this.currentQueueId}/call`, {
-                counter: counter.includes(':') ? parseInt(counter.split(':')[1]) : counter
-            });
-            this.currentTicket = response.data.ticket;
-            this.updateCallPanel();
-            this.playCallSound();
-            this.startTimeElapsed();
-            this.loadNextInQueue();
-            this.loadRecentCalls();
-            Utils.showToast(response.data.message, 'success');
+            if (!branchId) throw new Error('branchId não encontrado no armazenamento');
+            const counter = document.getElementById('call-counter').value || 'auto';
+            const payload = { counter: counter === 'auto' ? 'auto' : parseInt(counter) };
+            console.log(`Enviando requisição para /call: queueId=${this.currentQueueId}, counter=${payload.counter}`);
+            const response = await axios.post(
+                `${API_BASE}/api/branch_admin/branches/${branchId}/queues/${this.currentQueueId}/call`,
+                payload
+            );
+            if (response.data.ticket) {
+                this.currentTicket = response.data.ticket;
+                this.updateCallPanel();
+                this.playCallSound();
+                this.startTimeElapsed();
+                this.loadNextInQueue();
+                this.loadRecentCalls();
+                Utils.showToast(response.data.message, 'success');
+            } else {
+                this.currentTicket = null;
+                this.updateCallPanel();
+                this.stopTimeElapsed();
+                Utils.showToast(response.data.message || 'Nenhum ticket pendente', 'info');
+            }
         } catch (error) {
             console.error('Erro ao chamar ticket:', error);
             Utils.showToast(error.response?.data?.error || 'Erro ao chamar ticket', 'error');
@@ -1168,17 +1197,21 @@ class CallManager {
     }
 
     async recallTicket() {
-        if (!this.currentTicket) {
-            Utils.showToast('Nenhum ticket atual para rechamar', 'error');
+        if (!this.currentTicket || !this.currentQueueId) {
+            Utils.showToast('Nenhum ticket atual ou fila selecionada para rechamar', 'error');
             return;
         }
         try {
             Utils.showLoading(true, 'Rechamando ticket...');
             const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-            const response = await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/queues/${this.currentQueueId}/recall`, {
-                ticket_id: this.currentTicket.id
-            });
-            this.playCallSound();
+            if (!branchId) throw new Error('branchId não encontrado no armazenamento');
+            const payload = { ticket_id: this.currentTicket.id };
+            console.log(`Enviando requisição para /recall: ticketId=${this.currentTicket.id}, queueId=${this.currentQueueId}`);
+            const response = await axios.post(
+                `${API_BASE}/api/branch_admin/branches/${branchId}/queues/${this.currentQueueId}/recall`,
+                payload
+            );
+            this.play하여CallSound();
             Utils.showToast(response.data.message || 'Ticket rechamado com sucesso', 'success');
         } catch (error) {
             console.error('Erro ao rechamar ticket:', error);
@@ -1189,14 +1222,18 @@ class CallManager {
     }
 
     async completeTicket() {
-        if (!this.currentTicket) {
-            Utils.showToast('Nenhum ticket atual para finalizar', 'error');
+        if (!this.currentTicket || !this.currentQueueId) {
+            Utils.showToast('Nenhum ticket atual ou fila selecionada para finalizar', 'error');
             return;
         }
         try {
             Utils.showLoading(true, 'Finalizando ticket...');
             const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-            const response = await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/queues/${this.currentQueueId}/tickets/${this.currentTicket.id}/complete`);
+            if (!branchId) throw new Error('branchId não encontrado no armazenamento');
+            console.log(`Enviando requisição para /complete: ticketId=${this.currentTicket.id}, queueId=${this.currentQueueId}`);
+            const response = await axios.post(
+                `${API_BASE}/api/branch_admin/branches/${branchId}/queues/${this.currentQueueId}/tickets/${this.currentTicket.id}/complete`
+            );
             this.currentTicket = null;
             this.updateCallPanel();
             this.stopTimeElapsed();
@@ -1212,14 +1249,18 @@ class CallManager {
     }
 
     async cancelTicket() {
-        if (!this.currentTicket) {
-            Utils.showToast('Nenhum ticket atual para cancelar', 'error');
+        if (!this.currentTicket || !this.currentQueueId) {
+            Utils.showToast('Nenhum ticket atual ou fila selecionada para cancelar', 'error');
             return;
         }
         try {
             Utils.showLoading(true, 'Cancelando ticket...');
             const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-            const response = await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/queues/${this.currentQueueId}/tickets/${this.currentTicket.id}/cancel`);
+            if (!branchId) throw new Error('branchId não encontrado no armazenamento');
+            console.log(`Enviando requisição para /cancel: ticketId=${this.currentTicket.id}, queueId=${this.currentQueueId}`);
+            const response = await axios.post(
+                `${API_BASE}/api/branch_admin/branches/${branchId}/queues/${this.currentQueueId}/tickets/${this.currentTicket.id}/cancel`
+            );
             this.currentTicket = null;
             this.updateCallPanel();
             this.stopTimeElapsed();
@@ -1235,17 +1276,27 @@ class CallManager {
     }
 
     async viewTicketDetails() {
-        if (!this.currentTicket) {
-            Utils.showToast('Nenhum ticket atual para visualizar', 'error');
+        if (!this.currentTicket || !this.currentQueueId) {
+            Utils.showToast('Nenhum ticket atual ou fila selecionada para visualizar', 'error');
             return;
         }
         try {
             Utils.showLoading(true, 'Carregando detalhes do ticket...');
             const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/queues/${this.currentQueueId}/tickets/${this.currentTicket.id}`);
+            if (!branchId) throw new Error('branchId não encontrado no armazenamento');
+            const response = await axios.get(
+                `${API_BASE}/api/branch_admin/branches/${branchId}/queues/${this.currentQueueId}/tickets/${this.currentTicket.id}`
+            );
             const ticket = response.data;
-            // Exibir detalhes em um modal ou popup
-            Utils.showToast(`Ticket: ${ticket.ticket_number}\nServiço: ${ticket.service_name}\nGuichê: ${ticket.counter}\nStatus: ${ticket.status}`, 'info');
+            // Atualizar modal de detalhes do ticket
+            document.getElementById('ticket-details-number').textContent = ticket.ticket_number;
+            document.getElementById('ticket-details-queue').textContent = ticket.queue_prefix || 'N/A';
+            document.getElementById('ticket-details-service').textContent = ticket.service_name || 'N/A';
+            document.getElementById('ticket-details-counter').textContent = ticket.counter ? `Guichê ${ticket.counter}` : 'N/A';
+            document.getElementById('ticket-details-status').textContent = ticket.status;
+            document.getElementById('ticket-details-issued').textContent = Utils.formatDate(ticket.issued_at);
+            document.getElementById('ticket-details-notes').textContent = ticket.notes || 'Nenhuma';
+            document.getElementById('ticket-details-modal').classList.remove('hidden');
         } catch (error) {
             console.error('Erro ao carregar detalhes do ticket:', error);
             Utils.showToast(error.response?.data?.error || 'Erro ao carregar detalhes', 'error');
@@ -1257,12 +1308,16 @@ class CallManager {
     async loadNextInQueue() {
         if (!this.currentQueueId) {
             document.getElementById('next-in-queue').innerHTML = '<p class="text-gray-500">Selecione uma fila no filtro</p>';
+            this.updateCallButtonState();
             return;
         }
         try {
             Utils.showLoading(true, 'Carregando próximos na fila...');
             const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/queues/${this.currentQueueId}/next_tickets`);
+            if (!branchId) throw new Error('branchId não encontrado no armazenamento');
+            const response = await axios.get(
+                `${API_BASE}/api/branch_admin/branches/${branchId}/queues/${this.currentQueueId}/next_tickets`
+            );
             const tickets = response.data;
             const container = document.getElementById('next-in-queue');
             container.innerHTML = '';
@@ -1294,10 +1349,15 @@ class CallManager {
         try {
             Utils.showLoading(true, 'Carregando últimas chamadas...');
             const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            if (!branchId) throw new Error('branchId não encontrado no armazenamento');
             const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/recent_calls`);
             const calls = response.data;
             const tbody = document.getElementById('last-calls');
             tbody.innerHTML = '';
+            if (calls.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="py-3 px-4 text-sm text-gray-500">Nenhuma chamada recente</td></tr>';
+                return;
+            }
             calls.forEach(call => {
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-gray-50';
@@ -1305,7 +1365,7 @@ class CallManager {
                     <td class="py-3 px-4 text-sm">${call.ticket_number}</td>
                     <td class="py-3 px-4 text-sm">${call.service_name}</td>
                     <td class="py-3 px-4 text-sm">${call.counter || 'N/A'}</td>
-                    <td class="py-3 px-4 text-sm">${call.called_at ? new Date(call.called_at).toLocaleTimeString() : 'N/A'}</td>
+                    <td class="py-3 px-4 text-sm">${call.called_at ? new Date(call.called_at).toLocaleTimeString('pt-BR') : 'N/A'}</td>
                     <td class="py-3 px-4 text-sm">${call.status}</td>
                 `;
                 tbody.appendChild(row);
@@ -1322,8 +1382,8 @@ class CallManager {
         const rows = document.querySelectorAll('#last-calls tr');
         const search = searchText.toLowerCase();
         rows.forEach(row => {
-            const ticketNumber = row.cells[0].textContent.toLowerCase();
-            const serviceName = row.cells[1].textContent.toLowerCase();
+            const ticketNumber = row.cells[0]?.textContent.toLowerCase() || '';
+            const serviceName = row.cells[1]?.textContent.toLowerCase() || '';
             row.style.display = ticketNumber.includes(search) || serviceName.includes(search) ? '' : 'none';
         });
     }
@@ -1331,6 +1391,7 @@ class CallManager {
     async loadQueueFilter() {
         try {
             const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            if (!branchId) throw new Error('branchId não encontrado no armazenamento');
             const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/queues`);
             const queues = response.data;
             const select = document.getElementById('queue-filter-select');
@@ -1341,6 +1402,12 @@ class CallManager {
                 option.textContent = `${queue.service_name} (${queue.prefix})`;
                 select.appendChild(option);
             });
+            // Restaurar currentQueueId se já definido
+            if (this.currentQueueId) {
+                select.value = this.currentQueueId;
+                this.loadNextInQueue();
+            }
+            this.updateCallButtonState();
         } catch (error) {
             console.error('Erro ao carregar filtro de filas:', error);
             Utils.showToast('Erro ao carregar filas', 'error');
@@ -1352,35 +1419,40 @@ class CallManager {
         const serviceEl = document.getElementById('current-service');
         const counterEl = document.getElementById('current-counter');
         const statusEl = document.getElementById('call-status');
-        const avgWaitEl = document.getElementById('avg-wait-time');
+        const avgWaitEl = document.getElementById('wait-time');
         const waitBar = document.getElementById('wait-bar');
 
         if (this.currentTicket) {
-            ticketEl.textContent = this.currentTicket.ticket_number;
+            ticketEl.textContent = this.currentTicket.ticket_number || '---';
             serviceEl.textContent = this.currentTicket.service_name || 'N/A';
-            counterEl.textContent = `Guichê ${this.currentTicket.counter}`;
+            counterEl.textContent = this.currentTicket.counter ? `Guichê ${this.currentTicket.counter}` : 'N/A';
             statusEl.textContent = 'Ativa';
-            avgWaitEl.textContent = this.currentTicket.avg_wait_time ? `${this.currentTicket.avg_wait_time} min` : 'N/A';
-            waitBar.style.width = this.currentTicket.avg_wait_time ? `${Math.min(this.currentTicket.avg_wait_time * 5, 100)}%` : '0%';
+            avgWaitEl.textContent = 'N/A'; // avg_wait_time não está disponível na resposta
+            waitBar.style.width = '0%';
         } else {
             ticketEl.textContent = '---';
-            serviceEl.textContent = '';
-            counterEl.textContent = '';
+            serviceEl.textContent = 'N/A';
+            counterEl.textContent = 'N/A';
             statusEl.textContent = 'Inativa';
             avgWaitEl.textContent = 'N/A';
             waitBar.style.width = '0%';
         }
+        console.log('Painel de chamada atualizado:', this.currentTicket);
     }
 
     playCallSound() {
-        const sound = document.getElementById('call-sound').value;
+        const sound = document.getElementById('call-sound')?.value || 'default';
         const audio = new Audio(`/sounds/${sound}.mp3`);
-        audio.play().catch(err => console.error('Erro ao tocar som:', err));
+        audio.play().catch(err => {
+            console.error('Erro ao tocar som:', err);
+            Utils.showToast('Erro ao reproduzir som de chamada', 'error');
+        });
     }
 
     startTimeElapsed() {
         this.stopTimeElapsed();
-        const timeEl = document.getElementById('current-time-elapsed').querySelector('span');
+        const timeEl = document.getElementById('current-time-elapsed')?.querySelector('span');
+        if (!timeEl) return;
         let seconds = 0;
         this.timeElapsedInterval = setInterval(() => {
             seconds++;
@@ -1392,20 +1464,56 @@ class CallManager {
         if (this.timeElapsedInterval) {
             clearInterval(this.timeElapsedInterval);
             this.timeElapsedInterval = null;
-            document.getElementById('current-time-elapsed').querySelector('span').textContent = '0s';
+            const timeEl = document.getElementById('current-time-elapsed')?.querySelector('span');
+            if (timeEl) timeEl.textContent = '0s';
         }
     }
 
     updateCallButtonState() {
         const callBtn = document.getElementById('call-next-btn');
-        callBtn.disabled = !this.currentQueueId;
-        callBtn.classList.toggle('opacity-50', !this.currentQueueId);
-        callBtn.classList.toggle('cursor-not-allowed', !this.currentQueueId);
+        if (callBtn) {
+            callBtn.disabled = !this.currentQueueId;
+            callBtn.classList.toggle('opacity-50', !this.currentQueueId);
+            callBtn.classList.toggle('cursor-not-allowed', !this.currentQueueId);
+        }
     }
 
     setupSocketIO() {
+        const socket = io(API_BASE, { path: '/socket.io', query: { namespace: '/branch_admin' } });
+        socket.on('connect', () => {
+            console.log('Conectado ao WebSocket no namespace /branch_admin');
+            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
+            if (branchId) {
+                socket.emit('join', { room: `branch_${branchId}` });
+            }
+        });
+        socket.on('ticket_update', (data) => {
+            if (data.queue_id === this.currentQueueId) {
+                console.log('Evento ticket_update recebido:', data);
+                if (data.status === 'Chamado') {
+                    this.currentTicket = {
+                        id: data.ticket_id,
+                        ticket_number: data.ticket_number,
+                        counter: data.counter,
+                        service_name: data.service_name
+                    };
+                    this.updateCallPanel();
+                    this.playCallSound();
+                    this.startTimeElapsed();
+                    this.loadNextInQueue();
+                    this.loadRecentCalls();
+                } else if (data.status === 'Concluído' || data.status === 'Cancelado') {
+                    this.currentTicket = null;
+                    this.updateCallPanel();
+                    this.stopTimeElapsed();
+                    this.loadNextInQueue();
+                    this.loadRecentCalls();
+                }
+            }
+        });
         socket.on('ticket_called', (data) => {
             if (data.queue_id === this.currentQueueId) {
+                console.log('Evento ticket_called recebido:', data);
                 this.currentTicket = {
                     id: data.ticket_id,
                     ticket_number: data.ticket_number,
@@ -1417,28 +1525,50 @@ class CallManager {
                 this.startTimeElapsed();
                 this.loadNextInQueue();
                 this.loadRecentCalls();
+                Utils.showToast(`Ticket ${data.ticket_number} chamado no guichê ${data.counter}`, 'info');
             }
         });
         socket.on('ticket_completed', (data) => {
             if (data.queue_id === this.currentQueueId) {
+                console.log('Evento ticket_completed recebido:', data);
                 this.currentTicket = null;
                 this.updateCallPanel();
                 this.stopTimeElapsed();
                 this.loadNextInQueue();
                 this.loadRecentCalls();
+                Utils.showToast(`Ticket ${data.ticket_number} finalizado`, 'info');
             }
         });
-        socket.on('queue_updated', () => {
+        socket.on('ticket_cancelled', (data) => {
+            if (data.queue_id === this.currentQueueId) {
+                console.log('Evento ticket_cancelled recebido:', data);
+                this.currentTicket = null;
+                this.updateCallPanel();
+                this.stopTimeElapsed();
+                this.loadNextInQueue();
+                this.loadRecentCalls();
+                Utils.showToast(`Ticket ${data.ticket_number} cancelado`, 'info');
+            }
+        });
+        socket.on('queue_updated', (data) => {
+            console.log('Evento queue_updated recebido:', data);
             this.loadQueueFilter();
             this.loadNextInQueue();
+            Utils.showToast(`Fila ${data.prefix} atualizada`, 'info');
+        });
+        socket.on('connect_error', (error) => {
+            console.error('Erro de conexão WebSocket:', error);
+            Utils.showToast('Erro de conexão com o servidor em tempo real', 'error');
         });
     }
 }
+
 const queueManager = new QueueManager();
 const ticketManager = new TicketManager();
 const reportManager = new ReportManager();
 const settingsManager = new SettingsManager();
 const dashboardManager = new DashboardManager();
+const callManager = new CallManager();
 
 function setupNavigation() {
     const navButtons = ['dashboard', 'call', 'queues', 'tickets', 'reports', 'settings'];
