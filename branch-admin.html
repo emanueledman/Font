@@ -854,41 +854,47 @@
         </div>
 
         <!-- Modal de Ticket -->
-        <div id="ticket-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" aria-hidden="true">
+        <div id="queue-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" aria-hidden="true">
             <div class="bg-white rounded-xl p-6 max-w-lg w-full mx-4 animate-zoom-in">
-                <h3 class="text-xl font-semibold mb-4">Gerar Ticket</h3>
-                <form id="ticket-form" class="space-y-4">
+                <h3 id="queue-modal-title" class="text-xl font-semibold mb-4">Nova Fila</h3>
+                <form id="queue-form" class="space-y-4">
+                    <input type="hidden" id="queue_id" name="queue_id">
                     <div>
-                        <label for="ticket-queue" class="block text-sm font-medium text-gray-700">Fila</label>
-                        <select id="ticket-queue" name="queue_id" class="mt-1 block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" required aria-label="Selecionar fila">
-                            <option value="">Selecione uma fila</option>
+                        <label for="queue-department" class="block text-sm font-medium text-gray-700">Departamento</label>
+                        <select id="queue-department" name="department_id" class="mt-1 block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" required aria-label="Selecionar departamento">
+                            <option value="">Selecione um departamento</option>
                         </select>
                     </div>
                     <div>
-                        <label for="ticket-priority" class="block text-sm font-medium text-gray-700">Prioridade</label>
-                        <select id="ticket-priority" name="priority" class="mt-1 block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" required aria-label="Selecionar prioridade">
-                            <option value="normal">Normal</option>
-                            <option value="high">Alta</option>
-                            <option value="low">Baixa</option>
+                        <label for="queue-service" class="block text-sm font-medium text-gray-700">Serviço</label>
+                        <select id="queue-service" name="service_id" class="mt-1 block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" required aria-label="Selecionar serviço">
+                            <option value="">Selecione um serviço</option>
                         </select>
                     </div>
                     <div>
-                        <label for="ticket-notes" class="block text-sm font-medium text-gray-700">Notas</label>
-                        <textarea id="ticket-notes" name="notes" class="mt-1 block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" rows="4" aria-label="Notas do ticket"></textarea>
+                        <label for="queue-prefix" class="block text-sm font-medium text-gray-700">Prefixo</label>
+                        <input type="text" id="queue-prefix" name="prefix" class="mt-1 block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" required pattern="[A-Z0-9]{1,10}" title="Prefixo deve ter até 10 caracteres alfanuméricos" aria-label="Prefixo da fila">
+                    </div>
+                    <div>
+                        <label for="daily-limit" class="block text-sm font-medium text-gray-700">Limite Diário</label>
+                        <input type="number" id="daily-limit" name="daily_limit" class="mt-1 block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" required min="1" aria-label="Limite diário de tickets">
+                    </div>
+                    <div>
+                        <label for="num-counters" class="block text-sm font-medium text-gray-700">Número de Guichês</label>
+                        <input type="number" id="num-counters" name="num_counters" class="mt-1 block w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" required min="1" aria-label="Número de guichês">
                     </div>
                     <div class="flex justify-end space-x-3">
-                        <button type="button" id="cancel-ticket" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300" aria-label="Cancelar criação de ticket">Cancelar</button>
-                        <button type="submit" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700" aria-label="Gerar ticket">Gerar</button>
+                        <button type="button" id="cancel-queue" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300" aria-label="Cancelar criação de fila">Cancelar</button>
+                        <button type="submit" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700" aria-label="Salvar fila">Salvar</button>
                     </div>
                 </form>
-                <button id="close-ticket-modal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700" aria-label="Fechar modal de ticket">
+                <button id="close-queue-modal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700" aria-label="Fechar modal de fila">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
             </div>
         </div>
-
         <!-- Modal de Departamento -->
         <div id="department-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" aria-hidden="true">
             <div class="bg-white rounded-xl p-6 max-w-lg w-full mx-4 animate-zoom-in">
