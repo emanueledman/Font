@@ -56,279 +56,356 @@ const Utils = {
         window.URL.revokeObjectURL(url);
     }
 };
+
 class QueueManager {
     constructor() {
-        this.initEventListeners();
-        this.currentPage = 1;
-        this.perPage = 10;
-        this.filterText = '';
+        this.queues = [];
+        this.departments = [];
+        this.services = [];
+        this.init();
     }
 
-    initEventListeners() {
-        // Filtro de busca
-        document.getElementById('queue-filter').addEventListener('input', (e) => {
-            this.filterText = e.target.value.toLowerCase();
-            this.loadQueues();
-        });
+    async init() {
+        this.setupEventListeners();
+        await this.loadDepartments();
+        await this.loadServices();
+        await this.loadQueues();
+        await this.loadDisplayQueues();
+    }
 
-        // Botão para abrir o modal de criação
-        document.getElementById('create-queue-btn').addEventListener('click', () => {
-            this.openCreateQueueModal();
-        });
+    setupEventListeners() {
+        const queueModal = document.getElementById('queue-modal');
+        const queueForm = document.getElementById('queue-form');
+        const createQueueBtn = document.getElementById('create-queue-btn');
+        const cancelQueueBtn = document.getElementById('cancel-queue');
+        const closeQueueModalBtn = document.getElementById('close-queue-modal');
+        const queueFilter = document.getElementById('queue-filter');
+        const addQueueDisplayBtn = document.getElementById('add-queue-display-btn');
+        const addQueueDisplayModal = document.getElementById('add-queue-display-modal');
+        const addQueueDisplayForm = document.getElementById('add-queue-display-form');
+        const cancelAddQueueDisplayBtn = document.getElementById('cancel-add-queue-display');
+        const closeAddQueueDisplayModalBtn = document.getElementById('close-add-queue-display-modal');
 
-        // Formulário do modal
-        document.getElementById('queue-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.submitQueueForm();
-        });
+        createQueueBtn?.addEventListener('click', () => this.openQueueModal());
+        cancelQueueBtn?.addEventListener('click', () => queueModal.classList.add('hidden'));
+        closeQueueModalBtn?.addEventListener('click', () => queueModal.classList.add('hidden'));
+        queueForm?.addEventListener('submit', (e) => this.submitQueueForm(e));
+        queueFilter?.addEventListener('input', (e) => this.filterQueues(e.target.value));
 
-        // Botões de cancelar e fechar modal
-        document.getElementById('cancel-queue').addEventListener('click', () => {
-            document.getElementById('queue-modal').classList.add('hidden');
-        });
-        document.getElementById('close-queue-modal').addEventListener('click', () => {
-            document.getElementById('queue-modal').classList.add('hidden');
-        });
+        addQueueDisplayBtn?.addEventListener('click', () => this.openAddQueueDisplayModal());
+        cancelAddQueueDisplayBtn?.addEventListener('click', () => addQueueDisplayModal.classList.add('hidden'));
+        closeAddQueueDisplayModalBtn?.addEventListener('click', () => addQueueDisplayModal.classList.add('hidden'));
+        addQueueDisplayForm?.addEventListener('submit', (e) => this.submitAddQueueDisplayForm(e));
+    }
+
+    async loadDepartments() {
+        try {
+            Utils.showLoading('Carregando departamentos...');
+            const response = await axios.get(`${API_BA}/api/branch_admin/departments`);
+            this.departments = response.data.departments || [];
+            this.populateDepartmentSelect();
+        } catch (error) {
+            console.error('Erro ao carregar departamentos:', error);
+            Utils.showToast('Erro ao carregar departamentos', 'error');
+        } finally {
+            Utils.hideLoading();
+        }
+    }
+
+    async loadServices() {
+        try {
+            Utils.showLoading('Carregando serviços...');
+            const response = await axios.get(`${API_BA}/api/branch_admin/services`);
+            this.services = response.data.services || [];
+            this.populateServiceSelect();
+        } catch (error) {
+            console.error('Erro ao carregar serviços:', error);
+            Utils.showToast('Erro ao carregar serviços', 'error');
+        } finally {
+            Utils.hideLoading();
+        }
     }
 
     async loadQueues() {
         try {
-            Utils.showLoading(true, 'Carregando filas...');
-            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/queues`, {
-                params: { refresh: true, page: this.currentPage, per_page: this.perPage }
-            });
-            const queues = response.data;
-
-            const container = document.getElementById('queues-container');
-            container.innerHTML = '';
-
-            // Filtrar filas com base no texto de busca
-            const filteredQueues = queues.filter(queue =>
-                queue.service_name.toLowerCase().includes(this.filterText) ||
-                queue.prefix.toLowerCase().includes(this.filterText) ||
-                queue.department_name.toLowerCase().includes(this.filterText)
-            );
-
-            if (filteredQueues.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 text-center">Nenhuma fila encontrada.</p>';
-                return;
-            }
-
-            filteredQueues.forEach(queue => {
-                const statusColor = {
-                    'Aberto': 'bg-green-100 text-green-800',
-                    'Pausado': 'bg-yellow-100 text-yellow-800',
-                    'Fechado': 'bg-red-100 text-red-800',
-                    'Lotado': 'bg-orange-100 text-orange-800'
-                }[queue.status] || 'bg-gray-100 text-gray-800';
-
-                const queueCard = document.createElement('div');
-                queueCard.className = 'bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow';
-                queueCard.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <h3 class="text-lg font-semibold text-gray-800">${queue.service_name}</h3>
-                        <span class="px-3 py-1 rounded-full text-sm font-medium ${statusColor}">${queue.status}</span>
-                    </div>
-                    <p class="text-sm text-gray-600 mt-1">Prefixo: ${queue.prefix}</p>
-                    <p class="text-sm text-gray-600">Departamento: ${queue.department_name}</p>
-                    <p class="text-sm text-gray-600">Tickets Ativos: ${queue.active_tickets}/${queue.daily_limit}</p>
-                    <p class="text-sm text-gray-600">Guichês: ${queue.num_counters}</p>
-                    <p class="text-sm text-gray-600">Tempo de Espera Estimado: ${queue.estimated_wait_time ? queue.estimated_wait_time + ' min' : 'N/A'}</p>
-                    <div class="mt-4 flex space-x-3">
-                        <button class="edit-queue-btn flex items-center text-blue-600 hover:text-blue-800" data-id="${queue.id}">
-                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
-                            Editar
-                        </button>
-                        <button class="call-ticket-btn flex items-center text-green-600 hover:text-green-800" data-id="${queue.id}">
-                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                            </svg>
-                            Chamar
-                        </button>
-                        <button class="pause-queue-btn flex items-center text-yellow-600 hover:text-yellow-800" data-id="${queue.id}">
-                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${queue.status === 'Pausado' ? 'M5 3v18m14-18v18' : 'M10 9v6m4-6v6'}" />
-                            </svg>
-                            ${queue.status === 'Pausado' ? 'Retomar' : 'Pausar'}
-                        </button>
-                        <button class="totem-ticket-btn flex items-center text-purple-600 hover:text-purple-800" data-id="${queue.id}">
-                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                            </svg>
-                            Gerar Ticket Totem
-                        </button>
-                    </div>
-                `;
-                container.appendChild(queueCard);
-            });
-
-            // Adicionar event listeners
-            document.querySelectorAll('.edit-queue-btn').forEach(btn => {
-                btn.addEventListener('click', () => this.editQueue(btn.dataset.id));
-            });
-            document.querySelectorAll('.call-ticket-btn').forEach(btn => {
-                btn.addEventListener('click', () => ticketManager.callNextTicket(btn.dataset.id));
-            });
-            document.querySelectorAll('.pause-queue-btn').forEach(btn => {
-                btn.addEventListener('click', () => this.toggleQueuePause(btn.dataset.id));
-            });
-            document.querySelectorAll('.totem-ticket-btn').forEach(btn => {
-                btn.addEventListener('click', () => this.generateTotemTicket(btn.dataset.id));
-            });
+            Utils.showLoading('Carregando filas...');
+            const response = await axios.get(`${API_BA}/api/branch_admin/queues`);
+            this.queues = response.data.queues || [];
+            this.renderQueues();
         } catch (error) {
             console.error('Erro ao carregar filas:', error);
             Utils.showToast('Erro ao carregar filas', 'error');
         } finally {
-            Utils.showLoading(false);
+            Utils.hideLoading();
         }
     }
 
-    async loadDepartmentsAndServices() {
+    async loadDisplayQueues() {
         try {
-            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-            const [deptResponse, serviceResponse] = await Promise.all([
-                axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/departments`),
-                axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/services`) // Supõe uma rota para serviços
-            ]);
-
-            const deptSelect = document.getElementById('queue-department');
-            const serviceSelect = document.getElementById('queue-service');
-            deptSelect.innerHTML = '<option value="">Selecione um departamento</option>';
-            serviceSelect.innerHTML = '<option value="">Selecione um serviço</option>';
-
-            deptResponse.data.forEach(dept => {
-                const option = document.createElement('option');
-                option.value = dept.id;
-                option.textContent = dept.name;
-                deptSelect.appendChild(option);
-            });
-
-            serviceResponse.data.forEach(service => {
-                const option = document.createElement('option');
-                option.value = service.id;
-                option.textContent = service.name;
-                serviceSelect.appendChild(option);
-            });
+            Utils.showLoading('Carregando filas na tela...');
+            const response = await axios.get(`${API_BA}/api/branch_admin/branches/${this.getBranchId()}/display/queues`);
+            this.displayQueues = response.data.display_queues || [];
+            this.renderDisplayQueues();
         } catch (error) {
-            console.error('Erro ao carregar departamentos e serviços:', error);
-            Utils.showToast('Erro ao carregar opções', 'error');
-        }
-    }
-
-    openCreateQueueModal() {
-        document.getElementById('queue-modal-title').textContent = 'Nova Fila';
-        document.getElementById('queue-form').reset();
-        document.getElementById('queue_id').value = '';
-        document.getElementById('queue-modal').classList.remove('hidden');
-        this.loadDepartmentsAndServices();
-    }
-
-    async submitQueueForm() {
-        const form = document.getElementById('queue-form');
-        const data = {
-            department_id: form.department_id.value,
-            service_id: form.service_id.value,
-            prefix: form.prefix.value,
-            daily_limit: parseInt(form.daily_limit.value),
-            num_counters: parseInt(form.num_counters.value)
-        };
-
-        // Validação básica
-        if (!data.department_id || !data.service_id || !data.prefix || data.daily_limit <= 0 || data.num_counters <= 0) {
-            Utils.showToast('Preencha todos os campos corretamente', 'error');
-            return;
-        }
-
-        try {
-            Utils.showLoading(true, 'Salvando fila...');
-            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-            const queueId = form.queue_id.value;
-            if (queueId) {
-                // Atualizar fila (PUT)
-                await axios.put(`${API_BASE}/api/branch_admin/branches/${branchId}/queues/${queueId}`, data);
-                Utils.showToast('Fila atualizada com sucesso', 'success');
-            } else {
-                // Criar nova fila (POST)
-                await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/queues`, data);
-                Utils.showToast('Fila criada com sucesso', 'success');
-            }
-            document.getElementById('queue-modal').classList.add('hidden');
-            this.loadQueues();
-        } catch (error) {
-            console.error('Erro ao salvar fila:', error);
-            Utils.showToast(error.response?.data?.error || 'Erro ao salvar fila', 'error');
+            console.error('Erro ao carregar filas na tela:', error);
+            Utils.showToast('Erro ao carregar filas na tela', 'error');
         } finally {
-            Utils.showLoading(false);
+            Utils.hideLoading();
         }
     }
 
-    async editQueue(queueId) {
-        try {
-            Utils.showLoading(true, 'Carregando dados da fila...');
-            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/queues`);
-            const queue = response.data.find(q => q.id === queueId);
-            if (!queue) throw new Error('Fila não encontrada');
+    populateDepartmentSelect() {
+        const departmentSelect = document.getElementById('queue-department');
+        departmentSelect.innerHTML = '<option value="">Selecione um departamento</option>';
+        this.departments.forEach(dept => {
+            const option = document.createElement('option');
+            option.value = dept.id;
+            option.textContent = dept.name;
+            departmentSelect.appendChild(option);
+        });
+    }
 
-            await this.loadDepartmentsAndServices();
-            document.getElementById('queue-modal-title').textContent = 'Editar Fila';
+    populateServiceSelect() {
+        const serviceSelect = document.getElementById('queue-service');
+        serviceSelect.innerHTML = '<option value="">Selecione um serviço</option>';
+        this.services.forEach(service => {
+            const option = document.createElement('option');
+            option.value = service.id;
+            option.textContent = service.name;
+            serviceSelect.appendChild(option);
+        });
+    }
+
+    populateDisplayQueueSelect() {
+        const queueSelect = document.getElementById('display-queue-id');
+        queueSelect.innerHTML = '<option value="">Selecione uma fila</option>';
+        this.queues.forEach(queue => {
+            if (!this.displayQueues.some(dq => dq.queue_id === queue.id)) {
+                const option = document.createElement('option');
+                option.value = queue.id;
+                option.textContent = `${queue.prefix} - ${queue.service?.name || 'N/A'}`;
+                queueSelect.appendChild(option);
+            }
+        });
+    }
+
+    openQueueModal(queue = null) {
+        const modal = document.getElementById('queue-modal');
+        const form = document.getElementById('queue-form');
+        const title = document.getElementById('queue-modal-title');
+        
+        if (queue) {
+            title.textContent = 'Editar Fila';
+            document.getElementById('queue_id').value = queue.id;
             document.getElementById('queue-department').value = queue.department_id;
             document.getElementById('queue-service').value = queue.service_id;
             document.getElementById('queue-prefix').value = queue.prefix;
             document.getElementById('daily-limit').value = queue.daily_limit;
             document.getElementById('num-counters').value = queue.num_counters;
-            document.getElementById('queue_id').value = queue.id;
-            document.getElementById('queue-modal').classList.remove('hidden');
+        } else {
+            title.textContent = 'Nova Fila';
+            form.reset();
+            document.getElementById('queue_id').value = '';
+        }
+        
+        modal.classList.remove('hidden');
+    }
+
+    openAddQueueDisplayModal() {
+        const modal = document.getElementById('add-queue-display-modal');
+        this.populateDisplayQueueSelect();
+        modal.classList.remove('hidden');
+    }
+
+    async submitQueueForm(e) {
+        e.preventDefault();
+        const form = e.target;
+        const queueId = document.getElementById('queue_id').value;
+        const data = {
+            department_id: form.querySelector('#queue-department').value,
+            service_id: form.querySelector('#queue-service').value,
+            prefix: form.querySelector('#queue-prefix').value,
+            daily_limit: parseInt(form.querySelector('#daily-limit').value),
+            num_counters: parseInt(form.querySelector('#num-counters').value)
+        };
+
+        if (!data.department_id || !data.service_id || !data.prefix || !data.daily_limit || !data.num_counters) {
+            Utils.showToast('Por favor, preencha todos os campos obrigatórios', 'error');
+            return;
+        }
+
+        try {
+            Utils.showLoading('Salvando fila...');
+            let response;
+            if (queueId) {
+                response = await axios.put(`${API_BA}/api/branch_admin/branches/${this.getBranchId()}/queues/${queueId}`, data);
+            } else {
+                response = await axios.post(`${API_BA}/api/branch_admin/queues`, data);
+            }
+            
+            Utils.showToast(response.data.message, 'success');
+            form.reset();
+            document.getElementById('queue-modal').classList.add('hidden');
+            await this.loadQueues();
         } catch (error) {
-            console.error('Erro ao carregar fila:', error);
-            Utils.showToast('Erro ao carregar fila', 'error');
+            console.error('Erro ao salvar fila:', error);
+            Utils.showToast(error.response?.data?.error || 'Erro ao salvar fila', 'error');
         } finally {
-            Utils.showLoading(false);
+            Utils.hideLoading();
         }
     }
 
-    async toggleQueuePause(queueId) {
-        try {
-            Utils.showLoading(true, 'Atualizando status da fila...');
-            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-            const response = await axios.get(`${API_BASE}/api/branch_admin/branches/${branchId}/queues`);
-            const queue = response.data.find(q => q.id === queueId);
-            if (!queue) throw new Error('Fila não encontrada');
+    async submitAddQueueDisplayForm(e) {
+        e.preventDefault();
+        const form = e.target;
+        const queueId = form.querySelector('#display-queue-id').value;
 
-            const isPaused = queue.status === 'Pausado';
-            const data = isPaused ? { daily_limit: queue.daily_limit || 100 } : { daily_limit: 0 };
-            await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/queues/${queueId}/pause`, data);
-            Utils.showToast(`Fila ${isPaused ? 'retomada' : 'pausada'} com sucesso`, 'success');
-            this.loadQueues();
+        if (!queueId) {
+            Utils.showToast('Por favor, selecione uma fila', 'error');
+            return;
+        }
+
+        try {
+            Utils.showLoading('Adicionando fila à tela...');
+            const response = await axios.post(`${API_BA}/api/branch_admin/branches/${this.getBranchId()}/display/queues`, { queue_id: queueId });
+            Utils.showToast(response.data.message, 'success');
+            form.reset();
+            document.getElementById('add-queue-display-modal').classList.add('hidden');
+            await this.loadDisplayQueues();
         } catch (error) {
-            console.error('Erro ao pausar/retomar fila:', error);
-            Utils.showToast(error.response?.data?.error || 'Erro ao atualizar status da fila', 'error');
+            console.error('Erro ao adicionar fila à tela:', error);
+            Utils.showToast(error.response?.data?.error || 'Erro ao adicionar fila à tela', 'error');
         } finally {
-            Utils.showLoading(false);
+            Utils.hideLoading();
         }
     }
 
-    async generateTotemTicket(queueId) {
+    async removeQueueFromDisplay(queueId) {
         try {
-            Utils.showLoading(true, 'Gerando ticket via totem...');
-            const branchId = localStorage.getItem('branchId') || sessionStorage.getItem('branchId');
-            const response = await axios.post(`${API_BASE}/api/branch_admin/branches/${branchId}/queues/totem`, { queue_id: queueId }, {
-                responseType: 'blob'
+            Utils.showLoading('Removendo fila da tela...');
+            const response = await axios.delete(`${API_BA}/api/branch_admin/branches/${this.getBranchId()}/display/queues/${queueId}`);
+            Utils.showToast(response.data.message, 'success');
+            await this.loadDisplayQueues();
+        } catch (error) {
+            console.error('Erro ao remover fila da tela:', error);
+            Utils.showToast(error.response?.data?.error || 'Erro ao remover fila da tela', 'error');
+        } finally {
+            Utils.hideLoading();
+        }
+    }
+
+    filterQueues(searchTerm) {
+        const filtered = this.queues.filter(queue => 
+            queue.prefix.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            queue.service?.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        this.renderQueues(filtered);
+    }
+
+    renderQueues(queues = this.queues) {
+        const container = document.getElementById('queues-container');
+        container.innerHTML = '';
+        
+        if (!queues.length) {
+            container.innerHTML = '<p class="text-gray-500">Nenhuma fila encontrada.</p>';
+            return;
+        }
+
+        queues.forEach(queue => {
+            const card = document.createElement('div');
+            card.className = 'bg-white p-4 rounded-lg shadow border border-gray-100 flex justify-between items-center';
+            card.innerHTML = `
+                <div>
+                    <h4 class="font-semibold">${queue.prefix} - ${queue.service?.name || 'N/A'}</h4>
+                    <p class="text-sm text-gray-500">Departamento: ${queue.department?.name || 'N/A'}</p>
+                    <p class="text-sm text-gray-500">Status: ${queue.status}</p>
+                    <p class="text-sm text-gray-500">Prefixo: ${queue.prefix}</p>
+                    <p class="text-sm text-gray-500">Tickets Ativos: ${queue.active_tickets || 0}</p>
+                    <p class="text-sm text-gray-500">Tempo de Espera Estimado: ${Utils.formatTime(queue.estimated_wait_time)}</p>
+                </div>
+                <div class="flex space-x-2">
+                    <button class="edit-queue-btn bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600" data-queue-id="${queue.id}" aria-label="Editar fila">Editar</button>
+                    <button class="call-ticket-btn bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-green-600" data-queue-id="${queue.id}" aria-label="Chamar ticket">Chamar</button>
+                    <button class="toggle-queue-btn bg-yellow-500 text-white px-3 py-1 rounded-lg hover:bg-yellow-600" data-queue-id="${queue.id}" aria-label="${queue.status === 'Ativa' ? 'Pausar' : 'Retomar'} fila">${queue.status === 'Ativa' ? 'Pausar' : 'Retomar'}</button>
+                    <button class="generate-ticket-btn bg-purple-500 text-white px-3 py-1 rounded-lg hover:bg-purple-600" data-queue-id="${queue.id}" aria-label="Gerar ticket via totem">Totem</button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+        document.querySelectorAll('.edit-queue-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const queueId = btn.dataset.queueId;
+                const queue = this.queues.find(q => q.id === queueId);
+                this.openQueueModal(queue);
             });
-            Utils.showToast('Ticket gerado com sucesso', 'success');
-            Utils.downloadFile(response.data, `ticket_${queueId}_${Date.now()}.pdf`);
-            this.loadQueues();
-        } catch (error) {
-            console.error('Erro ao gerar ticket via totem:', error);
-            Utils.showToast(error.response?.data?.error || 'Erro ao gerar ticket via totem', 'error');
-        } finally {
-            Utils.showLoading(false);
+        });
+
+        document.querySelectorAll('.call-ticket-btn').forEach(btn => {
+            btn.addEventListener('click', () => CallManager.callNextTicket(btn.dataset.queueId));
+        });
+
+        document.querySelectorAll('.toggle-queue-btn').forEach(btn => {
+            btn.addEventListener('click', () => this.toggleQueueStatus(btn.dataset.queueId));
+        });
+
+        document.querySelectorAll('.generate-ticket-btn').forEach(btn => {
+            btn.addEventListener('click', () => TicketManager.generateTicket(btn.dataset.queueId));
+        });
+    }
+
+    renderDisplayQueues() {
+        const container = document.getElementById('display-queues-container');
+        container.innerHTML = '';
+
+        if (!this.displayQueues.length) {
+            container.innerHTML = '<p class="text-gray-500">Nenhuma fila na tela de acompanhamento.</p>';
+            return;
         }
+
+        this.displayQueues.forEach(displayQueue => {
+            const queue = this.queues.find(q => q.id === displayQueue.queue_id);
+            const card = document.createElement('div');
+            card.className = 'bg-white p-4 rounded-lg shadow border border-gray-100 flex justify-between items-center';
+            card.innerHTML = `
+                <div>
+                    <h4 class="font-semibold">${queue?.prefix || 'N/A'} - ${queue?.service?.name || 'N/A'}</h4>
+                    <p class="text-sm text-gray-500">Departamento: ${queue?.department?.name || 'N/A'}</p>
+                    <p class="text-sm text-gray-500">Ordem de Exibição: ${displayQueue.display_order}</p>
+                </div>
+                <div>
+                    <button class="remove-queue-display-btn bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600" data-queue-id="${displayQueue.queue_id}" aria-label="Remover fila da tela">Remover</button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+        document.querySelectorAll('.remove-queue-display-btn').forEach(btn => {
+            btn.addEventListener('click', () => this.removeQueueFromDisplay(btn.dataset.queueId));
+        });
+    }
+
+    async toggleQueueStatus(queueId) {
+        try {
+            Utils.showLoading('Alterando status da fila...');
+            const queue = this.queues.find(q => q.id === queueId);
+            const newStatus = queue.status === 'Ativa' ? 'Pausada' : 'Ativa';
+            await axios.put(`${API_BA}/api/branch_admin/queues/${queueId}/status`, { status: newStatus });
+            Utils.showToast(`Fila ${newStatus.toLowerCase()} com sucesso`, 'success');
+            await this.loadQueues();
+        } catch (error) {
+            console.error('Erro ao alterar status da fila:', error);
+            Utils.showToast(error.response?.data?.error || 'Erro ao alterar status da fila', 'error');
+        } finally {
+            Utils.hideLoading();
+        }
+    }
+
+    getBranchId() {
+        return localStorage.getItem('branch_id') || 'default_branch';
     }
 }
+
 
 class TicketManager {
     async loadTickets(statusFilter = 'all') {
