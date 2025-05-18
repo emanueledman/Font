@@ -176,47 +176,18 @@ class QueueManager {
         });
     }
 
-
     populateDisplayQueueSelect() {
         const queueSelect = document.getElementById('display-queue-id');
         queueSelect.innerHTML = '<option value="">Selecione uma fila</option>';
-
-        // Log para depuração
-        console.log('Filas totais (this.queues):', JSON.stringify(this.queues, null, 2));
-        console.log('Filas na tela (this.displayQueues):', JSON.stringify(this.displayQueues, null, 2));
-
-        // Filtra filas que não estão na tela
-        const availableQueues = this.queues.filter(queue => {
-            // Normaliza IDs para strings e verifica existência
-            if (!queue.id) {
-                console.warn('Fila sem ID:', queue);
-                return false;
+        this.queues.forEach(queue => {
+            if (!this.displayQueues.some(dq => dq.queue_id === queue.id)) {
+                const option = document.createElement('option');
+                option.value = queue.id;
+                option.textContent = `${queue.prefix} - ${queue.service?.name || 'N/A'}`;
+                queueSelect.appendChild(option);
             }
-            return !this.displayQueues.some(dq => {
-                const displayQueueId = dq.queue_id || dq.id || null;
-                return displayQueueId && String(displayQueueId) === String(queue.id);
-            });
-        });
-
-        // Log das filas disponíveis
-        console.log('Filas disponíveis após filtro:', JSON.stringify(availableQueues, null, 2));
-
-        // Verifica se há filas disponíveis
-        if (!availableQueues.length) {
-            queueSelect.innerHTML += '<option value="" disabled>Nenhuma fila disponível para adicionar</option>';
-            console.log('Nenhuma fila disponível para exibir no combobox');
-            return;
-        }
-
-        // Preenche o combobox
-        availableQueues.forEach(queue => {
-            const option = document.createElement('option');
-            option.value = queue.id;
-            option.textContent = `${queue.prefix || 'N/A'} - ${queue.service?.name || 'Sem serviço'}`;
-            queueSelect.appendChild(option);
         });
     }
-
 
     openQueueModal(queue = null) {
         const modal = document.getElementById('queue-modal');
