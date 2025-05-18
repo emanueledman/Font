@@ -145,10 +145,12 @@ class QueueManager {
             Utils.showLoading('Carregando filas na tela...');
             const response = await axios.get(`${API_BA}/api/branch_admin/branches/${this.getBranchId()}/display/queues`);
             this.displayQueues = response.data.display_queues || [];
+            console.log('Filas na tela carregadas:', this.displayQueues); // Log para depuração
             this.renderDisplayQueues();
         } catch (error) {
             console.error('Erro ao carregar filas na tela:', error);
             Utils.showToast('Erro ao carregar filas na tela', 'error');
+            this.displayQueues = []; // Garante que displayQueues seja um array vazio em caso de erro
         } finally {
             Utils.hideLoading();
         }
@@ -179,15 +181,26 @@ class QueueManager {
     populateDisplayQueueSelect() {
         const queueSelect = document.getElementById('display-queue-id');
         queueSelect.innerHTML = '<option value="">Selecione uma fila</option>';
-        this.queues.forEach(queue => {
-            if (!this.displayQueues.some(dq => dq.queue_id === queue.id)) {
-                const option = document.createElement('option');
-                option.value = queue.id;
-                option.textContent = `${queue.prefix} - ${queue.service?.name || 'N/A'}`;
-                queueSelect.appendChild(option);
-            }
+        
+        console.log('Filas disponíveis:', this.queues); // Log para depuração
+        console.log('Filas na tela:', this.displayQueues); // Log para depuração
+        
+        const availableQueues = this.queues.filter(queue => 
+            !this.displayQueues.some(dq => dq.queue_id === queue.id)
+        );
+        
+        if (!availableQueues.length) {
+            queueSelect.innerHTML += '<option value="" disabled>Nenhuma fila disponível</option>';
+            return;
+        }
+
+        availableQueues.forEach(queue => {
+            const option = document.createElement('option');
+            option.value = queue.id;
+            option.textContent = `${queue.prefix} - ${queue.service?.name || 'N/A'}`;
+            queueSelect.appendChild(option);
         });
-    }
+    }   
 
     openQueueModal(queue = null) {
         const modal = document.getElementById('queue-modal');
@@ -213,9 +226,15 @@ class QueueManager {
 
     openAddQueueDisplayModal() {
         const modal = document.getElementById('add-queue-display-modal');
-        this.populateDisplayQueueSelect();
-        modal.classList.remove('hidden');
-    }
+        // Garante que filas e filas na tela estejam carregadas antes de preencher o select
+        Promise.all([this.loadQueues(), this.loadDisplayQueues()]).then(() => {
+            this.populateDisplayQueueSelect();
+            modal.classList.remove('hidden');
+        }).catch(error => {
+            console.error('Erro ao carregar dados para o modal:', error);
+            Utils.showToast('Erro ao abrir o modal de adição de fila', 'error');
+        });
+    } 
 
     async submitQueueForm(e) {
         e.preventDefault();
