@@ -1718,6 +1718,7 @@ function updateCurrentDateTime() {
     document.getElementById('current-date').textContent = now.toLocaleDateString('pt-BR', options);
 }
 
+
 document.addEventListener('DOMContentLoaded', () => {
     if (window.location.pathname.includes('index.html')) return;
 
@@ -1894,4 +1895,26 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('ticket-status-filter')?.addEventListener('change', (e) => {
         ticketManager.loadTickets(e.target.value);
     });
+
+    // Eventos para gerenciar filas na tela
+    document.getElementById('add-display-queue-btn')?.addEventListener('click', () => {
+        console.log('Botão Adicionar Fila clicado');
+        settingsManager.showAddDisplayQueueModal();
+    });
+    document.getElementById('cancel-display-queue-btn')?.addEventListener('click', () => {
+        console.log('Botão Cancelar clicado');
+        document.getElementById('add-display-queue-modal').classList.add('hidden');
+    });
+    document.getElementById('save-display-queue-btn')?.addEventListener('click', () => {
+        console.log('Botão Adicionar clicado');
+        const queueId = document.getElementById('display-queue-id').value;
+        if (queueId) {
+            settingsManager.addQueueToDisplay(queueId);
+        } else {
+            Utils.showToast('Selecione uma fila', 'error');
+        }
+    });
+
+    // Carregar filas da tela ao inicializar a seção de configurações
+    settingsManager.loadDisplayQueues();
 });
