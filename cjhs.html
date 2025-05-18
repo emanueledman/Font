@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Senhas - Sistema Real</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Roboto', sans-serif;
+        }
+        
+        body {
+            background-color: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+        
+        .container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+        }
+        
+        .header {
+            background-color: #0055AA;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 80px;
+        }
+        
+        .bank-logo {
+            font-size: 28px;
+            font-weight: bold;
+        }
+        
+        #current-time {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+        
+        .password-section {
+            display: flex;
+            flex: 4;
+            margin: 10px 0;
+        }
+        
+        .service-columns {
+            display: flex;
+            width: 70%;
+            border: 3px solid #0055AA;
+        }
+        
+        .service-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-right: 3px solid #0055AA;
+            position: relative;
+        }
+        
+        .service-column:last-child {
+            border-right: none;
+        }
+        
+        .service-header {
+            background-color: #0055AA;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 80px;
+        }
+        
+        .service-name {
+            font-size: 24px;
+            text-transform: uppercase;
+        }
+        
+        .service-subtitle {
+            font-size: 16px;
+            margin-top: 5px;
+        }
+        
+        .call-display {
+            background-color: #000;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .current-call {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            padding: 20px 0;
+        }
+        
+        .senha-label {
+            font-size: 32px;
+            color: yellow;
+            text-transform: uppercase;
+        }
+        
+        .senha-number {
+            font-size: 90px;
+            font-weight: bold;
+            color: yellow;
+            margin: 10px 0;
+        }
+        
+        .senha-guiche {
+            font-size: 32px;
+            font-weight: bold;
+            color: yellow;
+        }
+        
+        .animation-blink {
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        .last-calls {
+            flex: 1;
+            background-color: #222;
+            border-top: 3px solid #0055AA;
+            padding: 10px;
+            overflow: hidden;
+        }
+        
+        .last-calls-title {
+            font-size: 18px;
+            color: white;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+        
+        .last-calls-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .last-call-item {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            padding: 5px 0;
+            color: #ccc;
+            font-size: 20px;
+        }
+        
+        .last-call-item span {
+            margin: 0 10px;
+        }
+        
+        .ad-section {
+            width: 30%;
+            border: 3px solid #0055AA;
+            margin-left: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .ad-header {
+            background-color: #0055AA;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .ad-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .ad-banner {
+            flex: 1;
+            background-color: #222;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+        }
+        
+        .ad-banner:nth-child(even) {
+            background-color: #333;
+        }
+        
+        .ad-title {
+            font-size: 34px;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .ad-description {
+            font-size: 26px;
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .video-section {
+            flex: 2;
+            background-color: #000;
+            border: 3px solid #0055AA;
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        .video-header {
+            background-color: #0055AA;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .video-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            background-color: #111;
+        }
+        
+        .video-placeholder {
+            width: 100%;
+            height: 100%;
+            background-color: #222;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #777;
+        }
+        
+        .footer {
+            height: 50px;
+            background-color: #0055AA;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        
+        .ticker-content {
+            font-size: 24px;
+            color: white;
+            white-space: nowrap;
+            animation: ticker 40s linear infinite;
+        }
+        
+        @keyframes ticker {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+        
+        /* Estilo para as chamadas recentes com animação */
+        .new-call {
+            animation: highlight 2s 1;
+        }
+        
+        @keyframes highlight {
+            0% { background-color: yellow; color: black; }
+            100% { background-color: transparent; color: #ccc; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="bank-logo">BANCO NACIONAL</div>
+            <div id="current-time">14/05/2025 - 14:30</div>
+        </div>
+        
+        <div class="main-content">
+            <div class="password-section">
+                <div class="service-columns">
+                    <!-- Coluna 1: Caixas -->
+                    <div class="service-column">
+                        <div class="service-header">
+                            <div class="service-name">CAIXAS</div>
+                            <div class="service-subtitle">Atendimento Geral</div>
+                        </div>
+                        <div class="call-display">
+                            <div class="current-call animation-blink">
+                                <div class="senha-label">SENHA</div>
+                                <div class="senha-number">A042</div>
+                                <div class="senha-guiche">GUICHÊ 05</div>
+                            </div>
+                        </div>
+                        <div class="last-calls">
+                            <div class="last-calls-title">ÚLTIMAS CHAMADAS</div>
+                            <div class="last-calls-content">
+                                <div class="last-call-item"><span>A041</span><span>GUICHÊ 03</span></div>
+                                <div class="last-call-item"><span>A040</span><span>GUICHÊ 01</span></div>
+                                <div class="last-call-item"><span>A039</span><span>GUICHÊ 02</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Coluna 2: Atendimento Prioritário -->
+                    <div class="service-column">
+                        <div class="service-header">
+                            <div class="service-name">PRIORITÁRIO</div>
+                            <div class="service-subtitle">Preferencial</div>
+                        </div>
+                        <div class="call-display">
+                            <div class="current-call">
+                                <div class="senha-label">SENHA</div>
+                                <div class="senha-number">P015</div>
+                                <div class="senha-guiche">GUICHÊ 04</div>
+                            </div>
+                        </div>
+                        <div class="last-calls">
+                            <div class="last-calls-title">ÚLTIMAS CHAMADAS</div>
+                            <div class="last-calls-content">
+                                <div class="last-call-item"><span>P014</span><span>GUICHÊ 02</span></div>
+                                <div class="last-call-item"><span>P013</span><span>GUICHÊ 04</span></div>
+                                <div class="last-call-item"><span>P012</span><span>GUICHÊ 04</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Coluna 3: Abertura de Contas -->
+                    <div class="service-column">
+                        <div class="service-header">
+                            <div class="service-name">CONTAS</div>
+                            <div class="service-subtitle">Abertura e Serviços</div>
+                        </div>
+                        <div class="call-display">
+                            <div class="current-call">
+                                <div class="senha-label">SENHA</div>
+                                <div class="senha-number">C021</div>
+                                <div class="senha-guiche">GUICHÊ 08</div>
+                            </div>
+                        </div>
+                        <div class="last-calls">
+                            <div class="last-calls-title">ÚLTIMAS CHAMADAS</div>
+                            <div class="last-calls-content">
+                                <div class="last-call-item"><span>C020</span><span>GUICHÊ 07</span></div>
+                                <div class="last-call-item"><span>C019</span><span>GUICHÊ 08</span></div>
+                                <div class="last-call-item"><span>C018</span><span>GUICHÊ 09</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Coluna 4: Gerência -->
+                    <div class="service-column">
+                        <div class="service-header">
+                            <div class="service-name">GERÊNCIA</div>
+                            <div class="service-subtitle">Atendimento Personalizado</div>
+                        </div>
+                        <div class="call-display">
+                            <div class="current-call">
+                                <div class="senha-label">SENHA</div>
+                                <div class="senha-number">G007</div>
+                                <div class="senha-guiche">SALA 02</div>
+                            </div>
+                        </div>
+                        <div class="last-calls">
+                            <div class="last-calls-title">ÚLTIMAS CHAMADAS</div>
+                            <div class="last-calls-content">
+                                <div class="last-call-item"><span>G006</span><span>SALA 01</span></div>
+                                <div class="last-call-item"><span>G005</span><span>SALA 03</span></div>
+                                <div class="last-call-item"><span>G004</span><span>SALA 02</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="ad-section">
+                    <div class="ad-header">PUBLICIDADE</div>
+                    <div class="ad-content">
+                        <div class="ad-banner" id="ad-1">
+                            <div class="ad-title">NOVO EMPRÉSTIMO</div>
+                            <div class="ad-description">Taxas a partir de 0,99% ao mês</div>
+                        </div>
+                        <div class="ad-banner" id="ad-2">
+                            <div class="ad-title">CARTÃO PREMIUM</div>
+                            <div class="ad-description">Anuidade grátis no primeiro ano</div>
+                        </div>
+                        <div class="ad-banner" id="ad-3">
+                            <div class="ad-title">INVESTIMENTOS</div>
+                            <div class="ad-description">Rendimento acima do mercado</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="video-section">
+                <div class="video-header">CONTEÚDO INSTITUCIONAL</div>
+                <div class="video-content">
+                    <div class="video-placeholder" id="video-content">
+                        [Espaço para vídeos e conteúdo multimídia]
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="ticker-content">
+                BANCO NACIONAL - ATENDIMENTO DE QUALIDADE - LIGUE 0800 123 4567 - BAIXE NOSSO APLICATIVO - APROVEITE NOSSAS OFERTAS EXCLUSIVAS - HORÁRIO DE FUNCIONAMENTO: SEGUNDA A SEXTA, DAS 10H ÀS 16H
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Atualizar hora atual
+        function updateTime() {
+            const now = new Date();
+            const options = { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            document.getElementById('current-time').textContent = now.toLocaleDateString('pt-BR', options).replace(',', ' -');
+        }
+        
+        // Atualizar a cada minuto
+        updateTime();
+        setInterval(updateTime, 60000);
+        
+        // Simular chamada de novas senhas
+        function simulateNewCall() {
+            // Tipos de serviço e seus prefixos
+            const services = [
+                {div: document.querySelectorAll('.service-column')[0], prefix: 'A', current: 42, guiches: [1, 2, 3, 5]},
+                {div: document.querySelectorAll('.service-column')[1], prefix: 'P', current: 15, guiches: [2, 4]},
+                {div: document.querySelectorAll('.service-column')[2], prefix: 'C', current: 21, guiches: [7, 8, 9]},
+                {div: document.querySelectorAll('.service-column')[3], prefix: 'G', current: 7, guiches: [1, 2, 3]}
+            ];
+            
+            // Selecionar aleatoriamente um serviço para atualizar
+            const randomService = Math.floor(Math.random() * services.length);
+            const service = services[randomService];
+            
+            // Obter elementos
+            const callDisplay = service.div.querySelector('.call-display');
+            const currentCall = callDisplay.querySelector('.current-call');
+            const senhaNumber = currentCall.querySelector('.senha-number');
+            const senhaGuiche = currentCall.querySelector('.senha-guiche');
+            const lastCallsContent = service.div.querySelector('.last-calls-content');
+            
+            // Adicionar efeito de destaque na senha atual (que vai virar última)
+            currentCall.classList.add('animation-blink');
+            
+            // Criar elemento para a última chamada
+            const lastCall = document.createElement('div');
+            lastCall.className = 'last-call-item new-call';
+            lastCall.innerHTML = `<span>${senhaNumber.textContent}</span><span>${senhaGuiche.textContent}</span>`;
+            
+            // Inserir no início da lista
+            lastCallsContent.insertBefore(lastCall, lastCallsContent.firstChild);
+            
+            // Remover o último item se houver mais de 3
+            if (lastCallsContent.children.length > 3) {
+                lastCallsContent.removeChild(lastCallsContent.lastChild);
+            }
+            
+            // Incrementar número da senha
+            service.current++;
+            
+            // Atualizar a senha atual
+            senhaNumber.textContent = service.prefix + service.current.toString().padStart(3, '0');
+            
+            // Selecionar um guichê aleatório
+            const randomGuicheIndex = Math.floor(Math.random() * service.guiches.length);
+            const guiche = service.guiches[randomGuicheIndex];
+            
+            // Determinar se é guichê ou sala
+            const guicheText = service.prefix === 'G' ? 'SALA' : 'GUICHÊ';
+            senhaGuiche.textContent = `${guicheText} ${guiche.toString().padStart(2, '0')}`;
+            
+            // Remover efeito de destaque após um tempo
+            setTimeout(() => {
+                currentCall.classList.remove('animation-blink');
+            }, 2000);
+        }
+        
+        // Simular atualização de publicidade
+        function rotateAds() {
+            const ads = document.querySelectorAll('.ad-banner');
+            const titles = [
+                "NOVO EMPRÉSTIMO", "CARTÃO PREMIUM", "INVESTIMENTOS",
+                "CONTA DIGITAL", "SEGURO RESIDENCIAL", "CONSÓRCIO IMOBILIÁRIO",
+                "FINANCIAMENTO", "PREVIDÊNCIA PRIVADA", "POUPANÇA PREMIADA"
+            ];
+            
+            const descriptions = [
+                "Taxas a partir de 0,99% ao mês", 
+                "Anuidade grátis no primeiro ano", 
+                "Rendimento acima do mercado",
+                "Abra sua conta sem mensalidade",
+                "Proteção completa para sua casa",
+                "Realize o sonho da casa própria",
+                "Crédito aprovado em 24h",
+                "Garanta seu futuro hoje mesmo",
+                "Concorra a prêmios mensais"
+            ];
+            
+            ads.forEach((ad, index) => {
+                const offset = (Math.floor(Math.random() * titles.length) + index) % titles.length;
+                const title = ad.querySelector('.ad-title');
+                const description = ad.querySelector('.ad-description');
+                
+                title.textContent = titles[offset];
+                description.textContent = descriptions[offset];
+            });
+        }
+        
+        // Simular conteúdo de vídeo
+        function rotateVideoContent() {
+            const videoPlaceholder = document.getElementById('video-content');
+            const contents = [
+                "[Vídeo: Conheça nossos novos serviços digitais]",
+                "[Vídeo: Como usar o aplicativo do banco]",
+                "[Vídeo: Dicas de segurança financeira]",
+                "[Vídeo: História do Banco Nacional]",
+                "[Vídeo: Depoimentos de clientes satisfeitos]"
+            ];
+            
+            const randomContent = contents[Math.floor(Math.random() * contents.length)];
+            videoPlaceholder.textContent = randomContent;
+        }
+        
+        // Chamar novas senhas a cada 6-12 segundos
+        setInterval(() => {
+            simulateNewCall();
+            
+            // 25% de chance de destacar uma senha com animação piscante
+            if (Math.random() < 0.25) {
+                const columns = document.querySelectorAll('.service-column');
+                const randomColumn = Math.floor(Math.random() * columns.length);
+                const currentCall = columns[randomColumn].querySelector('.current-call');
+                
+                currentCall.classList.add('animation-blink');
+                setTimeout(() => {
+                    currentCall.classList.remove('animation-blink');
+                }, 8000);
+            }
+        }, Math.floor(Math.random() * 6000) + 6000);
+        
+        // Rotacionar anúncios a cada 30 segundos
+        rotateAds();
+        setInterval(rotateAds, 30000);
+        
+        // Rotacionar conteúdo de vídeo a cada 60 segundos
+        rotateVideoContent();
+        setInterval(rotateVideoContent, 60000);
+    </script>
+</body>
+</html>

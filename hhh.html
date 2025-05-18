@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Senhas - Conservatória de Luanda</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap');
+
+        :root {
+            --primary-color: #c8102e; /* Angolan flag red */
+            --primary-dark: #a00d26;
+            --primary-light: #e63946;
+            --secondary-color: #ffd700; /* Angolan flag yellow */
+            --secondary-light: #ffec5d;
+            --civil-color: #1d3557; /* Blue for Registo Civil */
+            --predial-color: #457b9d; /* Light blue for Registo Predial */
+            --comercial-color: #f4a261; /* Orange for Registo Comercial */
+            --notariado-color: #2a9d8f; /* Teal for Notariado */
+            --text-dark: #000000; /* Angolan flag black */
+            --text-light: #ffffff;
+            --background-color: #0a1a2e;
+            --panel-bg: #102442;
+            --highlight-color: #ffd700;
+            --active-highlight: #ffee99;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --glass-effect: rgba(255, 255, 255, 0.1);
+            --gradient-start: #c8102e;
+            --gradient-end: #a00d26;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-light);
+            overflow: hidden;
+            min-height: 100vh;
+            background-image: linear-gradient(45deg, var(--background-color) 0%, #112a4a 100%);
+            background-attachment: fixed;
+        }
+
+        .container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23ffffff' fill-opacity='0.03' fill-rule='evenodd'/%3E%3C/svg%3E");
+            z-index: -1;
+        }
+
+        .header {
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 90px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            position: relative;
+            z-index: 10;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(to right, var(--secondary-color), var(--secondary-light));
+        }
+
+        .conservatory-info {
+            display: flex;
+            align-items: center;
+        }
+
+        .conservatory-logo {
+            display: flex;
+            align-items: center;
+        }
+
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            background-color: var(--secondary-color);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: 700;
+            margin-right: 15px;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+            color: var(--text-dark);
+            transition: transform 0.3s ease;
+        }
+
+        .logo-icon:hover {
+            transform: rotate(360deg);
+        }
+
+        .conservatory-name {
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--text-light), var(--secondary-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .info-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        #current-time {
+            font-size: 32px;
+            font-weight: 600;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+        }
+
+        .time-icon {
+            margin-right: 10px;
+            font-size: 24px;
+            animation: pulse 2s infinite;
+        }
+
+        .agency-info {
+            font-size: 16px;
+            color: var(--secondary-light);
+            font-weight: 500;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        .password-section {
+            display: flex;
+            flex: 4;
+            gap: 20px;
+        }
+
+        .service-columns {
+            width: 70%;
+            display: flex;
+            border-radius: 15px;
+            background-color: var(--panel-bg);
+            box-shadow: 0 10px 30px var(--shadow-color);
+            overflow: hidden;
+            position: relative;
+            animation: zoomIn 0.5s forwards;
+        }
+
+        .service-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            transition: all 0.4s cubic-bezier(0.215, 0.61, 0.355, 1);
+            overflow: hidden;
+        }
+
+        .service-column:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 10%;
+            height: 80%;
+            width: 2px;
+            background: linear-gradient(to bottom, transparent, var(--glass-effect), transparent);
+        }
+
+        .service-column.current {
+            transform: scale(1.03);
+            z-index: 5;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+        }
+
+        .service-column.current::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 3px solid var(--highlight-color);
+            border-radius: 15px;
+            box-sizing: border-box;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .service-header {
+            padding: 15px 10px;
+            text-align: center;
+            height: 90px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            z-index: 2;
+            overflow: hidden;
+        }
+
+        .service-column[data-queue="civil"] .service-header {
+            background: linear-gradient(to bottom, var(--civil-color), #14233e);
+        }
+
+        .service-column[data-queue="predial"] .service-header {
+            background: linear-gradient(to bottom, var(--predial-color), #335f7a);
+        }
+
+        .service-column[data-queue="comercial"] .service-header {
+            background: linear-gradient(to bottom, var(--comercial-color), #e76f51);
+        }
+
+        .service-column[data-queue="notariado"] .service-header {
+            background: linear-gradient(to bottom, var(--notariado-color), #1f776d);
+        }
+
+        .service-header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 15%;
+            width: 70%;
+            height: 3px;
+            background-color: var(--secondary-color);
+            border-radius: 3px;
+        }
+
+        .service-header.shine-effect::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                to right,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0.1) 50%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            transform: rotate(30deg);
+            animation: shine 6s infinite linear;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .service-name {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .service-icon {
+            font-size: 18px;
+            margin-right: 8px;
+        }
+
+        .service-subtitle {
+            font-size: 14px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.8);
+            margin-top: 5px;
+        }
+
+        .call-display {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px 10px;
+            background-color: rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .call-display::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+            z-index: 0;
+        }
+
+        .current-call {
+            text-align: center;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        .senha-label {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--secondary-light);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+
+        .senha-number {
+            font-size: 90px;
+            font-weight: 700;
+            color: var(--text-light);
+            margin: 5px 0 15px;
+            text-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+            letter-spacing: 3px;
+            transition: color 0.3s ease;
+        }
+
+        .senha-number.highlight {
+            color: var(--highlight-color);
+            animation: pulse 1.5s ease-in-out;
+        }
+
+        .senha-sala {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--secondary-light);
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 30px;
+            padding: 8px 15px;
+            display: inline-block;
+            box-shadow: 0 3px 15px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .senha-sala:hover {
+            transform: scale(1.05);
+        }
+
+        .animation-blink {
+            animation: blink 1.5s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.05); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .last-calls {
+            background-color: rgba(0, 0, 0, 0.2);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            min-height: 150px;
+        }
+
+        .last-calls-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--secondary-light);
+            text-align: center;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            position: relative;
+        }
+
+        .last-calls-title::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 35%;
+            width: 30%;
+            height: 2px;
+            background-color: var(--secondary-light);
+        }
+
+        .last-calls-content {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .last-call-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.7);
+            padding: 8px 10px;
+            border-radius: 8px;
+            background-color: rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .last-call-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+
+        .last-call-item span:first-child {
+            font-weight: 600;
+        }
+
+        .new-call {
+            animation: highlight-call 3s ease;
+        }
+
+        @keyframes highlight-call {
+            0% { background-color: var(--secondary-color); color: var(--text-dark); }
+            100% { background-color: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.7); }
+        }
+
+        .ad-section {
+            width: 30%;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--panel-bg);
+            box-shadow: 0 10px 30px var(--shadow-color);
+            overflow: hidden;
+            animation: zoomIn 0.5s forwards;
+            position: relative;
+        }
+
+        .ad-header {
+            background: linear-gradient(to right, var(--primary-color), var(--primary-dark));
+            color: var(--text-light);
+            padding: 15px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            height: 90px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .ad-header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 15%;
+            width: 70%;
+            height: 3px;
+            background-color: var(--secondary-color);
+            border-radius: 3px;
+        }
+
+        .ad-content {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ad-banner {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 0;
+            transition: opacity 1s ease, transform 1s ease;
+            transform: translateY(20px);
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+        }
+
+        .ad-banner.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .ad-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+            color: var(--secondary-color);
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            animation: pulse 2s infinite;
+        }
+
+        .ad-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-light);
+            margin-bottom: 15px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .ad-description {
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.8);
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .ad-button {
+            background: linear-gradient(to right, var(--secondary-color), var(--secondary-light));
+            color: var(--text-dark);
+            border: none;
+            padding: 12px 25px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ad-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .ad-button::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                to right,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0.2) 50%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            transform: rotate(30deg);
+            animation: shine 4s infinite linear;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .video-section {
+            flex: 2;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background-color: var(--panel-bg);
+            box-shadow: 0 10px 30px var(--shadow-color);
+            animation: zoomIn 0.5s forwards;
+        }
+
+        .video-header {
+            background: linear-gradient(to right, var(--primary-color), var(--primary-dark));
+            color: var(--text-light);
+            padding: 15px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .video-header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 15%;
+            width: 70%;
+            height: 3px;
+            background-color: var(--secondary-color);
+            border-radius: 3px;
+        }
+
+        .video-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            position: relative;
+        }
+
+        .video-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+            z-index: 0;
+        }
+
+        .video-placeholder {
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .video-thumbnail {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.7;
+            z-index: 1;
+        }
+
+        .video-icon {
+            position: absolute;
+            font-size: 50px;
+            color: var(--secondary-color);
+            background-color: rgba(0, 0, 0, 0.5);
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .video-icon:hover {
+            transform: scale(1.1);
+        }
+
+        .video-title {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            padding: 10px 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: var(--text-light);
+            font-size: 18px;
+            font-weight: 600;
+            text-align: center;
+            z-index: 2;
+        }
+
+        .footer {
+            height: 70px;
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            box-shadow: 0 -4px 20px var(--shadow-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .footer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(to right, var(--secondary-color), var(--secondary-light));
+        }
+
+        .ticker-wrapper {
+            width: 100%;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            height: 100%;
+        }
+
+        .ticker-content {
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+            animation: ticker 30s linear infinite;
+            font-size: 20px;
+            color: var(--text-light);
+            padding: 0 20px;
+        }
+
+        .ticker-content span {
+            display: flex;
+            align-items: center;
+            margin: 0 30px;
+        }
+
+        .ticker-icon {
+            margin-right: 10px;
+            color: var(--secondary-color);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes ticker {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) rotate(30deg); }
+            100% { transform: translateX(100%) rotate(30deg); }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes zoomIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .ad-particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background-color: var(--secondary-light);
+            border-radius: 50%;
+            opacity: 0.5;
+            animation: particle 5s linear infinite;
+        }
+
+        @keyframes particle {
+            0% { transform: translateY(0); opacity: 0.5; }
+            100% { transform: translateY(-100vh); opacity: 0; }
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+
+        .service-column:focus-within,
+        .ad-button:focus,
+        .video-icon:focus {
+            outline: 2px solid var(--secondary-color);
+            outline-offset: 2px;
+        }
+
+        @media screen and (max-width: 1400px) {
+            .service-header, .ad-header, .video-header {
+                font-size: 20px;
+            }
+
+            .senha-number {
+                font-size: 70px;
+            }
+
+            .senha-sala, .senha-label {
+                font-size: 18px;
+            }
+        }
+
+        @media screen and (max-width: 1200px) {
+            .password-section {
+                flex-direction: column;
+            }
+
+            .service-columns, .ad-section {
+                width: 100%;
+            }
+
+            .ad-section {
+                height: 300px;
+            }
+
+            .main-content {
+                padding: 15px;
+                gap: 15px;
+            }
+        }
+
+        @media screen and (max-width: 768px) {
+            .service-columns {
+                flex-direction: column;
+            }
+
+            .service-column:not(:last-child)::after {
+                content: '';
+                position: absolute;
+                bottom: 0;
+                left: 10%;
+                width: 80%;
+                height: 2px;
+                background: linear-gradient(to right, transparent, var(--glass-effect), transparent);
+            }
+
+            .conservatory-name {
+                font-size: 24px;
+            }
+
+            .logo-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 22px;
+            }
+
+            #current-time {
+                font-size: 24px;
+            }
+
+            .ad-section {
+                height: 200px;
+            }
+
+            .senha-number {
+                font-size: 50px;
+            }
+
+            .senha-sala, .senha-label {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header" role="banner">
+            <div class="conservatory-info">
+                <div class="conservatory-logo">
+                    <div class="logo-icon">CL</div>
+                    <div class="conservatory-name">CONSERVATÓRIA DE LUANDA</div>
+                </div>
+            </div>
+            <div class="info-container">
+                <div id="current-time" aria-live="polite">
+                    <i class="time-icon">⏱</i>
+                    <span>14/05/2025 - 17:36</span>
+                </div>
+                <div class="agency-info">Conservatória Central de Luanda - Cód. 001</div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <section class="password-section">
+                <div class="service-columns" role="region" aria-label="Filas de Atendimento">
+                    <div class="service-column civil" data-queue="civil" tabindex="0">
+                        <div class="service-header shine-effect">
+                            <div class="service-name"><i class="service-icon">📜</i>REGISTO CIVIL</div>
+                            <div class="service-subtitle">Certidões e Identificação</div>
+                        </div>
+                        <div class="call-display">
+                            <div class="current-call" aria-live="assertive">
+                                <div class="senha-label">SENHA</div>
+                                <div class="senha-number">R042</div>
+                                <div class="senha-sala">SALA 01</div>
+                            </div>
+                        </div>
+                        <div class="last-calls">
+                            <div class="last-calls-title">ÚLTIMAS CHAMADAS</div>
+                            <div class="last-calls-content">
+                                <div class="last-call-item"><span>R041</span><span>SALA 02</span></div>
+                                <div class="last-call-item"><span>R040</span><span>SALA 03</span></div>
+                                <div class="last-call-item"><span>R039</span><span>SALA 01</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="service-column predial" data-queue="predial" tabindex="0">
+                        <div class="service-header shine-effect">
+                            <div class="service-name"><i class="service-icon">🏡</i>REGISTO PREDIAL</div>
+                            <div class="service-subtitle">Propriedades e Imóveis</div>
+                        </div>
+                        <div class="call-display">
+                            <div class="current-call" aria-live="assertive">
+                                <div class="senha-label">SENHA</div>
+                                <div class="senha-number">P015</div>
+                                <div class="senha-sala">SALA 04</div>
+                            </div>
+                        </div>
+                        <div class="last-calls">
+                            <div class="last-calls-title">ÚLTIMAS CHAMADAS</div>
+                            <div class="last-calls-content">
+                                <div class="last-call-item"><span>P014</span><span>SALA 05</span></div>
+                                <div class="last-call-item"><span>P013</span><span>SALA 04</span></div>
+                                <div class="last-call-item"><span>P012</span><span>SALA 06</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="service-column comercial" data-queue="comercial" tabindex="0">
+                        <div class="service-header shine-effect">
+                            <div class="service-name"><i class="service-icon">🏢</i>REGISTO COMERCIAL</div>
+                            <div class="service-subtitle">Empresas e Negócios</div>
+                        </div>
+                        <div class="call-display">
+                            <div class="current-call" aria-live="assertive">
+                                <div class="senha-label">SENHA</div>
+                                <div class="senha-number">C021</div>
+                                <div class="senha-sala">SALA 07</div>
+                            </div>
+                        </div>
+                        <div class="last-calls">
+                            <div class="last-calls-title">ÚLTIMAS CHAMADAS</div>
+                            <div class="last-calls-content">
+                                <div class="last-call-item"><span>C020</span><span>SALA 08</span></div>
+                                <div class="last-call-item"><span>C019</span><span>SALA 07</span></div>
+                                <div class="last-call-item"><span>C018</span><span>SALA 09</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="service-column notariado" data-queue="notariado" tabindex="0">
+                        <div class="service-header shine-effect">
+                            <div class="service-name"><i class="service-icon">✍️</i>NOTARIADO</div>
+                            <div class="service-subtitle">Autenticações e Contratos</div>
+                        </div>
+                        <div class="call-display">
+                            <div class="current-call" aria-live="assertive">
+                                <div class="senha-label">SENHA</div>
+                                <div class="senha-number">N007</div>
+                                <div class="senha-sala">SALA 10</div>
+                            </div>
+                        </div>
+                        <div class="last-calls">
+                            <div class="last-calls-title">ÚLTIMAS CHAMADAS</div>
+                            <div class="last-calls-content">
+                                <div class="last-call-item"><span>N006</span><span>SALA 11</span></div>
+                                <div class="last-call-item"><span>N005</span><span>SALA 10</span></div>
+                                <div class="last-call-item"><span>N004</span><span>SALA 12</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <aside class="ad-section" role="complementary" aria-label="Publicidade">
+                    <div class="ad-header shine-effect">PUBLICIDADE</div>
+                    <div class="ad-content">
+                        <div class="ad-particles" id="ad-particles"></div>
+                        <div class="ad-banner active" id="ad-1">
+                            <i class="ad-icon">📜</i>
+                            <div class="ad-title">REGISTO ONLINE</div>
+                            <div class="ad-description">Solicite certidões sem sair de casa</div>
+                            <button class="ad-button" tabindex="0">Saiba Mais</button>
+                        </div>
+                        <div class="ad-banner" id="ad-2">
+                            <i class="ad-icon">🏡</i>
+                            <div class="ad-title">REGISTO PREDIAL</div>
+                            <div class="ad-description">Regularize sua propriedade hoje</div>
+                            <button class="ad-button" tabindex="0">Saiba Mais</button>
+                        </div>
+                        <div class="ad-banner" id="ad-3">
+                            <i class="ad-icon">✍️</i>
+                            <div class="ad-title">SERVIÇOS NOTARIAIS</div>
+                            <div class="ad-description">Autenticações rápidas e seguras</div>
+                            <button class="ad-button" tabindex="0">Saiba Mais</button>
+                        </div>
+                    </div>
+                </aside>
+            </section>
+
+            <section class="video-section" role="complementary" aria-label="Conteúdo Institucional">
+                <div class="video-header shine-effect">CONTEÚDO INSTITUCIONAL</div>
+                <div class="video-content">
+                    <div class="video-placeholder">
+                        <img src="https://via.placeholder.com/1280x720?text=Video+Thumbnail" class="video-thumbnail" alt="Video thumbnail">
+                        <i class="video-icon" tabindex="0">▶</i>
+                        <div class="video-title" id="video-title">Como registar uma propriedade em Luanda</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer" role="contentinfo">
+            <div class="ticker-wrapper">
+                <div class="ticker-content">
+                    <span><i class="ticker-icon">📜</i>CONSERVATÓRIA DE LUANDA - SERVIÇOS DE QUALIDADE</span>
+                    <span><i class="ticker-icon">📞</i>CONTACTE-NOS: +244 222 123 456</span>
+                    <span><i class="ticker-icon">🌐</i>VISITE NOSSO SITE PARA REGISTOS ONLINE</span>
+                    <span><i class="ticker-icon">⏰</i>HORÁRIO: SEGUNDA A SEXTA, DAS 08H ÀS 16H</span>
+                    <span><i class="ticker-icon">📍</i>LOCALIZAÇÃO: LUANDA, AV. 4 DE FEVEREIRO</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const queues = [
+            { id: 'civil', prefix: 'R', current: 42, salas: [1, 2, 3], name: 'Registo Civil', icon: '📜' },
+            { id: 'predial', prefix: 'P', current: 15, salas: [4, 5, 6], name: 'Registo Predial', icon: '🏡' },
+            { id: 'comercial', prefix: 'C', current: 21, salas: [7, 8, 9], name: 'Registo Comercial', icon: '🏢' },
+            { id: 'notariado', prefix: 'N', current: 7, salas: [10, 11, 12], name: 'Notariado', icon: '✍️', isRoom: true }
+        ];
+
+        function updateTime() {
+            const now = new Date();
+            const options = {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            document.getElementById('current-time').querySelector('span').textContent = 
+                now.toLocaleDateString('pt-PT', options).replace(',', ' -');
+        }
+        updateTime();
+        setInterval(updateTime, 60000);
+
+        function simulateNewCall() {
+            const randomQueueIndex = Math.floor(Math.random() * queues.length);
+            const queue = queues[randomQueueIndex];
+            const column = document.querySelector(`.service-column[data-queue="${queue.id}"]`);
+            const currentCall = column.querySelector('.current-call');
+            const senhaNumber = currentCall.querySelector('.senha-number');
+            const senhaSala = currentCall.querySelector('.senha-sala');
+            const lastCallsContent = column.querySelector('.last-calls-content');
+
+            document.querySelectorAll('.service-column').forEach(col => col.classList.remove('current'));
+            column.classList.add('current');
+            currentCall.classList.add('animation-blink');
+
+            const lastCall = document.createElement('div');
+            lastCall.className = 'last-call-item new-call';
+            lastCall.innerHTML = `<span>${senhaNumber.textContent}</span><span>${senhaSala.textContent}</span>`;
+            lastCallsContent.insertBefore(lastCall, lastCallsContent.firstChild);
+
+            if (lastCallsContent.children.length > 3) {
+                lastCallsContent.removeChild(lastCallsContent.lastChild);
+            }
+
+            queue.current++;
+            senhaNumber.textContent = `${queue.prefix}${queue.current.toString().padStart(3, '0')}`;
+            senhaNumber.classList.add('highlight');
+
+            const randomSala = queue.salas[Math.floor(Math.random() * queue.salas.length)];
+            senhaSala.textContent = `SALA ${randomSala.toString().padStart(2, '0')}`;
+
+            setTimeout(() => {
+                currentCall.classList.remove('animation-blink');
+                column.classList.remove('current');
+                senhaNumber.classList.remove('highlight');
+            }, 5000);
+
+            // Placeholder for audio announcement
+            // const audio = new Audio('call.mp3');
+            // audio.play();
+            // const utterance = new SpeechSynthesisUtterance(`Senha ${senhaNumber.textContent}, ${senhaSala.textContent}`);
+            // window.speechSynthesis.speak(utterance);
+        }
+
+        function rotateAds() {
+            const ads = document.querySelectorAll('.ad-banner');
+            const adData = [
+                { title: 'REGISTO ONLINE', description: 'Solicite certidões sem sair de casa', icon: '📜' },
+                { title: 'REGISTO PREDIAL', description: 'Regularize sua propriedade hoje', icon: '🏡' },
+                { title: 'SERVIÇOS NOTARIAIS', description: 'Autenticações rápidas e seguras', icon: '✍️' },
+                { title: 'REGISTO COMERCIAL', description: 'Constitua sua empresa agora', icon: '🏢' },
+                { title: 'CONSULTA DE DOCUMENTOS', description: 'Acesse seus registos online', icon: '📂' }
+            ];
+
+            let currentAd = 0;
+            ads.forEach((ad, index) => {
+                const data = adData[index % adData.length];
+                ad.querySelector('.ad-icon').textContent = data.icon;
+                ad.querySelector('.ad-title').textContent = data.title;
+                ad.querySelector('.ad-description').textContent = data.description;
+                ad.classList.toggle('active', index === 0);
+            });
+
+            setInterval(() => {
+                ads[currentAd].classList.remove('active');
+                currentAd = (currentAd + 1) % ads.length;
+                ads[currentAd].classList.add('active');
+                createParticles();
+            }, 10000);
+        }
+
+        function createParticles() {
+            const particleContainer = document.getElementById('ad-particles');
+            particleContainer.innerHTML = '';
+            for (let i = 0; i < 10; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = `${Math.random() * 100}%`;
+                particle.style.animationDelay = `${Math.random() * 5}s`;
+                particleContainer.appendChild(particle);
+            }
+        }
+
+        function rotateVideoContent() {
+            const videoTitle = document.getElementById('video-title');
+            const contents = [
+                'Como registar uma propriedade em Luanda',
+                'Guia para obter certidões de nascimento',
+                'Procedimentos para registo comercial',
+                'O que é um serviço notarial?',
+                'Dicas para agilizar seu registo'
+            ];
+            videoTitle.textContent = contents[Math.floor(Math.random() * contents.length)];
+        }
+
+        setInterval(() => {
+            simulateNewCall();
+        }, Math.floor(Math.random() * 6000) + 6000);
+
+        rotateAds();
+        createParticles();
+        rotateVideoContent();
+        setInterval(rotateVideoContent, 60000);
+    </script>
+</body>
+</html>

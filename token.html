@@ -1,105 +1,682 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-PT">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Totem de Autoatendimento</title>
-
+    <title>Totem de Autoatendimento - Conservatória de Luanda</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap');
+
+        :root {
+            --primary-color: #c8102e;
+            --primary-dark: #a00d26;
+            --primary-light: #e63946;
+            --secondary-color: #ffd700;
+            --secondary-light: #ffec5d;
+            --civil-color: #1d3557;
+            --predial-color: #457b9d;
+            --comercial-color: #f4a261;
+            --notariado-color: #2a9d8f;
+            --text-dark: #000000;
+            --text-light: #ffffff;
+            --background-color: #0a1a2e;
+            --panel-bg: #102442;
+            --highlight-color: #ffd700;
+            --active-highlight: #ffee99;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --glass-effect: rgba(255, 255, 255, 0.1);
+            --gradient-start: #c8102e;
+            --gradient-end: #a00d26;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-light);
+            overflow: hidden;
+            min-height: 100vh;
+            background-image: linear-gradient(45deg, var(--background-color) 0%, #112a4a 100%);
+            background-attachment: fixed;
+        }
+
+        .container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23ffffff' fill-opacity='0.03' fill-rule='evenodd'/%3E%3C/svg%3E");
+            z-index: -1;
+        }
+
+        .header {
+            background: linear-gradient(to right, var(--gradient-start), --gradient-end);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 90px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            position: relative;
+            z-index: 10;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(to right, var(--secondary-color), var(--secondary-light));
+        }
+
+        .conservatory-info {
+            display: flex;
+            align-items: center;
+        }
+
+        .conservatory-logo {
+            display: flex;
+            align-items: center;
+        }
+
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            background-color: var(--secondary-color);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: 700;
+            margin-right: 15px;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+            color: var(--text-dark);
+            transition: transform 0.3s ease;
+        }
+
+        .logo-icon:hover {
+            transform: rotate(360deg);
+        }
+
+        .conservatory-name {
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--text-light), var(--secondary-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .branch-info {
+            display: flex;
+            align-items: center;
+            color: var(--text-light);
+        }
+
+        .branch-info i {
+            font-size: 24px;
+            margin-right: 10px;
+            color: var(--secondary-color);
+            animation: pulse 2s infinite;
+        }
+
+        .branch-details {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--secondary-light);
+        }
+
+        .accessibility-controls {
+            position: absolute;
+            top: 100px;
+            right: 30px;
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+
+        .accessibility-btn {
+            background: linear-gradient(to right, var(--primary-color), var(--primary-dark));
+            border: none;
+            padding: 12px;
+            border-radius: 50%;
+            font-size: 20px;
+            color: var(--text-light);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px var(--shadow-color);
+        }
+
+        .accessibility-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 7px 20px var(--shadow-color);
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: var(--panel-bg);
+            border-radius: 15px;
+            margin: 20px;
+            box-shadow: 0 10px 30px var(--shadow-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .main-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+            z-index: 0;
+        }
+
+        .welcome-message {
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .welcome-message h2 {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--text-light);
+            text-shadow: 0 2px 4px var(--shadow-color);
+        }
+
+        .welcome-message p {
+            font-size: 20px;
+            color: var(--secondary-light);
+            margin-top: 10px;
+        }
+
+        .content-area {
+            width: 100%;
+            flex: 1;
+            position: relative;
+            z-index: 1;
+        }
+
+        .screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .screen.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .category-container, .service-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .category-card, .service-card {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px var(--shadow-color);
+            border: 1px solid var(--glass-effect);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .category-card.civil { background: linear-gradient(to bottom, var(--civil-color), rgba(29, 53, 87, 0.2)); }
+        .category-card.predial { background: linear-gradient(to bottom, var(--predial-color), rgba(69, 123, 157, 0.2)); }
+        .category-card.comercial { background: linear-gradient(to bottom, var(--comercial-color), rgba(244, 162, 97, 0.2)); }
+        .category-card.notariado { background: linear-gradient(to bottom, var(--notariado-color), rgba(42, 157, 143, 0.2)); }
+
+        .category-card:hover, .service-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px var(--shadow-color);
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .category-card i, .service-card i {
+            font-size: 48px;
+            color: var(--secondary-color);
+            margin-bottom: 15px;
+            animation: pulse 2s infinite;
+        }
+
+        .category-card h3, .service-card h3 {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-light);
+            margin-bottom: 10px;
+        }
+
+        .category-card p, .service-card p {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .confirmation-container, .ticket-container {
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px var(--shadow-color);
+            max-width: 600px;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        .confirmation-container h2, .ticket-container h3 {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-light);
+            margin-bottom: 20px;
+        }
+
+        .service-details {
+            margin-bottom: 20px;
+        }
+
+        .service-info p {
+            font-size: 18px;
+            color: var(--text-light);
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .service-info span:first-child {
+            font-weight: 600;
+            color: var(--secondary-light);
+        }
+
+        .wait-time {
+            font-size: 20px;
+            color: var(--text-light);
+            margin-top: 20px;
+        }
+
+        .wait-time strong {
+            color: var(--highlight-color);
+        }
+
+        .ticket-card {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px var(--shadow-color);
+            margin-bottom: 20px;
+        }
+
+        .ticket-info p {
+            font-size: 18px;
+            color: var(--text-light);
+            margin: 10px 0;
+        }
+
+        .ticket-number {
+            font-size: 64px;
+            font-weight: 700;
+            color: var(--highlight-color);
+            margin: 20px 0;
+            text-shadow: 0 3px 8px var(--shadow-color);
+        }
+
+        .ticket-qr img {
+            width: 150px;
+            height: 150px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .ticket-instructions p {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.8);
+            margin: 10px 0;
+        }
+
+        .buttons-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px var(--shadow-color);
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, var(--secondary-color), var(--secondary-light));
+            color: var(--text-dark);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(to right, var(--primary-color), var(--primary-dark));
+            color: var(--text-light);
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 20px var(--shadow-color);
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                to right,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0.2) 50%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            transform: rotate(30deg);
+            animation: shine 4s infinite linear;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .footer {
+            height: 70px;
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 30px;
+            box-shadow: 0 -4px 20px var(--shadow-color);
+            position: relative;
+        }
+
+        .footer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(to right, var(--secondary-color), var(--secondary-light));
+        }
+
+        .footer-info p {
+            font-size: 16px;
+            color: var(--text-light);
+            margin: 5px 0;
+        }
+
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 1000;
+        }
+
+        .loading-screen.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--secondary-color);
+            border-top: 5px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-message {
+            font-size: 20px;
+            color: var(--text-light);
+            margin-top: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) rotate(30deg); }
+            100% { transform: translateX(100%) rotate(30deg); }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+
+        .btn:focus, .category-card:focus, .service-card:focus {
+            outline: 2px solid var(--secondary-color);
+            outline-offset: 2px;
+        }
+
+        .high-contrast .category-card,
+        .high-contrast .service-card,
+        .high-contrast .confirmation-container,
+        .high-contrast .ticket-card {
+            background-color: #000;
+            color: #fff;
+            border: 2px solid #fff;
+        }
+
+        .high-contrast .btn-primary {
+            background: #fff;
+            color: #000;
+        }
+
+        .high-contrast .btn-secondary {
+            background: #000;
+            color: #fff;
+            border: 1px solid #fff;
+        }
+
+        @media screen and (max-width: 1200px) {
+            .category-container, .service-list {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            }
+
+            .welcome-message h2 {
+                font-size: 28px;
+            }
+
+            .welcome-message p {
+                font-size: 18px;
+            }
+        }
+
+        @media screen and (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                height: auto;
+                padding: 15px;
+            }
+
+            .conservatory-name {
+                font-size: 24px;
+            }
+
+            .logo-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 22px;
+            }
+
+            .accessibility-controls {
+                top: 120px;
+                right: 15px;
+            }
+
+            .confirmation-container, .ticket-container {
+                padding: 20px;
+            }
+
+            .ticket-number {
+                font-size: 48px;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <img src="/api/placeholder/200/60" alt="Logo da Instituição">
+        <div class="header" role="banner">
+            <div class="conservatory-info">
+                <div class="conservatory-logo">
+                    <div class="logo-icon">CL</div>
+                    <div class="conservatory-name">CONSERVATÓRIA DE LUANDA</div>
+                </div>
+            </div>
             <div class="branch-info">
                 <i class="fas fa-map-marker-alt"></i>
                 <div>
-                    <span>Agência Centro</span>
-                    <div class="branch-details">Av. Paulista, 1000 - São Paulo</div>
+                    <span>Conservatória Central</span>
+                    <div class="branch-details">Av. 4 de Fevereiro, Luanda</div>
                 </div>
             </div>
         </div>
-        
-        <div class="accessibility-controls">
-            <button class="accessibility-btn" onclick="toggleHighContrast()" title="Alto Contraste">
+
+        <div class="accessibility-controls" role="region" aria-label="Controles de Acessibilidade">
+            <button class="accessibility-btn" onclick="toggleHighContrast()" title="Alto Contraste" aria-label="Ativar alto contraste">
                 <i class="fas fa-adjust"></i>
             </button>
-            <button class="accessibility-btn" onclick="increaseFontSize()" title="Aumentar Fonte">
+            <button class="accessibility-btn" onclick="increaseFontSize()" title="Aumentar Fonte" aria-label="Aumentar tamanho da fonte">
                 <i class="fas fa-text-height"></i>
             </button>
-            <button class="accessibility-btn" onclick="toggleVirtualKeyboard()" title="Teclado Virtual">
+            <button class="accessibility-btn" onclick="toggleVirtualKeyboard()" title="Teclado Virtual" aria-label="Ativar teclado virtual">
                 <i class="fas fa-keyboard"></i>
             </button>
         </div>
-        
+
         <div class="main-content">
             <div class="welcome-message">
                 <h2>Bem-vindo!</h2>
-                <p>Toque na categoria de serviço desejada para iniciar</p>
+                <p>Selecione uma categoria para retirar sua senha</p>
             </div>
-            
+
             <div class="content-area">
                 <!-- Tela de Categorias -->
                 <div class="screen active" id="categories-screen">
-                    <div class="service-category-container">
-                        <div class="category-card" onclick="showServices('banking')">
-                            <i class="fas fa-money-check-alt"></i>
-                            <h3>Serviços Bancários</h3>
-                            <p>Contas, empréstimos e investimentos</p>
+                    <div class="category-container">
+                        <div class="category-card civil" onclick="showServices('civil')">
+                            <i class="fas fa-file-alt"></i>
+                            <h3>Registo Civil</h3>
+                            <p>Certidões e Identificação</p>
                         </div>
-                        <div class="category-card" onclick="showServices('payments')">
-                            <i class="fas fa-receipt"></i>
-                            <h3>Pagamentos</h3>
-                            <p>Boletos, contas e tributos</p>
+                        <div class="category-card predial" onclick="showServices('predial')">
+                            <i class="fas fa-home"></i>
+                            <h3>Registo Predial</h3>
+                            <p>Propriedades e Imóveis</p>
                         </div>
-                        <div class="category-card" onclick="showServices('cards')">
-                            <i class="fas fa-credit-card"></i>
-                            <h3>Cartões</h3>
-                            <p>Desbloqueio, senha e segunda via</p>
+                        <div class="category-card comercial" onclick="showServices('comercial')">
+                            <i class="fas fa-building"></i>
+                            <h3>Registo Comercial</h3>
+                            <p>Empresas e Negócios</p>
                         </div>
-                        <div class="category-card" onclick="showServices('benefits')">
-                            <i class="fas fa-hand-holding-usd"></i>
-                            <h3>Benefícios</h3>
-                            <p>INSS, seguro-desemprego e auxílios</p>
-                        </div>
-                        <div class="category-card" onclick="showServices('business')">
-                            <i class="fas fa-briefcase"></i>
-                            <h3>Pessoa Jurídica</h3>
-                            <p>Serviços para empresas</p>
-                        </div>
-                        <div class="category-card" onclick="showServices('other')">
-                            <i class="fas fa-ellipsis-h"></i>
-                            <h3>Outros Serviços</h3>
-                            <p>Demais atendimentos</p>
+                        <div class="category-card notariado" onclick="showServices('notariado')">
+                            <i class="fas fa-pen"></i>
+                            <h3>Notariado</h3>
+                            <p>Autenticações e Contratos</p>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Tela de Serviços -->
                 <div class="screen" id="services-screen">
                     <div class="service-list" id="service-list-container">
                         <!-- Preenchido dinamicamente via JavaScript -->
                     </div>
-                    
                     <div class="buttons-container">
                         <button class="btn btn-secondary" onclick="showCategories()">
                             <i class="fas fa-arrow-left"></i> Voltar
                         </button>
+                        <button class="btn btn-secondary" onclick="restart()">
+                            <i class="fas fa-home"></i> Início
+                        </button>
                     </div>
                 </div>
-                
+
                 <!-- Tela de Confirmação -->
                 <div class="screen" id="confirmation-screen">
                     <div class="confirmation-container">
                         <h2>Confirmar Serviço</h2>
-                        
                         <div class="service-details">
-                            <h3 id="confirm-service-name">Atendimento Bancário</h3>
-                            
+                            <h3 id="confirm-service-name">Certidão de Nascimento</h3>
                             <div class="service-info">
                                 <p>
                                     <span>Departamento:</span>
-                                    <span id="confirm-department">Área de Atendimento</span>
+                                    <span id="confirm-department">Registo Civil</span>
                                 </p>
                                 <p>
                                     <span>Senhas emitidas hoje:</span>
@@ -110,12 +687,10 @@
                                     <span id="confirm-waiting">7</span>
                                 </p>
                             </div>
-                            
                             <div class="wait-time">
                                 Tempo estimado de espera: <strong id="confirm-wait-time">15 minutos</strong>
                             </div>
                         </div>
-                        
                         <div class="buttons-container">
                             <button class="btn btn-secondary" onclick="showServices(currentCategory)">
                                 <i class="fas fa-arrow-left"></i> Voltar
@@ -126,30 +701,27 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Tela de Ticket -->
                 <div class="screen" id="ticket-screen">
                     <div class="ticket-container">
                         <div class="ticket-card">
                             <div class="ticket-info">
                                 <h3>Senha de Atendimento</h3>
-                                <p id="ticket-date">14/05/2025 - 14:30</p>
-                                <p id="ticket-service">Atendimento Bancário</p>
+                                <p id="ticket-date">14/05/2025 - 17:44</p>
+                                <p id="ticket-service">Certidão de Nascimento</p>
+                                <p id="ticket-sala">SALA 01</p>
                             </div>
-                            
-                            <div class="ticket-number" id="ticket-number">A123</div>
-                            
+                            <div class="ticket-number" id="ticket-number">R042</div>
                             <div class="ticket-qr">
-                                <img src="/api/placeholder/150/150" alt="QR Code">
+                                <img src="https://via.placeholder.com/150?text=QR+Code" alt="QR Code">
                             </div>
-                            
                             <div class="ticket-instructions">
                                 <p>Acompanhe sua senha pelo aplicativo.</p>
                                 <p>Seu ticket está sendo impresso.</p>
                             </div>
                         </div>
-                        
-                        <div class="buttons-container" style="margin-top: 2rem;">
+                        <div class="buttons-container">
                             <button class="btn btn-primary" onclick="restart()">
                                 <i class="fas fa-home"></i> Iniciar Novo Atendimento
                             </button>
@@ -158,11 +730,11 @@
                 </div>
             </div>
         </div>
-        
-        <div class="footer">
+
+        <div class="footer" role="contentinfo">
             <div class="footer-info">
-                <p>Totem de Autoatendimento v1.0</p>
-                <p>© 2025 Sua Instituição - Todos os direitos reservados</p>
+                <p>Totem de Autoatendimento v1.1</p>
+                <p>© 2025 Conservatória de Luanda</p>
             </div>
             <div class="footer-controls">
                 <button class="btn btn-secondary" onclick="toggleHelp()">
@@ -171,181 +743,165 @@
             </div>
         </div>
     </div>
-    
+
     <div class="loading-screen" id="loading-screen">
         <div class="spinner"></div>
         <div class="loading-message">Gerando sua senha...</div>
     </div>
-    
+
     <script>
         let currentCategory = '';
         let currentService = '';
-        
-        // Mapear categorias para serviços
-        const servicesByCategory = {
-            'banking': [
-                { id: 'account', name: 'Conta Corrente', icon: 'fa-landmark', description: 'Abertura, movimentações e extratos' },
-                { id: 'savings', name: 'Poupança', icon: 'fa-piggy-bank', description: 'Depósitos e saques' },
-                { id: 'loan', name: 'Empréstimos', icon: 'fa-hand-holding-usd', description: 'Contratação e renegociação' },
-                { id: 'investment', name: 'Investimentos', icon: 'fa-chart-line', description: 'Aplicações e resgates' }
-            ],
-            'payments': [
-                { id: 'bills', name: 'Pagamento de Contas', icon: 'fa-file-invoice-dollar', description: 'Água, luz, telefone e outros' },
-                { id: 'taxes', name: 'Tributos', icon: 'fa-file-invoice', description: 'IPTU, IPVA e outros impostos' },
-                { id: 'transfers', name: 'Transferências', icon: 'fa-exchange-alt', description: 'DOC, TED e Pix' }
-            ],
-            'cards': [
-                { id: 'debit', name: 'Cartão de Débito', icon: 'fa-id-card', description: 'Problemas e segunda via' },
-                { id: 'credit', name: 'Cartão de Crédito', icon: 'fa-credit-card', description: 'Desbloqueio e fatura' },
-                { id: 'password', name: 'Senha de Cartão', icon: 'fa-key', description: 'Recuperação e alteração' }
-            ],
-            'benefits': [
-                { id: 'inss', name: 'INSS', icon: 'fa-user-shield', description: 'Aposentadoria e benefícios' },
-                { id: 'fgts', name: 'FGTS', icon: 'fa-building', description: 'Consulta e saque' },
-                { id: 'unemployment', name: 'Seguro-Desemprego', icon: 'fa-file-contract', description: 'Habilitação e parcelas' }
-            ],
-            'business': [
-                { id: 'business_account', name: 'Conta PJ', icon: 'fa-building', description: 'Abertura e movimentações' },
-                { id: 'business_loan', name: 'Crédito Empresarial', icon: 'fa-money-bill-wave', description: 'Financiamentos e capital de giro' },
-                { id: 'card_machine', name: 'Máquina de Cartão', icon: 'fa-calculator', description: 'Contratação e suporte' }
-            ],
-            'other': [
-                { id: 'certificates', name: 'Certificados', icon: 'fa-certificate', description: 'Certificado digital' },
-                { id: 'exchange', name: 'Câmbio', icon: 'fa-dollar-sign', description: 'Moeda estrangeira' },
-                { id: 'insurance', name: 'Seguros', icon: 'fa-shield-alt', description: 'Vida, auto e residencial' }
-            ]
+
+        const queues = {
+            civil: { 
+                prefix: 'R', 
+                current: 42, 
+                salas: [1, 2, 3], 
+                name: 'Registo Civil',
+                services: [
+                    { id: 'nascimento', name: 'Certidão de Nascimento', icon: 'fa-baby', description: 'Emissão de certidão de nascimento' },
+                    { id: 'casamento', name: 'Certidão de Casamento', icon: 'fa-ring', description: 'Emissão de certidão de casamento' },
+                    { id: 'bilhete', name: 'Renovação de Bilhete', icon: 'fa-id-card', description: 'Renovação de bilhete de identidade' },
+                    { id: 'obito', name: 'Registo de Óbito', icon: 'fa-cross', description: 'Registo e certidão de óbito' }
+                ]
+            },
+            predial: { 
+                prefix: 'P', 
+                current: 15, 
+                salas: [4, 5, 6], 
+                name: 'Registo Predial',
+                services: [
+                    { id: 'imovel', name: 'Registo de Imóvel', icon: 'fa-home', description: 'Registo de propriedades' },
+                    { id: 'atualizacao', name: 'Atualização de Imóvel', icon: 'fa-edit', description: 'Atualização de dados prediais' },
+                    { id: 'certidao_predial', name: 'Certidão Predial', icon: 'fa-file-alt', description: 'Emissão de certidão predial' }
+                ]
+            },
+            comercial: { 
+                prefix: 'C', 
+                current: 21, 
+                salas: [7, 8, 9], 
+                name: 'Registo Comercial',
+                services: [
+                    { id: 'constituicao', name: 'Constituição de Empresa', icon: 'fa-building', description: 'Registo de novas empresas' },
+                    { id: 'alteracao', name: 'Alteração de Empresa', icon: 'fa-exchange-alt', description: 'Alterações contratuais' },
+                    { id: 'certidao_comercial', name: 'Certidão Comercial', icon: 'fa-file-alt', description: 'Emissão de certidão comercial' }
+                ]
+            },
+            notariado: { 
+                prefix: 'N', 
+                current: 7, 
+                salas: [10, 11, 12], 
+                name: 'Notariado',
+                services: [
+                    { id: 'autenticacao', name: 'Autenticação de Documentos', icon: 'fa-stamp', description: 'Autenticação de cópias e assinaturas' },
+                    { id: 'procuracao', name: 'Procurações', icon: 'fa-file-signature', description: 'Emissão de procurações' },
+                    { id: 'contrato', name: 'Contratos', icon: 'fa-handshake', description: 'Elaboração e autenticação de contratos' }
+                ]
+            }
         };
-        
-        // Mostrar serviços da categoria selecionada
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function showCategories() {
+            currentCategory = '';
+            showScreen('categories-screen');
+        }
+
         function showServices(category) {
             currentCategory = category;
-            
             const serviceList = document.getElementById('service-list-container');
             serviceList.innerHTML = '';
-            
-            // Título da categoria
+
             const categoryTitle = document.createElement('h2');
             categoryTitle.style.width = '100%';
             categoryTitle.style.marginBottom = '1rem';
-            categoryTitle.textContent = getCategoryTitle(category);
+            categoryTitle.style.textAlign = 'center';
+            categoryTitle.textContent = queues[category].name;
             serviceList.appendChild(categoryTitle);
-            
-            // Adicionar serviços
-            const services = servicesByCategory[category];
+
+            const services = queues[category].services;
             services.forEach(service => {
                 const serviceCard = document.createElement('div');
                 serviceCard.className = 'service-card';
-                serviceCard.onclick = () => showConfirmation(service.id, service.name);
-                
+                serviceCard.onclick = () => showConfirmation(category, service.id, service.name);
                 serviceCard.innerHTML = `
                     <i class="fas ${service.icon}"></i>
                     <h3>${service.name}</h3>
                     <p>${service.description}</p>
                 `;
-                
                 serviceList.appendChild(serviceCard);
             });
-            
-            // Alternar para a tela de serviços
+
             showScreen('services-screen');
         }
-        
-        // Obter título da categoria
-        function getCategoryTitle(category) {
-            const titles = {
-                'banking': 'Serviços Bancários',
-                'payments': 'Pagamentos',
-                'cards': 'Cartões',
-                'benefits': 'Benefícios',
-                'business': 'Pessoa Jurídica',
-                'other': 'Outros Serviços'
-            };
-            
-            return titles[category] || 'Serviços';
-        }
-        
-        // Mostrar tela de confirmação
-        function showConfirmation(serviceId, serviceName) {
+
+        function showConfirmation(category, serviceId, serviceName) {
+            currentCategory = category;
             currentService = serviceId;
-            
-            // Atualizar detalhes do serviço
+
             document.getElementById('confirm-service-name').textContent = serviceName;
-            
-            // Gerar dados de exemplo para os outros campos
-            const departmentMap = {
-                'account': 'Contas',
-                'savings': 'Contas',
-                'loan': 'Crédito',
-                'investment': 'Investimentos',
-                'bills': 'Caixa',
-                'taxes': 'Caixa',
-                'transfers': 'Caixa',
-                'debit': 'Cartões',
-                'credit': 'Cartões',
-                'password': 'Cartões',
-                'inss': 'Benefícios',
-                'fgts': 'Benefícios',
-                'unemployment': 'Benefícios',
-                'business_account': 'Pessoa Jurídica',
-                'business_loan': 'Pessoa Jurídica',
-                'card_machine': 'Pessoa Jurídica',
-                'certificates': 'Atendimento Geral',
-                'exchange': 'Atendimento Geral',
-                'insurance': 'Seguros'
-            };
-            
-            document.getElementById('confirm-department').textContent = departmentMap[serviceId] || 'Atendimento Geral';
-            
-            // Gerar números aleatórios para fins de demonstração
+            document.getElementById('confirm-department').textContent = queues[category].name;
+
             const ticketsIssued = Math.floor(Math.random() * 50) + 10;
             const ticketsWaiting = Math.floor(Math.random() * 10) + 1;
             const waitTime = ticketsWaiting * 3 + Math.floor(Math.random() * 5);
-            
+
             document.getElementById('confirm-tickets').textContent = ticketsIssued;
             document.getElementById('confirm-waiting').textContent = ticketsWaiting;
             document.getElementById('confirm-wait-time').textContent = `${waitTime} minutos`;
-            
-            // Alternar para a tela de confirmação
+
             showScreen('confirmation-screen');
         }
-        
-        // Gerar senha
+
         function generateTicket() {
-            // Mostrar tela de carregamento
             document.getElementById('loading-screen').classList.add('active');
-            
-            // Simular chamada à API
+
             setTimeout(() => {
-                // Esconder tela de carregamento
                 document.getElementById('loading-screen').classList.remove('active');
-                
-                // Gerar dados do ticket
+
+                const queue = queues[currentCategory];
+                queue.current++;
+                const ticketNumber = `${queue.prefix}${queue.current.toString().padStart(3, '0')}`;
+                const randomSala = queue.salas[Math.floor(Math.random() * queue.salas.length)];
+
                 const now = new Date();
-                const ticketDate = `${now.toLocaleDateString()} - ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
-                
-                // Mapear serviço para nome completo
-                let serviceName = '';
-                for (const category in servicesByCategory) {
-                    const service = servicesByCategory[category].find(s => s.id === currentService);
-                    if (service) {
-                        serviceName = service.name;
-                        break;
-                    }
-                }
-                
-                // Gerar letra da senha baseada no departamento
-                const prefixMap = {
-                    'Contas': 'A',
-                    'Crédito': 'C',
-                    'Investimentos': 'I',
-                    'Caixa': 'P',
-                    'Cartões': 'T',
-                    'Benefícios': 'B',
-                    'Pessoa Jurídica': 'J',
-                    'Atendimento Geral': 'G',
-                    'Seguros': 'S'
-                };
-                
-                const department = document.getElementById('confirm-department').textContent;
-                const prefix = prefixMap[department] || 'X';
-                const ticketNumber = `
+                const ticketDate = `${now.toLocaleDateString('pt-PT')} - ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+                document.getElementById('ticket-date').textContent = ticketDate;
+                document.getElementById('ticket-service').textContent = queues[currentCategory].services.find(s => s.id === currentService).name;
+                document.getElementById('ticket-number').textContent = ticketNumber;
+                document.getElementById('ticket-sala').textContent = `SALA ${randomSala.toString().padStart(2, '0')}`;
+
+                showScreen('ticket-screen');
+            }, 2000);
+        }
+
+        function restart() {
+            showScreen('categories-screen');
+        }
+
+        function toggleHighContrast() {
+            document.body.classList.toggle('high-contrast');
+        }
+
+        function increaseFontSize() {
+            const currentSize = parseFloat(getComputedStyle(document.body).fontSize);
+            document.body.style.fontSize = `${currentSize + 2}px`;
+        }
+
+        function toggleVirtualKeyboard() {
+            alert('Teclado virtual não implementado. Use o teclado físico ou entre em contato com o suporte.');
+        }
+
+        function toggleHelp() {
+            alert('Para assistência, entre em contato com o suporte no local ou ligue para +244 222 123 456.');
+        }
+    </script>
+</body>
+</html>

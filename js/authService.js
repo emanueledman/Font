@@ -1,5 +1,5 @@
 // API Base URL
-const API_BASE = 'https://fila-facilita2-0-4uzw.onrender.com';
+const API_BASE = 'https://fila-facilita2-0-juqg.onrender.com';
 
 // Serviço de Autenticação Unificado
 class AuthService {
